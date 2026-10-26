@@ -24,7 +24,9 @@ const SESSION_TTL_MS = 30 * 24 * 3600 * 1000
 const SESSION_TOUCH_MS = 3600 * 1000
 
 // Routes reachable without a session.
-const PUBLIC_PREFIXES = ['/health', '/auth/']
+// /spotify/callback identifies the user by its OAuth state: Spotify requires a loopback
+// IP redirect for http, which doesn't carry a session cookie set on localhost.
+const PUBLIC_PREFIXES = ['/health', '/auth/', '/spotify/callback']
 
 // --- Passwords ---------------------------------------------------------------
 

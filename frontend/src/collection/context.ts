@@ -6,6 +6,8 @@ export interface CollectionState {
   /** Bumped whenever likes change, so the liked tracks page can reload. */
   likesVersion: number
   toggleLike: (trackId: string) => void
+  /** Reloads likes from the server (after an import added some). */
+  refreshLikes: () => void
   playlists: PlaylistSummary[]
   refreshPlaylists: () => void
   /** Creates a playlist (optionally with tracks) and returns its id. */

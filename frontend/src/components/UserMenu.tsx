@@ -52,6 +52,9 @@ export function UserMenu() {
           <Link to="/account" role="menuitem" className="menu-item" onClick={close}>
             Compte
           </Link>
+          <Link to="/import/spotify" role="menuitem" className="menu-item" onClick={close}>
+            Importer depuis Spotify
+          </Link>
           <Link to="/scan" role="menuitem" className="menu-item" onClick={close}>
             Analyse de la bibliothèque
           </Link>

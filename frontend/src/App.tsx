@@ -17,6 +17,7 @@ import { LikedPage } from './pages/LikedPage'
 import { PlaylistPage } from './pages/PlaylistPage'
 import { ScanPage } from './pages/ScanPage'
 import { SearchPage } from './pages/SearchPage'
+import { SpotifyImportPage } from './pages/SpotifyImportPage'
 import { UsersPage } from './pages/UsersPage'
 import { PlayerProvider } from './player/PlayerProvider'
 
@@ -39,6 +40,7 @@ function MainApp() {
               <Route path="/artist/:id" element={<ArtistPage />} />
               <Route path="/playlist/:id" element={<PlaylistPage />} />
               <Route path="/collection/tracks" element={<LikedPage />} />
+              <Route path="/import/spotify" element={<SpotifyImportPage />} />
               <Route path="/scan" element={<ScanPage />} />
               <Route path="/account" element={<AccountPage />} />
               <Route path="/admin/users" element={<UsersPage />} />

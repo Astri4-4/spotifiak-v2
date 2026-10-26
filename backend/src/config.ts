@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+// compose passes unset optional variables as empty strings.
+const unsetIfEmpty = <T extends z.ZodTypeAny>(type: T) => z.preprocess((v) => (v === '' ? undefined : v), type)
+
 const schema = z.object({
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().url(),
@@ -22,6 +25,14 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  // Spotify playlist import (optional). Credentials of an app created on
+  // developer.spotify.com; its redirect URI must be exactly SPOTIFY_REDIRECT_URI.
+  SPOTIFY_CLIENT_ID: unsetIfEmpty(z.string().optional()),
+  SPOTIFY_CLIENT_SECRET: unsetIfEmpty(z.string().optional()),
+  SPOTIFY_REDIRECT_URI: unsetIfEmpty(z.string().url().optional()),
+  // Overridable for tests against a mock server.
+  SPOTIFY_ACCOUNTS_URL: z.string().url().default('https://accounts.spotify.com'),
+  SPOTIFY_API_URL: z.string().url().default('https://api.spotify.com/v1'),
   // Album covers and artist pictures come from Deezer's public API.
   DEEZER_API_URL: z.string().url().default('https://api.deezer.com'),
   DEEZER_ENRICH: z

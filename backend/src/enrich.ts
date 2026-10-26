@@ -41,7 +41,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 let lastRequestAt = 0
 
 /** GET from the Deezer API; returns null when Deezer says the entity doesn't exist. */
-async function deezer<T>(path: string, params?: Record<string, string>): Promise<T | null> {
+export async function deezer<T>(path: string, params?: Record<string, string>): Promise<T | null> {
   const url = new URL(path, config.DEEZER_API_URL)
   if (params) url.search = new URLSearchParams(params).toString()
 

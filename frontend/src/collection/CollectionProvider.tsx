@@ -17,7 +17,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       .likedIds()
       .then((ids) => setLikedIds(new Set(ids)))
       .catch(() => {})
-  }, [])
+  }, [likesVersion])
 
   useEffect(() => {
     collection.playlists().then(setPlaylists).catch(() => {})
@@ -30,6 +30,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshPlaylists = useCallback(() => setPlaylistsVersion((v) => v + 1), [])
+  const refreshLikes = useCallback(() => setLikesVersion((v) => v + 1), [])
 
   const toggleLike = useCallback(
     (trackId: string) => {
@@ -80,8 +81,18 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   )
 
   const state: CollectionState = useMemo(
-    () => ({ likedIds, likesVersion, toggleLike, playlists, refreshPlaylists, createPlaylist, addToPlaylist, notify }),
-    [likedIds, likesVersion, toggleLike, playlists, refreshPlaylists, createPlaylist, addToPlaylist, notify],
+    () => ({
+      likedIds,
+      likesVersion,
+      toggleLike,
+      refreshLikes,
+      playlists,
+      refreshPlaylists,
+      createPlaylist,
+      addToPlaylist,
+      notify,
+    }),
+    [likedIds, likesVersion, toggleLike, refreshLikes, playlists, refreshPlaylists, createPlaylist, addToPlaylist, notify],
   )
 
   return (

@@ -24,6 +24,9 @@ services:
       FULL_SCAN_INTERVAL_HOURS: ${FULL_SCAN_INTERVAL_HOURS:-24}
       ALLOW_SIGNUP: ${ALLOW_SIGNUP:-false}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
+      SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-}
     volumes:
       - ${MUSIC_DIR}:/music:ro
     # No published port: the web container proxies /api to it.

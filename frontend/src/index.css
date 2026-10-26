@@ -2215,3 +2215,159 @@ a.now-playing-title:hover,
 .empty-state svg {
   margin-bottom: 16px;
 }
+
+/* Spotify import ---------------------------------------------------------- */
+
+.spotify-intro {
+  margin: 0 0 20px;
+  color: var(--text-subdued);
+}
+
+.spotify-connect {
+  padding: 0 32px;
+  margin-top: 0;
+}
+
+.spotify-setup ol {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--text-subdued);
+}
+
+.spotify-setup code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--highlight);
+  color: var(--text);
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+}
+
+.spotify-playlists {
+  display: flex;
+  flex-direction: column;
+}
+
+.spotify-playlist {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.spotify-playlist:hover {
+  background: var(--highlight);
+}
+
+.spotify-playlist.disabled {
+  opacity: 0.55;
+}
+
+.spotify-playlist .cover {
+  flex: none;
+  width: 48px;
+  height: 48px;
+}
+
+.spotify-playlist-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+
+.spotify-playlist-text > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.spotify-playlist-name {
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.spotify-playlist .text-button {
+  margin: 0;
+}
+
+.import-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.import-row-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.import-row-head .text-button {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.import-name {
+  font-weight: 700;
+}
+
+.import-name a:hover {
+  text-decoration: underline;
+}
+
+.import-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 0.875rem;
+  color: var(--text-subdued);
+}
+
+.import-status .spin {
+  color: var(--green);
+}
+
+.import-status.failed {
+  color: var(--error);
+}
+
+.missing-list {
+  margin-top: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  border-top: 1px solid var(--highlight);
+}
+
+.missing-list li {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto;
+  gap: 12px;
+  padding: 8px 4px;
+  font-size: 0.875rem;
+}
+
+.missing-list li > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.missing-status {
+  font-size: 0.8125rem;
+}
+
+.missing-status.queued {
+  color: var(--green);
+}
+
+.missing-status.not_found {
+  color: var(--text-subdued);
+}

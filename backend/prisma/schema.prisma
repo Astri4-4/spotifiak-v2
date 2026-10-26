@@ -21,6 +21,8 @@ model User {
   role         Role       @default(user)
   createdAt    DateTime   @default(now())
   sessions     Session[]
+  spotify      SpotifyAccount?
+  imports      SpotifyImport[]
   playlists    Playlist[]
   likes        Like[]
   plays        Play[]
@@ -106,6 +108,7 @@ model Playlist {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   tracks      PlaylistTrack[]
+  imports     SpotifyImport[]
 
   @@index([ownerId])
 }
@@ -144,4 +147,69 @@ model Play {
   track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
   @@index([userId, playedAt])
+}
+
+// --- Spotify import ----------------------------------------------------------
+
+model SpotifyAccount {
+  userId        String   @id
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spotifyUserId String
+  displayName   String?
+  // AES-256-GCM, see spotify/client.ts. Never returned by the API.
+  accessToken   String
+  refreshToken  String
+  expiresAt     DateTime
+  connectedAt   DateTime @default(now())
+}
+
+enum SpotifyImportStatus {
+  running // reading the Spotify playlist and matching tracks
+  waiting // some tracks are downloading through deemix
+  done
+  failed
+}
+
+model SpotifyImport {
+  id                String              @id @default(cuid())
+  userId            String
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // null when importing the user's Spotify liked tracks
+  spotifyPlaylistId String?
+  name              String
+  // Target playlist; null for liked tracks (they go to the user's likes)
+  playlistId        String?
+  playlist          Playlist?           @relation(fields: [playlistId], references: [id], onDelete: SetNull)
+  status            SpotifyImportStatus @default(running)
+  error             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  tracks            SpotifyImportTrack[]
+
+  @@index([userId, createdAt])
+}
+
+enum SpotifyImportTrackStatus {
+  pending // read from Spotify, not processed yet
+  matched // in the library and added to the playlist / likes
+  queued // sent to deemix, waiting for the file to be scanned
+  not_found // neither in the library nor on Deezer
+}
+
+model SpotifyImportTrack {
+  id         String                   @id @default(cuid())
+  importId   String
+  import     SpotifyImport            @relation(fields: [importId], references: [id], onDelete: Cascade)
+  position   Int // order in the Spotify playlist, kept in the local one
+  addedAt    DateTime? // when it was added on Spotify (used for liked tracks)
+  title      String
+  artist     String
+  album      String?
+  isrc       String?
+  deezerIsrc String? // ISRC of the Deezer track that was downloaded, may differ
+  status     SpotifyImportTrackStatus
+  trackId    String? // local track once matched
+
+  @@index([importId, position])
+  @@index([status])
 }

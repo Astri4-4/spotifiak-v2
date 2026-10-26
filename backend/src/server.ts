@@ -6,6 +6,7 @@ import { parseFile, selectCover } from 'music-metadata'
 import { z, ZodError } from 'zod'
 import { requireAdmin, setupAuth } from './auth.js'
 import { collectionRoutes } from './collection.js'
+import { spotifyRoutes } from './spotify/routes.js'
 import { config } from './config.js'
 import { prisma } from './db.js'
 import * as deemix from './deemix.js'
@@ -40,6 +41,7 @@ await setupAuth(app)
 
 await app.register(libraryRoutes)
 await app.register(collectionRoutes)
+await app.register(spotifyRoutes)
 
 app.get('/deezer/search', async (req, reply) => {
   const { q } = z.object({ q: z.string().min(1) }).parse(req.query)

@@ -5,6 +5,7 @@ import { parseBuffer, parseFile, type IAudioMetadata } from 'music-metadata'
 import { config } from './config.js'
 import { prisma } from './db.js'
 import { enrichLibrary } from './enrich.js'
+import { resolvePendingImports } from './spotify/importer.js'
 import { MIME } from './stream.js'
 
 const COVER_NAMES = ['cover.jpg', 'cover.png', 'folder.jpg']
@@ -354,6 +355,9 @@ export async function scanLibrary(log: FastifyBaseLogger, mode: ScanMode = 'quic
     rerunRequested = false
     void scanLibrary(log)
   }
+
+  // Spotify imports waiting for deemix downloads: link the files that just arrived.
+  await resolvePendingImports(log).catch((err) => log.error({ err }, 'resolving Spotify imports failed'))
 
   // Covers and pictures for new albums/artists; runs after the scan so the library is usable first.
   await enrichLibrary(log).catch((err) => log.error({ err }, 'Deezer enrichment failed'))

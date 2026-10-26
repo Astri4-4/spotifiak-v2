@@ -193,6 +193,57 @@ export const collection = {
     send<void>('PATCH', `/playlists/${id}/tracks/${entryId}`, { beforeEntryId }),
 }
 
+export interface SpotifyStatus {
+  configured: boolean
+  /** Only sent to admins, to register it in the Spotify app. */
+  redirectUri: string | null
+  account: { displayName: string | null; spotifyUserId: string; connectedAt: string } | null
+}
+
+export interface SpotifyPlaylist {
+  id: string
+  name: string
+  owner: string
+  total: number
+  image: string | null
+  importable: boolean
+  importedPlaylistId: string | null
+}
+
+export type ImportStatus = 'running' | 'waiting' | 'done' | 'failed'
+
+export interface SpotifyImport {
+  id: string
+  name: string
+  liked: boolean
+  status: ImportStatus
+  error: string | null
+  playlistId: string | null
+  createdAt: string
+  total: number
+  counts: { pending: number; matched: number; queued: number; not_found: number }
+}
+
+export interface MissingTrack {
+  id: string
+  title: string
+  artist: string
+  album: string | null
+  status: 'queued' | 'not_found'
+}
+
+export const spotify = {
+  status: () => request<SpotifyStatus>('/spotify/status'),
+  authorizeUrl: () => request<{ url: string }>('/spotify/authorize'),
+  disconnect: () => send<void>('DELETE', '/spotify/connection'),
+  playlists: () => request<{ likedTotal: number; playlists: SpotifyPlaylist[] }>('/spotify/playlists'),
+  importPlaylist: (playlistId: string, name: string) =>
+    send<{ id: string; playlistId: string | null }>('POST', '/spotify/imports', { playlistId, name }),
+  importLiked: () => send<{ id: string; playlistId: null }>('POST', '/spotify/imports', { liked: true }),
+  imports: () => request<SpotifyImport[]>('/spotify/imports'),
+  missing: (importId: string) => request<MissingTrack[]>(`/spotify/imports/${importId}/missing`),
+}
+
 export const users = {
   list: () => request<ManagedUser[]>('/users'),
   create: (data: { username: string; password: string; displayName?: string; role: Role }) =>
