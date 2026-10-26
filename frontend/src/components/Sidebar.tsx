@@ -1,15 +1,28 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { api, images, type Album, type Artist } from '../api'
-import { LibraryIcon, RefreshIcon, SearchIcon, VolumeIcon } from '../icons'
+import { useCurrentUser } from '../auth/context'
+import { useCollection } from '../collection/context'
+import { LibraryIcon, PlusIcon, RefreshIcon, SearchIcon, VolumeIcon } from '../icons'
 import { usePlayer } from '../player/context'
+import { LIKED_CONTEXT } from '../player/usePlayContext'
+import { LikedCover, PlaylistCover } from './CollectionCovers'
 import { Cover } from './Cover'
 
-type Filter = 'all' | 'albums' | 'artists'
+type Filter = 'all' | 'playlists' | 'albums' | 'artists'
 
-type Item =
-  | { kind: 'album'; id: string; title: string; subtitle: string; image: string | null; sortKey: string }
-  | { kind: 'artist'; id: string; title: string; subtitle: string; image: string | null; sortKey: string }
+interface Item {
+  key: string
+  to: string
+  title: string
+  subtitle: string
+  cover: ReactNode
+  /** Player context id, to highlight what is playing. */
+  contextId: string
+  /** Most recent first; pinned items (liked tracks) stay on top. */
+  sortKey: string
+  pinned?: boolean
+}
 
 // The library changes when deemix finishes downloads; refresh periodically.
 const REFRESH_MS = 60_000
@@ -17,7 +30,10 @@ const REFRESH_MS = 60_000
 const SCAN_POLL_MS = 10_000
 
 export function Sidebar() {
+  const navigate = useNavigate()
+  const user = useCurrentUser()
   const { contextId, playing } = usePlayer()
+  const { likedIds, playlists, createPlaylist } = useCollection()
   const [albums, setAlbums] = useState<Album[]>([])
   const [artists, setArtists] = useState<Artist[]>([])
   const [filter, setFilter] = useState<Filter>('all')
@@ -47,24 +63,50 @@ export function Sidebar() {
   }, [])
 
   const items = useMemo(() => {
+    const show = (f: Filter) => filter === 'all' || filter === f
     const all: Item[] = [
-      ...(filter !== 'artists'
+      ...(show('playlists')
+        ? [
+            {
+              key: 'liked',
+              to: '/collection/tracks',
+              title: 'Titres likés',
+              subtitle: `Playlist • ${likedIds.size} titre${likedIds.size > 1 ? 's' : ''}`,
+              cover: <LikedCover size={48} />,
+              contextId: LIKED_CONTEXT,
+              sortKey: '',
+              pinned: true,
+            },
+            ...playlists.map((p) => ({
+              key: `playlist-${p.id}`,
+              to: `/playlist/${p.id}`,
+              title: p.name,
+              subtitle: `Playlist • ${user.displayName}`,
+              cover: <PlaylistCover covers={p.covers} size={48} />,
+              contextId: p.id,
+              sortKey: p.updatedAt,
+            })),
+          ]
+        : []),
+      ...(show('albums')
         ? albums.map((a) => ({
-            kind: 'album' as const,
-            id: a.id,
+            key: `album-${a.id}`,
+            to: `/album/${a.id}`,
             title: a.title,
             subtitle: `Album • ${a.artist.name}`,
-            image: images.album(a),
+            cover: <Cover src={images.album(a)} size={48} />,
+            contextId: a.id,
             sortKey: a.createdAt,
           }))
         : []),
-      ...(filter !== 'albums'
+      ...(show('artists')
         ? artists.map((a) => ({
-            kind: 'artist' as const,
-            id: a.id,
+            key: `artist-${a.id}`,
+            to: `/artist/${a.id}`,
             title: a.name,
             subtitle: 'Artiste',
-            image: images.artist(a),
+            cover: <Cover src={images.artist(a)} size={48} round />,
+            contextId: a.id,
             sortKey: '',
           }))
         : []),
@@ -72,8 +114,8 @@ export function Sidebar() {
     const q = search.trim().toLowerCase()
     return all
       .filter((i) => !q || i.title.toLowerCase().includes(q) || i.subtitle.toLowerCase().includes(q))
-      .sort((a, b) => b.sortKey.localeCompare(a.sortKey))
-  }, [albums, artists, filter, search])
+      .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.sortKey.localeCompare(a.sortKey))
+  }, [albums, artists, playlists, likedIds.size, filter, search, user.displayName])
 
   const chip = (value: Exclude<Filter, 'all'>, label: string) => (
     <button
@@ -91,17 +133,28 @@ export function Sidebar() {
           <LibraryIcon size={24} />
           Bibliothèque
         </h2>
-        <Link
-          to="/scan"
-          className={`icon-button${scanning ? ' scanning' : ''}`}
-          aria-label="Analyse de la bibliothèque"
-          title={scanning ? 'Analyse en cours…' : 'Analyse de la bibliothèque'}
-        >
-          <RefreshIcon className={scanning ? 'spin' : undefined} />
-        </Link>
+        <span className="sidebar-header-actions">
+          <Link
+            to="/scan"
+            className={`icon-button${scanning ? ' scanning' : ''}`}
+            aria-label="Analyse de la bibliothèque"
+            title={scanning ? 'Analyse en cours…' : 'Analyse de la bibliothèque'}
+          >
+            <RefreshIcon className={scanning ? 'spin' : undefined} />
+          </Link>
+          <button
+            className="icon-button create-button"
+            onClick={() => void createPlaylist().then((id) => navigate(`/playlist/${id}`))}
+            aria-label="Créer une playlist"
+            title="Créer une playlist"
+          >
+            <PlusIcon />
+          </button>
+        </span>
       </header>
 
       <div className="chips">
+        {chip('playlists', 'Playlists')}
         {chip('albums', 'Albums')}
         {chip('artists', 'Artistes')}
       </div>
@@ -126,11 +179,11 @@ export function Sidebar() {
 
       <ul className="library-list">
         {items.map((item) => {
-          const active = contextId === item.id
+          const active = contextId === item.contextId
           return (
-            <li key={`${item.kind}-${item.id}`}>
-              <NavLink to={`/${item.kind}/${item.id}`} className="library-item">
-                <Cover src={item.image} size={48} round={item.kind === 'artist'} />
+            <li key={item.key}>
+              <NavLink to={item.to} className="library-item">
+                {item.cover}
                 <span className="library-item-text">
                   <span className={`library-item-title${active ? ' playing' : ''}`}>{item.title}</span>
                   <span className="library-item-subtitle">{item.subtitle}</span>

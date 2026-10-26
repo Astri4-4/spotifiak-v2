@@ -75,6 +75,36 @@ export interface ArtistDetail extends Artist {
   tracks: Track[]
 }
 
+export interface MosaicCover {
+  trackId: string
+  coverUrl: string | null
+}
+
+export interface PlaylistSummary {
+  id: string
+  name: string
+  description: string | null
+  updatedAt: string
+  trackCount: number
+  covers: MosaicCover[]
+}
+
+export interface PlaylistEntry {
+  id: string
+  /** addedAt is when the entry was added to the playlist. */
+  track: Track
+}
+
+export interface PlaylistDetail {
+  id: string
+  name: string
+  description: string | null
+  updatedAt: string
+  owner: { displayName: string }
+  covers: MosaicCover[]
+  entries: PlaylistEntry[]
+}
+
 export interface SearchResults {
   tracks: Track[]
   albums: Album[]
@@ -143,6 +173,26 @@ export const auth = {
     send<{ ok: true }>('POST', '/me/password', { currentPassword, newPassword }),
 }
 
+export const collection = {
+  likedIds: () => request<string[]>('/me/likes/ids'),
+  /** addedAt is when each track was liked. */
+  liked: () => request<Track[]>('/me/likes'),
+  like: (trackId: string) => send<void>('PUT', `/me/likes/${trackId}`),
+  unlike: (trackId: string) => send<void>('DELETE', `/me/likes/${trackId}`),
+  playlists: () => request<PlaylistSummary[]>('/playlists'),
+  playlist: (id: string) => request<PlaylistDetail>(`/playlists/${id}`),
+  createPlaylist: (name?: string) => send<{ id: string; name: string }>('POST', '/playlists', { name }),
+  updatePlaylist: (id: string, data: { name?: string; description?: string }) =>
+    send<{ id: string; name: string; description: string | null }>('PATCH', `/playlists/${id}`, data),
+  deletePlaylist: (id: string) => send<void>('DELETE', `/playlists/${id}`),
+  addToPlaylist: (id: string, trackIds: string[]) =>
+    send<{ added: number }>('POST', `/playlists/${id}/tracks`, { trackIds }),
+  removeFromPlaylist: (id: string, entryId: string) => send<void>('DELETE', `/playlists/${id}/tracks/${entryId}`),
+  /** Moves an entry before `beforeEntryId`, or to the end when null. */
+  moveInPlaylist: (id: string, entryId: string, beforeEntryId: string | null) =>
+    send<void>('PATCH', `/playlists/${id}/tracks/${entryId}`, { beforeEntryId }),
+}
+
 export const users = {
   list: () => request<ManagedUser[]>('/users'),
   create: (data: { username: string; password: string; displayName?: string; role: Role }) =>
@@ -175,4 +225,5 @@ export const images = {
   track: (t: Track) => t.album?.coverUrl ?? fileCover(t.id),
   album: (a: Album) => a.coverUrl ?? fileCover(a.coverTrackId),
   artist: (a: Artist) => a.pictureUrl ?? fileCover(a.coverTrackId),
+  mosaic: (c: MosaicCover) => c.coverUrl ?? fileCover(c.trackId),
 }

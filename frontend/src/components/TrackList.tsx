@@ -1,9 +1,12 @@
+import { useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { images, type Track } from '../api'
 import { formatAddedAt, formatDuration } from '../format'
 import { ClockIcon, PauseIcon, PlayIcon } from '../icons'
 import { usePlayer } from '../player/context'
 import { Cover } from './Cover'
+import { HeartButton } from './HeartButton'
+import { TrackMenu } from './TrackMenu'
 
 interface TrackListProps {
   tracks: Track[]
@@ -13,6 +16,12 @@ interface TrackListProps {
    * compact: numbered, no header. search: no numbers, play button over the cover.
    */
   variant?: 'album' | 'full' | 'compact' | 'search'
+  /** Row keys when tracks can repeat (playlist entries); defaults to track ids. */
+  rowKeys?: string[]
+  /** Playlist editing: remove the row at this index. */
+  onRemove?: (index: number) => void
+  /** Playlist editing: move row `from` before row `before` (tracks.length = to the end). */
+  onMove?: (from: number, before: number) => void
 }
 
 function Equalizer() {
@@ -26,8 +35,10 @@ function Equalizer() {
   )
 }
 
-export function TrackList({ tracks, contextId, variant = 'full' }: TrackListProps) {
+export function TrackList({ tracks, contextId, variant = 'full', rowKeys, onRemove, onMove }: TrackListProps) {
   const { current, playing, playTracks, toggle } = usePlayer()
+  const [dragFrom, setDragFrom] = useState<number | null>(null)
+  const [dropBefore, setDropBefore] = useState<number | null>(null)
   const showCover = variant !== 'album'
   const showIndex = variant !== 'search'
   const showAlbum = variant === 'full'
@@ -37,6 +48,34 @@ export function TrackList({ tracks, contextId, variant = 'full' }: TrackListProp
     if (current?.id === tracks[index].id) toggle()
     else playTracks(tracks, index, contextId)
   }
+
+  const dragHandlers = (i: number) =>
+    onMove && {
+      draggable: true,
+      onDragStart: (e: DragEvent) => {
+        setDragFrom(i)
+        e.dataTransfer.effectAllowed = 'move'
+      },
+      onDragOver: (e: DragEvent<HTMLDivElement>) => {
+        if (dragFrom === null) return
+        e.preventDefault()
+        const rect = e.currentTarget.getBoundingClientRect()
+        // Upper half of a row drops before it, lower half after it.
+        setDropBefore(e.clientY < rect.top + rect.height / 2 ? i : i + 1)
+      },
+      onDrop: (e: DragEvent) => {
+        e.preventDefault()
+        if (dragFrom !== null && dropBefore !== null && dropBefore !== dragFrom && dropBefore !== dragFrom + 1) {
+          onMove(dragFrom, dropBefore)
+        }
+        setDragFrom(null)
+        setDropBefore(null)
+      },
+      onDragEnd: () => {
+        setDragFrom(null)
+        setDropBefore(null)
+      },
+    }
 
   return (
     <div className={`tracklist tracklist-${variant}`} role="grid">
@@ -54,12 +93,15 @@ export function TrackList({ tracks, contextId, variant = 'full' }: TrackListProp
       {tracks.map((track, i) => {
         const isCurrent = current?.id === track.id
         const isPlaying = isCurrent && playing
+        const dropClass =
+          dropBefore === i ? ' drop-before' : dropBefore === i + 1 && i === tracks.length - 1 ? ' drop-after' : ''
         return (
           <div
-            key={track.id}
-            className={`tracklist-row${isCurrent ? ' current' : ''}`}
+            key={rowKeys?.[i] ?? track.id}
+            className={`tracklist-row${isCurrent ? ' current' : ''}${dragFrom === i ? ' dragging' : ''}${dropClass}`}
             role="row"
             onDoubleClick={() => playTracks(tracks, i, contextId)}
+            {...dragHandlers(i)}
           >
             {showIndex && (
               <span className="col-index">
@@ -102,7 +144,11 @@ export function TrackList({ tracks, contextId, variant = 'full' }: TrackListProp
               </span>
             )}
             {showAdded && <span className="col-added">{formatAddedAt(track.addedAt)}</span>}
-            <span className="col-duration">{formatDuration(track.durationSec)}</span>
+            <span className="col-duration">
+              <HeartButton trackId={track.id} />
+              <span className="duration-text">{formatDuration(track.durationSec)}</span>
+              <TrackMenu track={track} onRemoveFromPlaylist={onRemove && (() => onRemove(i))} />
+            </span>
           </div>
         )
       })}

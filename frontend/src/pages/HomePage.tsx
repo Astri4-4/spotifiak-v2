@@ -4,8 +4,10 @@ import { Card } from '../components/Card'
 import { Cover } from '../components/Cover'
 import { PlayButton } from '../components/PlayButton'
 import { Shelf } from '../components/Shelf'
+import { useCollection } from '../collection/context'
+import { LikedCover, PlaylistCover } from '../components/CollectionCovers'
 import { useFetch } from '../hooks'
-import { usePlayContext } from '../player/usePlayContext'
+import { LIKED_CONTEXT, usePlayContext } from '../player/usePlayContext'
 
 function greeting() {
   const hour = new Date().getHours()
@@ -17,7 +19,8 @@ function greeting() {
 export function HomePage() {
   const { data: albums } = useFetch(() => api.albums().then((r) => r.items), [])
   const { data: artists } = useFetch(() => api.artists().then((r) => r.items), [])
-  const { isPlaying, playAlbum, playArtist } = usePlayContext()
+  const { isPlaying, playAlbum, playArtist, playPlaylist, playLiked } = usePlayContext()
+  const { likedIds, playlists } = useCollection()
 
   const empty = albums && artists && !albums.length && !artists.length
 
@@ -37,19 +40,44 @@ export function HomePage() {
           </div>
         )}
 
-        {albums && albums.length > 0 && (
+        {albums && (albums.length > 0 || playlists.length > 0) && (
           <div className="quick-grid">
-            {albums.slice(0, 8).map((album) => (
-              <Link key={album.id} to={`/album/${album.id}`} className="quick-item">
-                <Cover src={images.album(album)} />
-                <span className="quick-item-title">{album.title}</span>
-                <PlayButton
-                  playing={isPlaying(album.id)}
-                  onClick={() => void playAlbum(album.id)}
-                  className={isPlaying(album.id) ? 'visible' : ''}
-                />
-              </Link>
-            ))}
+            {[
+              ...(likedIds.size > 0
+                ? [{ key: 'liked', to: '/collection/tracks', title: 'Titres likés', cover: <LikedCover />, id: LIKED_CONTEXT, play: playLiked }]
+                : []),
+              ...playlists
+                .filter((p) => p.trackCount > 0)
+                .slice(0, 3)
+                .map((p) => ({
+                  key: p.id,
+                  to: `/playlist/${p.id}`,
+                  title: p.name,
+                  cover: <PlaylistCover covers={p.covers} />,
+                  id: p.id,
+                  play: () => playPlaylist(p.id),
+                })),
+              ...albums.map((a) => ({
+                key: a.id,
+                to: `/album/${a.id}`,
+                title: a.title,
+                cover: <Cover src={images.album(a)} />,
+                id: a.id,
+                play: () => playAlbum(a.id),
+              })),
+            ]
+              .slice(0, 8)
+              .map((item) => (
+                <Link key={item.key} to={item.to} className="quick-item">
+                  {item.cover}
+                  <span className="quick-item-title">{item.title}</span>
+                  <PlayButton
+                    playing={isPlaying(item.id)}
+                    onClick={() => void item.play()}
+                    className={isPlaying(item.id) ? 'visible' : ''}
+                  />
+                </Link>
+              ))}
           </div>
         )}
 

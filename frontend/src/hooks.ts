@@ -6,8 +6,12 @@ interface FetchState<T> {
   error: string | null
 }
 
-/** Loads data for a page; reloads when `deps` change and never returns stale results. */
-export function useFetch<T>(load: () => Promise<T>, deps: unknown[]) {
+/**
+ * Loads data for a page; reloads when `deps` change. Results for old deps aren't
+ * returned, unless `keepPrevious` is set: then the previous data stays on screen
+ * while reloading (refreshing the same page after an edit, rather than navigating).
+ */
+export function useFetch<T>(load: () => Promise<T>, deps: unknown[], { keepPrevious = false } = {}) {
   const key = JSON.stringify(deps)
   const [state, setState] = useState<FetchState<T>>({ key: '', data: null, error: null })
 
@@ -21,7 +25,8 @@ export function useFetch<T>(load: () => Promise<T>, deps: unknown[]) {
     }
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return state.key === key ? state : { data: null, error: null }
+  if (state.key === key) return state
+  return keepPrevious ? { data: state.data, error: null } : { data: null, error: null }
 }
 
 const DEFAULT_COLOR = '83, 83, 83'

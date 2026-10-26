@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from './db.js'
 import type { Prisma } from './generated/prisma/client.js'
 
-const trackSelect = {
+export const trackSelect = {
   id: true,
   title: true,
   artistName: true,
@@ -44,7 +44,7 @@ const artistSelect = {
   albums: { select: { coverUrl: true }, where: { coverUrl: { not: null } }, take: 1 },
 } satisfies Prisma.ArtistSelect
 
-function toTrack<T extends { createdAt: Date }>({ createdAt, ...t }: T) {
+export function toTrack<T extends { createdAt: Date }>({ createdAt, ...t }: T) {
   return { ...t, addedAt: createdAt }
 }
 

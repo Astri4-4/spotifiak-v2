@@ -16,6 +16,7 @@ import {
 } from '../icons'
 import { usePlayer, useProgress } from '../player/context'
 import { Cover } from './Cover'
+import { HeartButton } from './HeartButton'
 import { Slider } from './Slider'
 
 interface PlayerBarProps {
@@ -60,6 +61,7 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
                 {current.artistName}
               </Link>
             </div>
+            <HeartButton trackId={current.id} className="now-playing-heart" />
           </>
         )}
       </div>

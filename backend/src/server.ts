@@ -5,6 +5,7 @@ import Fastify from 'fastify'
 import { parseFile, selectCover } from 'music-metadata'
 import { z, ZodError } from 'zod'
 import { requireAdmin, setupAuth } from './auth.js'
+import { collectionRoutes } from './collection.js'
 import { config } from './config.js'
 import { prisma } from './db.js'
 import * as deemix from './deemix.js'
@@ -38,6 +39,7 @@ app.get('/health', async () => ({ ok: true }))
 await setupAuth(app)
 
 await app.register(libraryRoutes)
+await app.register(collectionRoutes)
 
 app.get('/deezer/search', async (req, reply) => {
   const { q } = z.object({ q: z.string().min(1) }).parse(req.query)

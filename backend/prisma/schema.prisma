@@ -98,23 +98,30 @@ model Track {
 }
 
 model Playlist {
-  id        String          @id @default(cuid())
-  name      String
-  ownerId   String
-  owner     User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  createdAt DateTime        @default(now())
-  tracks    PlaylistTrack[]
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String
+  owner       User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  tracks      PlaylistTrack[]
+
+  @@index([ownerId])
 }
 
+// An entry, not a track: the same track can appear twice in a playlist.
 model PlaylistTrack {
+  id         String   @id @default(cuid())
   playlistId String
   trackId    String
-  position   Int
+  // Fractional so moving an entry only rewrites that entry (placed between its new neighbours).
+  position   Float
   addedAt    DateTime @default(now())
   playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
   track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
-  @@id([playlistId, position])
+  @@index([playlistId, position])
 }
 
 model Like {
@@ -125,6 +132,7 @@ model Like {
   track   Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
   @@id([userId, trackId])
+  @@index([userId, likedAt])
 }
 
 model Play {
