@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { config } from './config.js'
 import { prisma } from './db.js'
 import * as deemix from './deemix.js'
+import { enrichStatus } from './enrich.js'
 import { libraryRoutes } from './library.js'
 import { scanLibrary, scanStatus, scheduleScan, startPeriodicScan } from './scanner.js'
 import { resolveMusicPath, streamFile } from './stream.js'
@@ -64,10 +65,12 @@ app.get('/tracks/:id/cover', async (req, reply) => {
   return reply.type(type).send(createReadStream(folderCover))
 })
 
-app.get('/library/scan', async () => scanStatus)
+app.get('/library/scan', async () => ({ ...scanStatus, enrichment: enrichStatus }))
 
-app.post('/library/scan', async (_req, reply) => {
-  void scanLibrary(app.log)
+app.post('/library/scan', async (req, reply) => {
+  const { full } = z.object({ full: z.enum(['true', 'false']).optional() }).parse(req.query)
+  if (scanStatus.running) return reply.code(409).send({ error: 'A scan is already running' })
+  void scanLibrary(app.log, full === 'true' ? 'full' : 'quick')
   return reply.code(202).send({ started: true })
 })
 

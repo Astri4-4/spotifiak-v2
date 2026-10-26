@@ -56,6 +56,30 @@ export interface DeezerTrack {
   album: { id: number; title: string; cover_medium: string }
 }
 
+export type ScanMode = 'quick' | 'full'
+
+export interface ScanStatus {
+  running: boolean
+  mode: ScanMode | null
+  phase: 'listing' | 'indexing' | 'cleanup' | null
+  dirsListed: number
+  progress: { done: number; total: number; startedAt: string } | null
+  lastStartedAt: string | null
+  lastFinishedAt: string | null
+  lastDurationMs: number | null
+  lastMode: ScanMode | null
+  lastResult: { added: number; updated: number; removed: number; failed: number; files: number; checked: number } | null
+  lastError: string | null
+  enrichment: {
+    enabled: boolean
+    running: boolean
+    albums: { done: number; total: number; matched: number }
+    artists: { done: number; total: number; matched: number }
+    lastFinishedAt: string | null
+    lastFailed: number
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, init)
   if (!res.ok) throw new Error(`${init?.method ?? 'GET'} ${path} failed: ${res.status}`)
@@ -78,7 +102,9 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ url }),
     }),
-  rescan: () => request<{ started: boolean }>('/library/scan', { method: 'POST' }),
+  scanStatus: () => request<ScanStatus>('/library/scan'),
+  startScan: (mode: ScanMode) =>
+    request<{ started: boolean }>(`/library/scan?full=${mode === 'full'}`, { method: 'POST' }),
   streamUrl: (trackId: string) => `${API_URL}/tracks/${trackId}/stream`,
 }
 

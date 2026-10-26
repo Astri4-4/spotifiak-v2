@@ -6,8 +6,10 @@ const schema = z.object({
   DEEMIX_URL: z.string().url(),
   DEEMIX_ARL: z.string().optional(),
   MUSIC_DIR: z.string().min(1),
-  // 0 disables periodic rescans
+  // Quick scans (new/removed files); 0 disables periodic rescans
   SCAN_INTERVAL_SEC: z.coerce.number().int().min(0).default(300),
+  // Full scans also catch files modified in place; 0 disables
+  FULL_SCAN_INTERVAL_HOURS: z.coerce.number().min(0).default(24),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   // Album covers and artist pictures come from Deezer's public API.
   DEEZER_API_URL: z.string().url().default('https://api.deezer.com'),

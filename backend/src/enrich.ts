@@ -117,16 +117,37 @@ function needsLookup(now: number) {
   }
 }
 
-let running = false
+export interface EnrichStatus {
+  enabled: boolean
+  running: boolean
+  albums: { done: number; total: number; matched: number }
+  artists: { done: number; total: number; matched: number }
+  lastFinishedAt: Date | null
+  lastFailed: number
+}
+
+export const enrichStatus: EnrichStatus = {
+  enabled: config.DEEZER_ENRICH,
+  running: false,
+  albums: { done: 0, total: 0, matched: 0 },
+  artists: { done: 0, total: 0, matched: 0 },
+  lastFinishedAt: null,
+  lastFailed: 0,
+}
 
 /**
  * Fetches album covers and artist pictures from Deezer for entities not looked up yet.
  * Albums are matched by ISRC when a track has one (exact), otherwise by artist + title.
  */
 export async function enrichLibrary(log: FastifyBaseLogger): Promise<void> {
-  if (!config.DEEZER_ENRICH || running) return
-  running = true
-  const result = { albums: 0, albumsMatched: 0, artists: 0, artistsMatched: 0, failed: 0 }
+  if (!config.DEEZER_ENRICH || enrichStatus.running) return
+  const s = enrichStatus
+  Object.assign(s, {
+    running: true,
+    albums: { done: 0, total: 0, matched: 0 },
+    artists: { done: 0, total: 0, matched: 0 },
+  })
+  let failed = 0
 
   try {
     const now = Date.now()
@@ -141,8 +162,8 @@ export async function enrichLibrary(log: FastifyBaseLogger): Promise<void> {
       },
     })
 
+    s.albums.total = albums.length
     for (const album of albums) {
-      result.albums++
       try {
         // A recording (ISRC) can appear on several releases, e.g. compilations: only
         // trust the ISRC hit if it's this album. Without a confident match we keep the
@@ -159,7 +180,7 @@ export async function enrichLibrary(log: FastifyBaseLogger): Promise<void> {
           data: { deezerId: match?.id ?? null, coverUrl: match?.cover_xl ?? null, enrichedAt: new Date() },
         })
         if (!match) continue
-        result.albumsMatched++
+        s.albums.matched++
 
         // The album's Deezer artist is an exact match for free, no name search needed.
         const deezerArtist = match.artist
@@ -170,30 +191,36 @@ export async function enrichLibrary(log: FastifyBaseLogger): Promise<void> {
           })
         }
       } catch (err) {
-        result.failed++
+        failed++
         log.warn({ err, album: album.title }, 'Deezer album lookup failed')
+      } finally {
+        s.albums.done++
       }
     }
 
     // Artists not resolved through one of their albums (e.g. only featured on tracks).
     const artists = await prisma.artist.findMany({ where: needsLookup(now), select: { id: true, name: true } })
+    s.artists.total = artists.length
     for (const artist of artists) {
-      result.artists++
       try {
         const match = await artistFromSearch(artist.name)
         await prisma.artist.update({
           where: { id: artist.id },
           data: { deezerId: match?.id ?? null, pictureUrl: match?.picture_xl ?? null, enrichedAt: new Date() },
         })
-        if (match) result.artistsMatched++
+        if (match) s.artists.matched++
       } catch (err) {
-        result.failed++
+        failed++
         log.warn({ err, artist: artist.name }, 'Deezer artist lookup failed')
+      } finally {
+        s.artists.done++
       }
     }
 
-    if (result.albums || result.artists) log.info(result, 'Deezer enrichment finished')
+    if (s.albums.total || s.artists.total) {
+      log.info({ albums: s.albums, artists: s.artists, failed }, 'Deezer enrichment finished')
+    }
   } finally {
-    running = false
+    Object.assign(s, { running: false, lastFinishedAt: new Date(), lastFailed: failed })
   }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { api, images, type Album, type Artist } from '../api'
-import { LibraryIcon, SearchIcon, VolumeIcon } from '../icons'
+import { LibraryIcon, RefreshIcon, SearchIcon, VolumeIcon } from '../icons'
 import { usePlayer } from '../player/context'
 import { Cover } from './Cover'
 
@@ -13,6 +13,8 @@ type Item =
 
 // The library changes when deemix finishes downloads; refresh periodically.
 const REFRESH_MS = 60_000
+// Cheap status check so the scan icon spins while a scan or Deezer lookup runs.
+const SCAN_POLL_MS = 10_000
 
 export function Sidebar() {
   const { contextId, playing } = usePlayer()
@@ -21,6 +23,7 @@ export function Sidebar() {
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const [scanning, setScanning] = useState(false)
 
   useEffect(() => {
     const load = () => {
@@ -29,6 +32,17 @@ export function Sidebar() {
     }
     load()
     const interval = setInterval(load, REFRESH_MS)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    const check = () =>
+      api
+        .scanStatus()
+        .then((s) => setScanning(s.running || s.enrichment.running))
+        .catch(() => setScanning(false))
+    check()
+    const interval = setInterval(check, SCAN_POLL_MS)
     return () => clearInterval(interval)
   }, [])
 
@@ -77,6 +91,14 @@ export function Sidebar() {
           <LibraryIcon size={24} />
           Bibliothèque
         </h2>
+        <Link
+          to="/scan"
+          className={`icon-button${scanning ? ' scanning' : ''}`}
+          aria-label="Analyse de la bibliothèque"
+          title={scanning ? 'Analyse en cours…' : 'Analyse de la bibliothèque'}
+        >
+          <RefreshIcon className={scanning ? 'spin' : undefined} />
+        </Link>
       </header>
 
       <div className="chips">

@@ -7,6 +7,7 @@ import { TopBar } from './components/TopBar'
 import { AlbumPage } from './pages/AlbumPage'
 import { ArtistPage } from './pages/ArtistPage'
 import { HomePage } from './pages/HomePage'
+import { ScanPage } from './pages/ScanPage'
 import { SearchPage } from './pages/SearchPage'
 import { PlayerProvider } from './player/PlayerProvider'
 import { ScrollToTop } from './components/ScrollToTop'
@@ -28,6 +29,7 @@ export default function App() {
               <Route path="/search/:query" element={<SearchPage />} />
               <Route path="/album/:id" element={<AlbumPage />} />
               <Route path="/artist/:id" element={<ArtistPage />} />
+              <Route path="/scan" element={<ScanPage />} />
             </Routes>
           </main>
           {queueOpen && <QueuePanel />}

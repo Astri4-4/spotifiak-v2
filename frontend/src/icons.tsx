@@ -116,6 +116,10 @@ export const UserIcon = icon(
   <path d="M6.23.42a4 4 0 0 1 4.29 6.4 4 4 0 0 1-4.29 1.4A4 4 0 0 1 6.23.42ZM8 1.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM4.03 10.06C5.1 9.4 6.5 9 8 9s2.9.4 3.97 1.06C13.04 10.72 14 11.73 14 13v2h-1.5v-2c0-.58-.47-1.25-1.32-1.78C10.38 10.72 9.25 10.5 8 10.5s-2.38.22-3.18.72c-.85.53-1.32 1.2-1.32 1.78v2H2v-2c0-1.27.96-2.28 2.03-2.94Z" />,
 )
 
+export const RefreshIcon = icon(
+  <path d="M8 1.5a6.5 6.5 0 0 0-5.63 3.25H5V6.25H0V1.25h1.5v2.37A8 8 0 0 1 16 8h-1.5A6.5 6.5 0 0 0 8 1.5ZM1.5 8a6.5 6.5 0 0 0 12.13 3.25H11V9.75h5v5h-1.5v-2.37A8 8 0 0 1 0 8h1.5Z" />,
+)
+
 export const ListIcon = icon(<path d="M15 14.5H5V13h10v1.5Zm0-5.75H5v-1.5h10v1.5ZM15 3H5V1.5h10V3ZM3 3H1V1.5h2V3Zm0 11.5H1V13h2v1.5Zm0-5.75H1v-1.5h2v1.5Z" />)
 
 // Spotifiak's own mark: an equalizer in a rounded square.
