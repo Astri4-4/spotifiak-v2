@@ -3,7 +3,8 @@ import path from 'node:path'
 import cors from '@fastify/cors'
 import Fastify from 'fastify'
 import { parseFile, selectCover } from 'music-metadata'
-import { z } from 'zod'
+import { z, ZodError } from 'zod'
+import { requireAdmin, setupAuth } from './auth.js'
 import { config } from './config.js'
 import { prisma } from './db.js'
 import * as deemix from './deemix.js'
@@ -15,10 +16,26 @@ import { resolveMusicPath, streamFile } from './stream.js'
 // Wait for deemix to finish downloading before rescanning.
 const RESCAN_AFTER_DOWNLOAD_MS = 30_000
 
-const app = Fastify({ logger: true })
-await app.register(cors, { origin: config.CORS_ORIGIN })
+// trustProxy: the web container's nginx forwards requests; use the client's IP for login rate limiting.
+const app = Fastify({ logger: true, trustProxy: true })
+// The frontend normally calls the API through its own origin (/api); CORS only matters
+// for a frontend served elsewhere, e.g. during development without the Vite proxy.
+await app.register(cors, { origin: config.CORS_ORIGIN, credentials: true })
+
+app.setErrorHandler((err, req, reply) => {
+  if (err instanceof ZodError) {
+    return reply.code(400).send({ error: err.issues.map((i) => i.message).join(', '), issues: err.issues })
+  }
+  const { statusCode, message } = err as { statusCode?: number; message?: string }
+  // Fastify's own errors (400 bad JSON, 413...) carry a status; anything else is a bug.
+  if (statusCode && statusCode < 500) return reply.code(statusCode).send({ error: message })
+  req.log.error({ err }, 'request failed')
+  return reply.code(500).send({ error: 'Erreur interne' })
+})
 
 app.get('/health', async () => ({ ok: true }))
+
+await setupAuth(app)
 
 await app.register(libraryRoutes)
 
@@ -67,7 +84,7 @@ app.get('/tracks/:id/cover', async (req, reply) => {
 
 app.get('/library/scan', async () => ({ ...scanStatus, enrichment: enrichStatus }))
 
-app.post('/library/scan', async (req, reply) => {
+app.post('/library/scan', { preHandler: requireAdmin }, async (req, reply) => {
   const { full } = z.object({ full: z.enum(['true', 'false']).optional() }).parse(req.query)
   if (scanStatus.running) return reply.code(409).send({ error: 'A scan is already running' })
   void scanLibrary(app.log, full === 'true' ? 'full' : 'quick')

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type ScanMode, type ScanStatus } from '../api'
+import { useCurrentUser } from '../auth/context'
 import { formatAddedAt } from '../format'
 import { CheckIcon, RefreshIcon } from '../icons'
 
@@ -164,6 +165,7 @@ function LastScan({ status }: { status: ScanStatus }) {
 }
 
 export function ScanPage() {
+  const isAdmin = useCurrentUser().role === 'admin'
   const { status, error, refresh } = useScanStatus()
   const [starting, setStarting] = useState(false)
   // Clock ticking every second so elapsed time and ETA move between polls.
@@ -191,18 +193,20 @@ export function ScanPage() {
       <div className="page-inner scan-page">
         <h1 className="greeting">Analyse de la bibliothèque</h1>
 
-        <div className="scan-actions">
-          <button className="pill-button" onClick={() => void start('quick')} disabled={busy}>
-            Scan rapide
-          </button>
-          <button className="pill-button outline" onClick={() => void start('full')} disabled={busy}>
-            Scan complet
-          </button>
-          <span className="muted scan-help">
-            Le scan rapide détecte les fichiers ajoutés ou supprimés. Le scan complet revérifie aussi chaque fichier
-            existant.
-          </span>
-        </div>
+        {isAdmin && (
+          <div className="scan-actions">
+            <button className="pill-button" onClick={() => void start('quick')} disabled={busy}>
+              Scan rapide
+            </button>
+            <button className="pill-button outline" onClick={() => void start('full')} disabled={busy}>
+              Scan complet
+            </button>
+            <span className="muted scan-help">
+              Le scan rapide détecte les fichiers ajoutés ou supprimés. Le scan complet revérifie aussi chaque fichier
+              existant.
+            </span>
+          </div>
+        )}
 
         {error && <p className="error">API injoignable : {error}</p>}
 

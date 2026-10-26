@@ -7,15 +7,35 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  admin
+  user
+}
+
 model User {
   id           String     @id @default(cuid())
-  email        String     @unique
-  username     String     @unique
-  passwordHash String
+  username     String     @unique // stored lowercase
+  displayName  String
+  email        String?    @unique
+  passwordHash String // scrypt, see auth.ts
+  role         Role       @default(user)
   createdAt    DateTime   @default(now())
+  sessions     Session[]
   playlists    Playlist[]
   likes        Like[]
   plays        Play[]
+}
+
+model Session {
+  id         String   @id // SHA-256 of the cookie token; the token itself is never stored
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  expiresAt  DateTime
+  userAgent  String?
+
+  @@index([userId])
 }
 
 model Artist {

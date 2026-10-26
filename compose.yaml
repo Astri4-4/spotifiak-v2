@@ -22,22 +22,19 @@ services:
       SCAN_INTERVAL_SEC: ${SCAN_INTERVAL_SEC:-300}
       DEEZER_ENRICH: ${DEEZER_ENRICH:-true}
       FULL_SCAN_INTERVAL_HOURS: ${FULL_SCAN_INTERVAL_HOURS:-24}
-      CORS_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-false}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     volumes:
       - ${MUSIC_DIR}:/music:ro
-    ports:
-      - "3000:3000"
+    # No published port: the web container proxies /api to it.
     depends_on:
       db:
         condition: service_healthy
 
   web:
-    build:
-      context: ./frontend
-      args:
-        VITE_API_URL: ${API_PUBLIC_URL:-http://localhost:3000}
+    build: ./frontend
     ports:
-      - "8080:80"
+      - "${WEB_PORT:-8080}:80"
     depends_on:
       - api
 

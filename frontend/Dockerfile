@@ -5,7 +5,7 @@ COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
     for i in 1 2 3 4 5; do npm ci --prefer-offline && exit 0; echo "npm ci failed, retry $i"; done; exit 1
 COPY . .
-ARG VITE_API_URL
+ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ChevronLeftIcon, ChevronRightIcon, HomeFilledIcon, HomeIcon, LogoIcon, SearchIcon, UserIcon } from '../icons'
+import { ChevronLeftIcon, ChevronRightIcon, HomeFilledIcon, HomeIcon, LogoIcon, SearchIcon } from '../icons'
+import { UserMenu } from './UserMenu'
 
 const SEARCH_PREFIX = '/search/'
 
@@ -64,9 +65,7 @@ export function TopBar() {
       </div>
 
       <div className="topbar-right">
-        <button className="avatar" aria-label="Profil">
-          <UserIcon />
-        </button>
+        <UserMenu />
       </div>
     </header>
   )

@@ -1,4 +1,38 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+// Same origin by default: nginx (production) and Vite (development) proxy /api to the
+// API, so the session cookie also reaches <audio> and <img> requests.
+const API_URL = import.meta.env.VITE_API_URL ?? '/api'
+
+export type Role = 'admin' | 'user'
+
+export interface User {
+  id: string
+  username: string
+  displayName: string
+  role: Role
+}
+
+export interface ManagedUser extends User {
+  createdAt: string
+  lastSeenAt: string | null
+}
+
+export interface AuthStatus {
+  user: User | null
+  needsSetup: boolean
+  signupOpen: boolean
+}
+
+/** Fired when the API answers 401: the session expired or was revoked. */
+export const UNAUTHORIZED_EVENT = 'spotifiak:unauthorized'
+
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
 
 export interface Track {
   id: string
@@ -81,9 +115,41 @@ export interface ScanStatus {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, init)
-  if (!res.ok) throw new Error(`${init?.method ?? 'GET'} ${path} failed: ${res.status}`)
+  const res = await fetch(`${API_URL}${path}`, { credentials: 'include', ...init })
+  if (!res.ok) {
+    if (res.status === 401 && !path.startsWith('/auth/')) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
+    const body = (await res.json().catch(() => null)) as { error?: string } | null
+    throw new ApiError(body?.error ?? `${init?.method ?? 'GET'} ${path} failed: ${res.status}`, res.status)
+  }
+  if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
+}
+
+const send = <T>(method: string, path: string, body?: unknown) =>
+  request<T>(path, {
+    method,
+    headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
+
+export const auth = {
+  status: () => request<AuthStatus>('/auth/status'),
+  login: (username: string, password: string) => send<{ user: User }>('POST', '/auth/login', { username, password }),
+  register: (username: string, password: string, displayName?: string) =>
+    send<{ user: User }>('POST', '/auth/register', { username, password, displayName }),
+  logout: () => send<{ ok: true }>('POST', '/auth/logout'),
+  updateProfile: (displayName: string) => send<{ user: User }>('PATCH', '/me', { displayName }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    send<{ ok: true }>('POST', '/me/password', { currentPassword, newPassword }),
+}
+
+export const users = {
+  list: () => request<ManagedUser[]>('/users'),
+  create: (data: { username: string; password: string; displayName?: string; role: Role }) =>
+    send<{ user: User }>('POST', '/users', data),
+  update: (id: string, data: { role?: Role; password?: string; displayName?: string }) =>
+    send<{ user: User }>('PATCH', `/users/${id}`, data),
+  remove: (id: string) => send<void>('DELETE', `/users/${id}`),
 }
 
 const query = (params: Record<string, string>) => new URLSearchParams(params).toString()
@@ -96,15 +162,9 @@ export const api = {
   artist: (id: string) => request<ArtistDetail>(`/artists/${id}`),
   search: (q: string) => request<SearchResults>(`/search?${query({ q })}`),
   deezerSearch: (q: string) => request<DeezerTrack[]>(`/deezer/search?${query({ q })}`),
-  download: (url: string) =>
-    request<{ queued: boolean }>('/downloads', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ url }),
-    }),
+  download: (url: string) => send<{ queued: boolean }>('POST', '/downloads', { url }),
   scanStatus: () => request<ScanStatus>('/library/scan'),
-  startScan: (mode: ScanMode) =>
-    request<{ started: boolean }>(`/library/scan?full=${mode === 'full'}`, { method: 'POST' }),
+  startScan: (mode: ScanMode) => send<{ started: boolean }>('POST', `/library/scan?full=${mode === 'full'}`),
   streamUrl: (trackId: string) => `${API_URL}/tracks/${trackId}/stream`,
 }
 
