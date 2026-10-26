@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  username     String     @unique
+  passwordHash String
+  createdAt    DateTime   @default(now())
+  playlists    Playlist[]
+  likes        Like[]
+  plays        Play[]
+}
+
+// A file in MUSIC_DIR, indexed from its tags.
+model Track {
+  id          String          @id @default(cuid())
+  deezerId    String?         @unique
+  path        String          @unique // relative to MUSIC_DIR
+  title       String
+  artist      String
+  album       String?
+  durationSec Int?
+  trackNumber Int?
+  coverPath   String?
+  createdAt   DateTime        @default(now())
+  playlists   PlaylistTrack[]
+  likes       Like[]
+  plays       Play[]
+}
+
+model Playlist {
+  id        String          @id @default(cuid())
+  name      String
+  ownerId   String
+  owner     User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt DateTime        @default(now())
+  tracks    PlaylistTrack[]
+}
+
+model PlaylistTrack {
+  playlistId String
+  trackId    String
+  position   Int
+  addedAt    DateTime @default(now())
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@id([playlistId, position])
+}
+
+model Like {
+  userId  String
+  trackId String
+  likedAt DateTime @default(now())
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track   Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@id([userId, trackId])
+}
+
+model Play {
+  id       String   @id @default(cuid())
+  userId   String
+  trackId  String
+  playedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([userId, playedAt])
+}
