@@ -6,6 +6,8 @@ const schema = z.object({
   DEEMIX_URL: z.string().url(),
   DEEMIX_ARL: z.string().optional(),
   MUSIC_DIR: z.string().min(1),
+  // 0 disables periodic rescans
+  SCAN_INTERVAL_SEC: z.coerce.number().int().min(0).default(300),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
 })
 

@@ -1,4 +1,5 @@
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom'
+import { LibraryPage } from './pages/LibraryPage'
 import { SearchPage } from './pages/SearchPage'
 import { PlayerBar } from './player/PlayerBar'
 import { PlayerProvider } from './player/PlayerContext'
@@ -10,12 +11,12 @@ export default function App() {
         <div className="layout">
           <nav className="sidebar">
             <h1>Spotifiak</h1>
-            <NavLink to="/">Home</NavLink>
+            <NavLink to="/">Library</NavLink>
             <NavLink to="/search">Search</NavLink>
           </nav>
           <main className="content">
             <Routes>
-              <Route path="/" element={<h2>Home</h2>} />
+              <Route path="/" element={<LibraryPage />} />
               <Route path="/search" element={<SearchPage />} />
             </Routes>
           </main>

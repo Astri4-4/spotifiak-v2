@@ -4,7 +4,7 @@ import path from 'node:path'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { config } from './config.js'
 
-const MIME: Record<string, string> = {
+export const MIME: Record<string, string> = {
   '.mp3': 'audio/mpeg',
   '.flac': 'audio/flac',
   '.m4a': 'audio/mp4',

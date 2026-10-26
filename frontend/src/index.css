@@ -84,6 +84,17 @@ button:disabled {
   background: var(--surface);
 }
 
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.track-list li.active .title {
+  color: var(--accent);
+}
+
+.filter-input,
 .search-form input {
   width: 100%;
   max-width: 480px;

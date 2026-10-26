@@ -19,6 +19,7 @@ services:
       DEEMIX_URL: ${DEEMIX_URL}
       DEEMIX_ARL: ${DEEMIX_ARL:-}
       MUSIC_DIR: /music
+      SCAN_INTERVAL_SEC: ${SCAN_INTERVAL_SEC:-300}
       CORS_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
     volumes:
       - ${MUSIC_DIR}:/music:ro

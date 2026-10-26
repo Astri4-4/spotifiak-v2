@@ -23,13 +23,19 @@ model Track {
   id          String          @id @default(cuid())
   deezerId    String?         @unique
   path        String          @unique // relative to MUSIC_DIR
+  fileSize    Int
+  fileMtime   DateTime
   title       String
   artist      String
   album       String?
+  albumArtist String?
+  year        Int?
   durationSec Int?
   trackNumber Int?
-  coverPath   String?
+  discNumber  Int?
+  coverPath   String? // folder cover relative to MUSIC_DIR; null means use embedded art
   createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   playlists   PlaylistTrack[]
   likes       Like[]
   plays       Play[]

@@ -1,9 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { api, type DeezerTrack } from '../api'
-
-function formatDuration(sec: number) {
-  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
-}
+import { formatDuration } from '../format'
 
 export function SearchPage() {
   const [query, setQuery] = useState('')
