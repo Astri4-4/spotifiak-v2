@@ -1,11 +1,11 @@
-import type { Track } from '../api'
+import { images, type Track } from '../api'
 import { usePlayer } from '../player/context'
 import { Cover } from './Cover'
 
 function QueueItem({ track, current = false }: { track: Track; current?: boolean }) {
   return (
     <li className="queue-item">
-      <Cover trackId={track.id} size={48} />
+      <Cover src={images.track(track)} size={48} />
       <span className="queue-item-text">
         <span className={`queue-item-title${current ? ' playing' : ''}`}>{track.title}</span>
         <span className="queue-item-artist">{track.artistName}</span>

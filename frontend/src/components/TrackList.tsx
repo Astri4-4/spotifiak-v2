@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import type { Track } from '../api'
+import { images, type Track } from '../api'
 import { formatAddedAt, formatDuration } from '../format'
 import { ClockIcon, PauseIcon, PlayIcon } from '../icons'
 import { usePlayer } from '../player/context'
@@ -78,7 +78,7 @@ export function TrackList({ tracks, contextId, variant = 'full' }: TrackListProp
             <span className="col-title">
               {showCover && !showIndex && (
                 <span className="cover-play-wrap">
-                  <Cover trackId={track.id} size={40} />
+                  <Cover src={images.track(track)} size={40} />
                   <button
                     className="cover-play"
                     onClick={() => onPlay(i)}
@@ -88,7 +88,7 @@ export function TrackList({ tracks, contextId, variant = 'full' }: TrackListProp
                   </button>
                 </span>
               )}
-              {showCover && showIndex && <Cover trackId={track.id} size={40} />}
+              {showCover && showIndex && <Cover src={images.track(track)} size={40} />}
               <span className="title-text">
                 <span className="track-name">{track.title}</span>
                 <Link to={`/artist/${track.artistId}`} className="track-artist" onClick={(e) => e.stopPropagation()}>

@@ -8,7 +8,7 @@ const trackSelect = {
   title: true,
   artistName: true,
   artistId: true,
-  album: { select: { id: true, title: true } },
+  album: { select: { id: true, title: true, coverUrl: true } },
   durationSec: true,
   trackNumber: true,
   discNumber: true,
@@ -21,7 +21,7 @@ const trackOrder: Prisma.TrackOrderByWithRelationInput[] = [
   { title: 'asc' },
 ]
 
-// One track id per album/artist, used by the client to fetch a cover.
+// One track per album/artist whose file art is the fallback when Deezer has no image.
 const coverTrack = { select: { id: true }, orderBy: trackOrder, take: 1 }
 
 const albumSelect = {
@@ -29,7 +29,8 @@ const albumSelect = {
   title: true,
   year: true,
   createdAt: true,
-  artist: { select: { id: true, name: true } },
+  coverUrl: true,
+  artist: { select: { id: true, name: true, pictureUrl: true } },
   tracks: coverTrack,
   _count: { select: { tracks: true } },
 } satisfies Prisma.AlbumSelect
@@ -37,7 +38,10 @@ const albumSelect = {
 const artistSelect = {
   id: true,
   name: true,
+  pictureUrl: true,
   tracks: coverTrack,
+  // Without a Deezer picture, show one of the artist's album covers instead.
+  albums: { select: { coverUrl: true }, where: { coverUrl: { not: null } }, take: 1 },
 } satisfies Prisma.ArtistSelect
 
 function toTrack<T extends { createdAt: Date }>({ createdAt, ...t }: T) {
@@ -48,8 +52,13 @@ function toAlbum<T extends { tracks: { id: string }[]; _count: { tracks: number 
   return { ...a, coverTrackId: tracks[0]?.id ?? null, trackCount: _count.tracks }
 }
 
-function toArtist<T extends { tracks: { id: string }[] }>({ tracks, ...a }: T) {
-  return { ...a, coverTrackId: tracks[0]?.id ?? null }
+function toArtist<T extends { pictureUrl: string | null; tracks: { id: string }[]; albums: { coverUrl: string | null }[] }>({
+  tracks,
+  albums,
+  pictureUrl,
+  ...a
+}: T) {
+  return { ...a, pictureUrl: pictureUrl ?? albums[0]?.coverUrl ?? null, coverTrackId: tracks[0]?.id ?? null }
 }
 
 const idParams = z.object({ id: z.string() })

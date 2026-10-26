@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { api } from '../api'
+import { api, images } from '../api'
 import { Cover } from '../components/Cover'
 import { PlayButton } from '../components/PlayButton'
 import { TrackList } from '../components/TrackList'
@@ -26,12 +26,12 @@ function AlbumView({ id }: { id: string }) {
   return (
     <div className="page" style={{ '--header-color': color } as React.CSSProperties}>
       <header className="entity-header">
-        <Cover trackId={album.coverTrackId} className="entity-cover" onLoad={fromImage} />
+        <Cover src={images.album(album)} quality="lg" className="entity-cover" onLoad={fromImage} />
         <div className="entity-info">
           <span className="entity-type">Album</span>
           <h1 className={`entity-title${album.title.length > 24 ? ' long' : ''}`}>{album.title}</h1>
           <div className="entity-meta">
-            <Cover trackId={album.coverTrackId} size={24} round />
+            <Cover src={album.artist.pictureUrl ?? images.album(album)} size={24} round />
             <Link to={`/artist/${album.artist.id}`} className="entity-meta-artist">
               {album.artist.name}
             </Link>

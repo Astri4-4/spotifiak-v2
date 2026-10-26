@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { api } from '../api'
+import { api, images } from '../api'
 import { Card } from '../components/Card'
 import { Cover } from '../components/Cover'
 import { PlayButton } from '../components/PlayButton'
@@ -32,7 +32,7 @@ function ArtistView({ id }: { id: string }) {
   return (
     <div className="page" style={{ '--header-color': color } as React.CSSProperties}>
       <header className="entity-header">
-        <Cover trackId={artist.coverTrackId} className="entity-cover" round onLoad={fromImage} />
+        <Cover src={images.artist(artist)} quality="lg" className="entity-cover" round onLoad={fromImage} />
         <div className="entity-info">
           <span className="entity-type">Artiste</span>
           <h1 className={`entity-title${artist.name.length > 24 ? ' long' : ''}`}>{artist.name}</h1>
@@ -70,7 +70,7 @@ function ArtistView({ id }: { id: string }) {
                 to={`/album/${album.id}`}
                 title={album.title}
                 subtitle={[album.year, 'Album'].filter(Boolean).join(' • ')}
-                coverTrackId={album.coverTrackId}
+                image={images.album(album)}
                 playing={isPlaying(album.id)}
                 onPlay={() => void playAlbum(album.id)}
               />

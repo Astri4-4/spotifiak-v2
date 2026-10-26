@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { api, type Album, type Artist } from '../api'
+import { api, images, type Album, type Artist } from '../api'
 import { LibraryIcon, SearchIcon, VolumeIcon } from '../icons'
 import { usePlayer } from '../player/context'
 import { Cover } from './Cover'
@@ -8,8 +8,8 @@ import { Cover } from './Cover'
 type Filter = 'all' | 'albums' | 'artists'
 
 type Item =
-  | { kind: 'album'; id: string; title: string; subtitle: string; coverTrackId: string | null; sortKey: string }
-  | { kind: 'artist'; id: string; title: string; subtitle: string; coverTrackId: string | null; sortKey: string }
+  | { kind: 'album'; id: string; title: string; subtitle: string; image: string | null; sortKey: string }
+  | { kind: 'artist'; id: string; title: string; subtitle: string; image: string | null; sortKey: string }
 
 // The library changes when deemix finishes downloads; refresh periodically.
 const REFRESH_MS = 60_000
@@ -40,7 +40,7 @@ export function Sidebar() {
             id: a.id,
             title: a.title,
             subtitle: `Album • ${a.artist.name}`,
-            coverTrackId: a.coverTrackId,
+            image: images.album(a),
             sortKey: a.createdAt,
           }))
         : []),
@@ -50,7 +50,7 @@ export function Sidebar() {
             id: a.id,
             title: a.name,
             subtitle: 'Artiste',
-            coverTrackId: a.coverTrackId,
+            image: images.artist(a),
             sortKey: '',
           }))
         : []),
@@ -108,7 +108,7 @@ export function Sidebar() {
           return (
             <li key={`${item.kind}-${item.id}`}>
               <NavLink to={`/${item.kind}/${item.id}`} className="library-item">
-                <Cover trackId={item.coverTrackId} size={48} round={item.kind === 'artist'} />
+                <Cover src={item.image} size={48} round={item.kind === 'artist'} />
                 <span className="library-item-text">
                   <span className={`library-item-title${active ? ' playing' : ''}`}>{item.title}</span>
                   <span className="library-item-subtitle">{item.subtitle}</span>

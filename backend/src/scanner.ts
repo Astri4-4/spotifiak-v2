@@ -4,12 +4,14 @@ import type { FastifyBaseLogger } from 'fastify'
 import { parseFile } from 'music-metadata'
 import { config } from './config.js'
 import { prisma } from './db.js'
+import { enrichLibrary } from './enrich.js'
 import { MIME } from './stream.js'
 
 const COVER_NAMES = ['cover.jpg', 'cover.png', 'folder.jpg']
 
 // Bump when indexing logic changes so existing tracks are re-read.
-const INDEX_VERSION = 1
+// 2: read ISRC.
+const INDEX_VERSION = 2
 
 export interface ScanStatus {
   running: boolean
@@ -130,6 +132,7 @@ export async function scanLibrary(log: FastifyBaseLogger): Promise<void> {
           fileMtime: mtime,
           indexVersion: INDEX_VERSION,
           title: common.title ?? fallbackTitle(file),
+          isrc: common.isrc?.[0]?.trim().toUpperCase() || null,
           artistName: common.artists?.join(', ') ?? common.artist ?? primaryArtist,
           artistId,
           albumId,
@@ -165,6 +168,9 @@ export async function scanLibrary(log: FastifyBaseLogger): Promise<void> {
     scanStatus.running = false
     scanStatus.lastFinishedAt = new Date()
   }
+
+  // Covers and pictures for new albums/artists; runs after the scan so the library is usable first.
+  await enrichLibrary(log).catch((err) => log.error({ err }, 'Deezer enrichment failed'))
 }
 
 let pending: NodeJS.Timeout | undefined

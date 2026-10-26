@@ -6,17 +6,17 @@ interface CardProps {
   to: string
   title: string
   subtitle: string
-  coverTrackId: string | null
+  image: string | null
   round?: boolean
   playing: boolean
   onPlay: () => void
 }
 
-export function Card({ to, title, subtitle, coverTrackId, round, playing, onPlay }: CardProps) {
+export function Card({ to, title, subtitle, image, round, playing, onPlay }: CardProps) {
   return (
     <Link to={to} className="card">
       <div className="card-cover">
-        <Cover trackId={coverTrackId} round={round} />
+        <Cover src={image} quality="md" round={round} />
         <PlayButton playing={playing} onClick={onPlay} className={playing ? 'visible' : ''} />
       </div>
       <div className="card-title">{title}</div>

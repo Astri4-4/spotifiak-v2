@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { api } from '../api'
+import { api, images } from '../api'
 import { Card } from '../components/Card'
 import { Cover } from '../components/Cover'
 import { PlayButton } from '../components/PlayButton'
@@ -41,7 +41,7 @@ export function HomePage() {
           <div className="quick-grid">
             {albums.slice(0, 8).map((album) => (
               <Link key={album.id} to={`/album/${album.id}`} className="quick-item">
-                <Cover trackId={album.coverTrackId} />
+                <Cover src={images.album(album)} />
                 <span className="quick-item-title">{album.title}</span>
                 <PlayButton
                   playing={isPlaying(album.id)}
@@ -61,7 +61,7 @@ export function HomePage() {
                 to={`/album/${album.id}`}
                 title={album.title}
                 subtitle={album.artist.name}
-                coverTrackId={album.coverTrackId}
+                image={images.album(album)}
                 playing={isPlaying(album.id)}
                 onPlay={() => void playAlbum(album.id)}
               />
@@ -77,7 +77,7 @@ export function HomePage() {
                 to={`/artist/${artist.id}`}
                 title={artist.name}
                 subtitle="Artiste"
-                coverTrackId={artist.coverTrackId}
+                image={images.artist(artist)}
                 round
                 playing={isPlaying(artist.id)}
                 onPlay={() => void playArtist(artist.id)}

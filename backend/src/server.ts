@@ -52,16 +52,16 @@ app.get('/tracks/:id/cover', async (req, reply) => {
   if (!track) return reply.code(404).send({ error: 'Track not found' })
   reply.header('cache-control', 'public, max-age=86400')
 
-  const folderCover = track.coverPath && resolveMusicPath(track.coverPath)
-  if (folderCover) {
-    const type = path.extname(folderCover) === '.png' ? 'image/png' : 'image/jpeg'
-    return reply.type(type).send(createReadStream(folderCover))
-  }
-
+  // Embedded art first: it belongs to this file, whereas a folder cover.jpg may be
+  // shared by unrelated albums when downloads land in the same directory.
   const file = resolveMusicPath(track.path)
-  const cover = file && selectCover((await parseFile(file)).common.picture)
-  if (!cover) return reply.code(404).send({ error: 'No cover' })
-  return reply.type(cover.format).send(Buffer.from(cover.data))
+  const embedded = file && selectCover((await parseFile(file)).common.picture)
+  if (embedded) return reply.type(embedded.format).send(Buffer.from(embedded.data))
+
+  const folderCover = track.coverPath && resolveMusicPath(track.coverPath)
+  if (!folderCover) return reply.code(404).send({ error: 'No cover' })
+  const type = path.extname(folderCover) === '.png' ? 'image/png' : 'image/jpeg'
+  return reply.type(type).send(createReadStream(folderCover))
 })
 
 app.get('/library/scan', async () => scanStatus)

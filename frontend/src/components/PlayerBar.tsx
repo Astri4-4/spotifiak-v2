@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { images } from '../api'
 import { formatDuration } from '../format'
 import {
   NextIcon,
@@ -46,7 +47,7 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
       <div className="now-playing">
         {current && (
           <>
-            <Cover trackId={current.id} size={56} />
+            <Cover src={images.track(current)} size={56} />
             <div className="now-playing-text">
               {current.album ? (
                 <Link to={`/album/${current.album.id}`} className="now-playing-title">

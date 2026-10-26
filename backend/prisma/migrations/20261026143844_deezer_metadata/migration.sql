@@ -1,0 +1,14 @@
+-- AlterTable
+ALTER TABLE "Album" ADD COLUMN     "coverUrl" TEXT,
+ADD COLUMN     "deezerId" INTEGER,
+ADD COLUMN     "enrichedAt" TIMESTAMP(3),
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "Artist" ADD COLUMN     "deezerId" INTEGER,
+ADD COLUMN     "enrichedAt" TIMESTAMP(3),
+ADD COLUMN     "pictureUrl" TEXT,
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "Track" ADD COLUMN     "isrc" TEXT;

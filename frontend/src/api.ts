@@ -1,16 +1,11 @@
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
-export interface Ref {
-  id: string
-  title: string
-}
-
 export interface Track {
   id: string
   title: string
   artistName: string
   artistId: string
-  album: Ref | null
+  album: { id: string; title: string; coverUrl: string | null } | null
   durationSec: number | null
   trackNumber: number | null
   discNumber: number | null
@@ -22,7 +17,9 @@ export interface Album {
   title: string
   year: number | null
   createdAt: string
-  artist: { id: string; name: string }
+  /** From Deezer; null when not matched (then the file art is used). */
+  coverUrl: string | null
+  artist: { id: string; name: string; pictureUrl: string | null }
   coverTrackId: string | null
   trackCount: number
 }
@@ -34,6 +31,8 @@ export interface AlbumDetail extends Album {
 export interface Artist {
   id: string
   name: string
+  /** From Deezer (or one of the artist's album covers); null when not matched. */
+  pictureUrl: string | null
   coverTrackId: string | null
 }
 
@@ -81,5 +80,13 @@ export const api = {
     }),
   rescan: () => request<{ started: boolean }>('/library/scan', { method: 'POST' }),
   streamUrl: (trackId: string) => `${API_URL}/tracks/${trackId}/stream`,
-  coverUrl: (trackId: string | null) => (trackId ? `${API_URL}/tracks/${trackId}/cover` : null),
+}
+
+const fileCover = (trackId: string | null) => (trackId ? `${API_URL}/tracks/${trackId}/cover` : null)
+
+/** Deezer images when matched, otherwise the art from the audio files. */
+export const images = {
+  track: (t: Track) => t.album?.coverUrl ?? fileCover(t.id),
+  album: (a: Album) => a.coverUrl ?? fileCover(a.coverTrackId),
+  artist: (a: Artist) => a.pictureUrl ?? fileCover(a.coverTrackId),
 }

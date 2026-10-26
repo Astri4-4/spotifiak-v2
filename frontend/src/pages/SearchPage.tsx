@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, type DeezerTrack } from '../api'
+import { api, images, type DeezerTrack } from '../api'
 import { Card } from '../components/Card'
 import { Cover } from '../components/Cover'
 import { PlayButton } from '../components/PlayButton'
@@ -55,7 +55,7 @@ function BrowseAll() {
             style={{ backgroundColor: tileColor(artist.name) }}
           >
             <span>{artist.name}</span>
-            <Cover trackId={artist.coverTrackId} className="browse-tile-cover" />
+            <Cover src={images.artist(artist)} className="browse-tile-cover" />
           </Link>
         ))}
       </div>
@@ -134,7 +134,7 @@ function Results({ query }: { query: string }) {
       to={`/album/${album.id}`}
       title={album.title}
       subtitle={[album.year, album.artist.name].filter(Boolean).join(' • ')}
-      coverTrackId={album.coverTrackId}
+      image={images.album(album)}
       playing={isPlaying(album.id)}
       onPlay={() => void playAlbum(album.id)}
     />
@@ -146,7 +146,7 @@ function Results({ query }: { query: string }) {
       to={`/artist/${artist.id}`}
       title={artist.name}
       subtitle="Artiste"
-      coverTrackId={artist.coverTrackId}
+      image={images.artist(artist)}
       round
       playing={isPlaying(artist.id)}
       onPlay={() => void playArtist(artist.id)}
@@ -175,7 +175,12 @@ function Results({ query }: { query: string }) {
                       to={`/${top.kind}/${top.item.id}`}
                       className="top-result-card"
                     >
-                      <Cover trackId={top.item.coverTrackId} size={92} round={top.kind === 'artist'} />
+                      <Cover
+                        src={top.kind === 'artist' ? images.artist(top.item) : images.album(top.item)}
+                        size={92}
+                        quality="md"
+                        round={top.kind === 'artist'}
+                      />
                       <span className="top-result-name">{top.kind === 'artist' ? top.item.name : top.item.title}</span>
                       <span className="top-result-type">
                         {top.kind === 'artist' ? (

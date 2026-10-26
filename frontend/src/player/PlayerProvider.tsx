@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { api, type Track } from '../api'
+import { api, images, type Track } from '../api'
 import { storage } from '../storage'
 import { PlayerContext, ProgressContext, type PlayerState, type RepeatMode } from './context'
 
@@ -136,13 +136,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // OS media keys, lock screen and headset controls.
   useEffect(() => {
     if (!('mediaSession' in navigator)) return
-    const cover = current && api.coverUrl(current.id)
+    const cover = current && images.track(current)
     navigator.mediaSession.metadata = current
       ? new MediaMetadata({
           title: current.title,
           artist: current.artistName,
           album: current.album?.title ?? '',
-          artwork: cover ? [{ src: cover }] : [],
+          artwork: cover ? [{ src: cover, sizes: '1000x1000' }] : [],
         })
       : null
     navigator.mediaSession.setActionHandler('play', toggle)

@@ -19,21 +19,31 @@ model User {
 }
 
 model Artist {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  createdAt DateTime @default(now())
-  albums    Album[]
-  tracks    Track[]
+  id         String    @id @default(cuid())
+  name       String    @unique
+  // Filled from the Deezer API (see enrich.ts)
+  deezerId   Int?
+  pictureUrl String?
+  enrichedAt DateTime? // last lookup attempt, matched or not
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
+  albums     Album[]
+  tracks     Track[]
 }
 
 model Album {
-  id        String   @id @default(cuid())
-  title     String
-  artistId  String
-  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  year      Int?
-  createdAt DateTime @default(now())
-  tracks    Track[]
+  id         String    @id @default(cuid())
+  title      String
+  artistId   String
+  artist     Artist    @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  year       Int?
+  // Filled from the Deezer API (see enrich.ts)
+  deezerId   Int?
+  coverUrl   String?
+  enrichedAt DateTime? // last lookup attempt, matched or not
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
+  tracks     Track[]
 
   @@unique([artistId, title])
 }
@@ -47,6 +57,7 @@ model Track {
   fileMtime    DateTime
   indexVersion Int             @default(0) // files indexed by an older scanner get re-read
   title        String
+  isrc         String? // from tags; deemix writes it, used to match on Deezer
   artistName   String // full artist tag as displayed, may list several artists
   artistId     String // primary artist
   artist       Artist          @relation(fields: [artistId], references: [id], onDelete: Cascade)
