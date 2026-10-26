@@ -18,27 +18,52 @@ model User {
   plays        Play[]
 }
 
+model Artist {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  albums    Album[]
+  tracks    Track[]
+}
+
+model Album {
+  id        String   @id @default(cuid())
+  title     String
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  year      Int?
+  createdAt DateTime @default(now())
+  tracks    Track[]
+
+  @@unique([artistId, title])
+}
+
 // A file in MUSIC_DIR, indexed from its tags.
 model Track {
-  id          String          @id @default(cuid())
-  deezerId    String?         @unique
-  path        String          @unique // relative to MUSIC_DIR
-  fileSize    Int
-  fileMtime   DateTime
-  title       String
-  artist      String
-  album       String?
-  albumArtist String?
-  year        Int?
-  durationSec Int?
-  trackNumber Int?
-  discNumber  Int?
-  coverPath   String? // folder cover relative to MUSIC_DIR; null means use embedded art
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  playlists   PlaylistTrack[]
-  likes       Like[]
-  plays       Play[]
+  id           String          @id @default(cuid())
+  deezerId     String?         @unique
+  path         String          @unique // relative to MUSIC_DIR
+  fileSize     Int
+  fileMtime    DateTime
+  indexVersion Int             @default(0) // files indexed by an older scanner get re-read
+  title        String
+  artistName   String // full artist tag as displayed, may list several artists
+  artistId     String // primary artist
+  artist       Artist          @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  albumId      String?
+  album        Album?          @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  durationSec  Int?
+  trackNumber  Int?
+  discNumber   Int?
+  coverPath    String? // folder cover relative to MUSIC_DIR; null means use embedded art
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  playlists    PlaylistTrack[]
+  likes        Like[]
+  plays        Play[]
+
+  @@index([albumId])
+  @@index([artistId])
 }
 
 model Playlist {

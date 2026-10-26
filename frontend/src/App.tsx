@@ -1,26 +1,37 @@
-import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom'
-import { LibraryPage } from './pages/LibraryPage'
+import { useState } from 'react'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { PlayerBar } from './components/PlayerBar'
+import { QueuePanel } from './components/QueuePanel'
+import { Sidebar } from './components/Sidebar'
+import { TopBar } from './components/TopBar'
+import { AlbumPage } from './pages/AlbumPage'
+import { ArtistPage } from './pages/ArtistPage'
+import { HomePage } from './pages/HomePage'
 import { SearchPage } from './pages/SearchPage'
-import { PlayerBar } from './player/PlayerBar'
-import { PlayerProvider } from './player/PlayerContext'
+import { PlayerProvider } from './player/PlayerProvider'
+import { ScrollToTop } from './components/ScrollToTop'
 
 export default function App() {
+  const [queueOpen, setQueueOpen] = useState(false)
+
   return (
     <BrowserRouter>
       <PlayerProvider>
-        <div className="layout">
-          <nav className="sidebar">
-            <h1>Spotifiak</h1>
-            <NavLink to="/">Library</NavLink>
-            <NavLink to="/search">Search</NavLink>
-          </nav>
-          <main className="content">
+        <div className={`app${queueOpen ? ' with-queue' : ''}`}>
+          <TopBar />
+          <Sidebar />
+          <main className="main-view panel" id="main-view">
+            <ScrollToTop />
             <Routes>
-              <Route path="/" element={<LibraryPage />} />
+              <Route path="/" element={<HomePage />} />
               <Route path="/search" element={<SearchPage />} />
+              <Route path="/search/:query" element={<SearchPage />} />
+              <Route path="/album/:id" element={<AlbumPage />} />
+              <Route path="/artist/:id" element={<ArtistPage />} />
             </Routes>
           </main>
-          <PlayerBar />
+          {queueOpen && <QueuePanel />}
+          <PlayerBar queueOpen={queueOpen} onToggleQueue={() => setQueueOpen(!queueOpen)} />
         </div>
       </PlayerProvider>
     </BrowserRouter>

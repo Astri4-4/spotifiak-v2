@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { config } from './config.js'
 import { prisma } from './db.js'
 import * as deemix from './deemix.js'
+import { libraryRoutes } from './library.js'
 import { scanLibrary, scanStatus, scheduleScan, startPeriodicScan } from './scanner.js'
 import { resolveMusicPath, streamFile } from './stream.js'
 
@@ -18,9 +19,16 @@ await app.register(cors, { origin: config.CORS_ORIGIN })
 
 app.get('/health', async () => ({ ok: true }))
 
-app.get('/search', async (req) => {
+await app.register(libraryRoutes)
+
+app.get('/deezer/search', async (req, reply) => {
   const { q } = z.object({ q: z.string().min(1) }).parse(req.query)
-  return deemix.searchTracks(q)
+  try {
+    return await deemix.searchTracks(q)
+  } catch (err) {
+    req.log.warn({ err }, 'deemix search failed')
+    return reply.code(502).send({ error: 'deemix unreachable' })
+  }
 })
 
 app.post('/downloads', async (req, reply) => {
@@ -28,54 +36,6 @@ app.post('/downloads', async (req, reply) => {
   await deemix.addToQueue(url)
   scheduleScan(app.log, RESCAN_AFTER_DOWNLOAD_MS)
   return reply.code(202).send({ queued: true })
-})
-
-const trackSelect = {
-  id: true,
-  title: true,
-  artist: true,
-  album: true,
-  albumArtist: true,
-  year: true,
-  durationSec: true,
-  trackNumber: true,
-  discNumber: true,
-} as const
-
-app.get('/tracks', async (req) => {
-  const { q, limit, offset } = z
-    .object({
-      q: z.string().optional(),
-      limit: z.coerce.number().int().min(1).max(500).default(100),
-      offset: z.coerce.number().int().min(0).default(0),
-    })
-    .parse(req.query)
-
-  const where = q
-    ? {
-        OR: (['title', 'artist', 'album'] as const).map((field) => ({
-          [field]: { contains: q, mode: 'insensitive' as const },
-        })),
-      }
-    : {}
-
-  const [items, total] = await Promise.all([
-    prisma.track.findMany({
-      where,
-      select: trackSelect,
-      orderBy: [{ artist: 'asc' }, { album: 'asc' }, { discNumber: 'asc' }, { trackNumber: 'asc' }],
-      take: limit,
-      skip: offset,
-    }),
-    prisma.track.count({ where }),
-  ])
-  return { items, total }
-})
-
-app.get('/tracks/:id', async (req, reply) => {
-  const { id } = z.object({ id: z.string() }).parse(req.params)
-  const track = await prisma.track.findUnique({ where: { id }, select: trackSelect })
-  return track ?? reply.code(404).send({ error: 'Track not found' })
 })
 
 app.get('/tracks/:id/stream', async (req, reply) => {
