@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api, images, type Track } from '../api'
+import { useJam } from '../jam/context'
 import { storage } from '../storage'
 import { PlayerContext, ProgressContext, type PlayerState, type RepeatMode } from './context'
 
 // Like Spotify: "previous" restarts the track unless we're in its first seconds.
 const RESTART_THRESHOLD_SEC = 3
+// In a Jam, seek to the shared position when this far off (network delays, slow
+// loads); checked on every update and while playing.
+const JAM_DRIFT_SEC = 1
 
 function shuffledOrder(length: number, first: number) {
   const rest = [...Array(length).keys()].filter((i) => i !== first)
@@ -31,15 +35,57 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [muted, setMuted] = useState(false)
   const [progress, setProgress] = useState({ currentTime: 0, duration: 0 })
 
-  const current = queue[order[pos]] ?? null
+  // In a Jam the server's queue replaces the local one (see JamProvider).
+  const { jam, receivedAt, command } = useJam()
+  const jamEntry = jam?.queue[jam.index] ?? null
+  const current = jam ? (jamEntry?.track ?? null) : (queue[order[pos]] ?? null)
+  const inJam = !!jam
+
+  // Leaving a Jam doesn't resume the local queue from before it (adjusted while
+  // rendering, as React recommends for state derived from a change).
+  const [wasInJam, setWasInJam] = useState(inJam)
+  if (wasInJam !== inJam) {
+    setWasInJam(inJam)
+    if (!inJam) {
+      setQueue([])
+      setOrder([])
+      setPos(0)
+    }
+  }
+
+  /** Brings the audio to the Jam's track position and play/pause state. */
+  const syncToJam = useCallback(() => {
+    const el = audio.current
+    if (!el || !jam || !jamEntry) return
+    const elapsed = jam.playing ? (performance.now() - receivedAt) / 1000 : 0
+    const expected = Math.min(jam.position + elapsed, Number.isFinite(el.duration) ? el.duration : Infinity)
+    if (Math.abs(el.currentTime - expected) > JAM_DRIFT_SEC) el.currentTime = expected
+    if (jam.playing && el.paused) void el.play().catch(() => setPlaying(false))
+    if (!jam.playing && !el.paused) el.pause()
+  }, [jam, jamEntry, receivedAt])
+
+  // What to load: the Jam entry (the same track can be queued twice), or the local
+  // track; loadKey forces a reload of the same track ("play this" again).
+  const source = jam ? `jam:${jamEntry?.id ?? ''}` : `local:${current?.id ?? ''}:${loadKey}`
 
   useEffect(() => {
     const el = audio.current
-    if (!el || !current) return
-    el.src = api.streamUrl(current.id)
-    void el.play().catch(() => setPlaying(false))
-    // loadKey is intentionally a dependency: it forces a reload of the same track.
-  }, [current?.id, loadKey]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!el) return
+    if (!current) {
+      el.pause()
+      el.removeAttribute('src')
+      return
+    }
+    const url = api.streamUrl(current.id)
+    // Starting a Jam with the track already playing here: keep it, don't restart it.
+    if (!(jam && el.src.endsWith(url))) el.src = url
+    if (jam) syncToJam()
+    else void el.play().catch(() => setPlaying(false))
+  }, [source]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Every Jam update (someone paused, skipped, seeked).
+  useEffect(() => syncToJam(), [syncToJam])
+
 
   useEffect(() => {
     if (audio.current) audio.current.volume = muted ? 0 : volume
@@ -51,6 +97,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const playTracks = useCallback(
     (tracks: Track[], startIndex = 0, ctx?: string) => {
+      setContextId(ctx ?? null)
+      if (inJam) {
+        command({ type: 'playTracks', trackIds: tracks.map((t) => t.id), index: startIndex })
+        return
+      }
       setQueue(tracks)
       if (shuffle) {
         setOrder(shuffledOrder(tracks.length, startIndex))
@@ -59,18 +110,33 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setOrder([...tracks.keys()])
         setPos(startIndex)
       }
-      setContextId(ctx ?? null)
       setLoadKey((k) => k + 1)
     },
-    [shuffle],
+    [shuffle, inJam, command],
+  )
+
+  const addToQueue = useCallback(
+    (tracks: Track[]) => {
+      if (inJam) return command({ type: 'add', trackIds: tracks.map((t) => t.id) })
+      if (!queue.length) return playTracks(tracks)
+      setOrder([...order, ...tracks.map((_, i) => queue.length + i)])
+      setQueue([...queue, ...tracks])
+    },
+    [inJam, command, queue, order, playTracks],
   )
 
   const toggle = useCallback(() => {
     const el = audio.current
     if (!el || !current) return
+    if (jam) {
+      // Playing for the others but silent here (autoplay blocked): just listen in.
+      if (jam.playing && el.paused) void el.play().catch(() => {})
+      else command({ type: jam.playing ? 'pause' : 'play', position: el.currentTime })
+      return
+    }
     if (el.paused) void el.play()
     else el.pause()
-  }, [current])
+  }, [current, jam, command])
 
   const advance = useCallback(
     (auto: boolean) => {
@@ -92,22 +158,32 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [order.length, pos, repeat],
   )
 
-  const next = useCallback(() => advance(false), [advance])
+  const next = useCallback(() => (inJam ? command({ type: 'next' }) : advance(false)), [inJam, command, advance])
+
+  const onEnded = useCallback(() => {
+    if (jamEntry) command({ type: 'ended', entryId: jamEntry.id })
+    else if (!inJam) advance(true)
+  }, [jamEntry, inJam, command, advance])
 
   const prev = useCallback(() => {
     const el = audio.current
     if (!el) return
+    if (inJam) return command({ type: 'prev' })
     if (el.currentTime > RESTART_THRESHOLD_SEC || (pos === 0 && repeat !== 'all')) {
       el.currentTime = 0
       return
     }
     setPos(pos === 0 ? order.length - 1 : pos - 1)
     setLoadKey((k) => k + 1)
-  }, [order.length, pos, repeat])
+  }, [order.length, pos, repeat, inJam, command])
 
-  const seek = useCallback((seconds: number) => {
-    if (audio.current) audio.current.currentTime = seconds
-  }, [])
+  const seek = useCallback(
+    (seconds: number) => {
+      if (audio.current) audio.current.currentTime = seconds
+      if (inJam) command({ type: 'seek', position: seconds })
+    },
+    [inJam, command],
+  )
 
   const setVolume = useCallback((v: number) => {
     setVolumeState(Math.min(1, Math.max(0, v)))
@@ -164,7 +240,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [toggle])
 
-  const upNext = useMemo(() => order.slice(pos + 1).map((i) => queue[i]), [order, pos, queue])
+  const upNext = useMemo(
+    () => (jam ? jam.queue.slice(jam.index + 1).map((e) => e.track) : order.slice(pos + 1).map((i) => queue[i])),
+    [jam, order, pos, queue],
+  )
 
   const state: PlayerState = useMemo(
     () => ({
@@ -177,7 +256,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       repeat,
       volume,
       muted,
+      inJam,
       playTracks,
+      addToQueue,
       toggle,
       next,
       prev,
@@ -187,7 +268,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       toggleShuffle,
       cycleRepeat,
     }),
-    [current, contextId, playing, queue, upNext, shuffle, repeat, volume, muted, playTracks, toggle, next, prev, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat],
+    [current, contextId, playing, queue, upNext, shuffle, repeat, volume, muted, inJam, playTracks, addToQueue, toggle, next, prev, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat],
   )
 
   return (
@@ -198,11 +279,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           ref={audio}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
-          onEnded={() => advance(true)}
-          onTimeUpdate={(e) =>
+          onEnded={onEnded}
+          onTimeUpdate={(e) => {
             setProgress({ currentTime: e.currentTarget.currentTime, duration: e.currentTarget.duration || 0 })
-          }
-          onLoadedMetadata={(e) => setProgress({ currentTime: 0, duration: e.currentTarget.duration || 0 })}
+            if (jam?.playing && !e.currentTarget.seeking) syncToJam()
+          }}
+          onLoadedMetadata={(e) => {
+            setProgress({ currentTime: e.currentTarget.currentTime, duration: e.currentTarget.duration || 0 })
+            syncToJam()
+          }}
         />
       </ProgressContext.Provider>
     </PlayerContext.Provider>

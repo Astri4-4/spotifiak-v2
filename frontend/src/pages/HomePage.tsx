@@ -6,7 +6,8 @@ import { PlayButton } from '../components/PlayButton'
 import { Shelf } from '../components/Shelf'
 import { useCollection } from '../collection/context'
 import { LikedCover, PlaylistCover } from '../components/CollectionCovers'
-import { useFetch } from '../hooks'
+import { MobileHeader } from '../components/Mobile'
+import { useFetch, useIsMobile } from '../hooks'
 import { LIKED_CONTEXT, usePlayContext } from '../player/usePlayContext'
 
 function greeting() {
@@ -21,6 +22,7 @@ export function HomePage() {
   const { data: artists } = useFetch(() => api.artists().then((r) => r.items), [])
   const { isPlaying, playAlbum, playArtist, playPlaylist, playLiked } = usePlayContext()
   const { likedIds, playlists } = useCollection()
+  const isMobile = useIsMobile()
 
   const empty = albums && artists && !albums.length && !artists.length
 
@@ -28,7 +30,7 @@ export function HomePage() {
     <div className="page home">
       <div className="page-gradient" />
       <div className="page-inner">
-        <h1 className="greeting">{greeting()}</h1>
+        {isMobile ? <MobileHeader title={greeting()} /> : <h1 className="greeting">{greeting()}</h1>}
 
         {empty && (
           <div className="empty-state">

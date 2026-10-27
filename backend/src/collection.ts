@@ -1,13 +1,14 @@
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { prisma } from './db.js'
-import { toTrack, trackSelect } from './library.js'
+import { albumSelect, artistSelect, toAlbum, toArtist, toTrack, trackSelect } from './library.js'
 
 const MOSAIC_SIZE = 4
 // Positions are floats; when neighbours get this close, renumber the playlist.
 const MIN_POSITION_GAP = 1e-6
 
 const trackIdParams = z.object({ trackId: z.string() })
+const idParams = z.object({ id: z.string() })
 const playlistParams = z.object({ id: z.string() })
 const entryParams = z.object({ id: z.string(), entryId: z.string() })
 const playlistBody = z.object({
@@ -79,6 +80,64 @@ export async function collectionRoutes(app: FastifyInstance) {
   app.delete('/me/likes/:trackId', async (req, reply) => {
     const { trackId } = trackIdParams.parse(req.params)
     await prisma.like.deleteMany({ where: { userId: req.user!.id, trackId } })
+    return reply.code(204).send()
+  })
+
+  // --- Saved albums and followed artists (the library) ---
+
+  app.get('/me/albums', async (req) => {
+    const saved = await prisma.savedAlbum.findMany({
+      where: { userId: req.user!.id },
+      orderBy: { savedAt: 'desc' },
+      select: { savedAt: true, album: { select: albumSelect } },
+    })
+    return saved.map(({ savedAt, album }) => ({ ...toAlbum(album), savedAt }))
+  })
+
+  app.put('/me/albums/:id', async (req, reply) => {
+    const { id } = idParams.parse(req.params)
+    if (!(await prisma.album.findUnique({ where: { id }, select: { id: true } }))) {
+      return reply.code(404).send({ error: 'Album introuvable' })
+    }
+    await prisma.savedAlbum.upsert({
+      where: { userId_albumId: { userId: req.user!.id, albumId: id } },
+      create: { userId: req.user!.id, albumId: id },
+      update: {},
+    })
+    return reply.code(204).send()
+  })
+
+  app.delete('/me/albums/:id', async (req, reply) => {
+    const { id } = idParams.parse(req.params)
+    await prisma.savedAlbum.deleteMany({ where: { userId: req.user!.id, albumId: id } })
+    return reply.code(204).send()
+  })
+
+  app.get('/me/artists', async (req) => {
+    const followed = await prisma.followedArtist.findMany({
+      where: { userId: req.user!.id },
+      orderBy: { followedAt: 'desc' },
+      select: { followedAt: true, artist: { select: artistSelect } },
+    })
+    return followed.map(({ followedAt, artist }) => ({ ...toArtist(artist), followedAt }))
+  })
+
+  app.put('/me/artists/:id', async (req, reply) => {
+    const { id } = idParams.parse(req.params)
+    if (!(await prisma.artist.findUnique({ where: { id }, select: { id: true } }))) {
+      return reply.code(404).send({ error: 'Artiste introuvable' })
+    }
+    await prisma.followedArtist.upsert({
+      where: { userId_artistId: { userId: req.user!.id, artistId: id } },
+      create: { userId: req.user!.id, artistId: id },
+      update: {},
+    })
+    return reply.code(204).send()
+  })
+
+  app.delete('/me/artists/:id', async (req, reply) => {
+    const { id } = idParams.parse(req.params)
+    await prisma.followedArtist.deleteMany({ where: { userId: req.user!.id, artistId: id } })
     return reply.code(204).send()
   })
 

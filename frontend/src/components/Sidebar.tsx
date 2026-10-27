@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { api, images, type Album, type Artist } from '../api'
+import { api, images } from '../api'
 import { useCurrentUser } from '../auth/context'
 import { useCollection } from '../collection/context'
 import { LibraryIcon, PlusIcon, RefreshIcon, SearchIcon, VolumeIcon } from '../icons'
@@ -8,6 +8,7 @@ import { usePlayer } from '../player/context'
 import { LIKED_CONTEXT } from '../player/usePlayContext'
 import { LikedCover, PlaylistCover } from './CollectionCovers'
 import { Cover } from './Cover'
+import { MobileHeader } from './Mobile'
 
 type Filter = 'all' | 'playlists' | 'albums' | 'artists'
 
@@ -24,32 +25,20 @@ interface Item {
   pinned?: boolean
 }
 
-// The library changes when deemix finishes downloads; refresh periodically.
-const REFRESH_MS = 60_000
 // Cheap status check so the scan icon spins while a scan or Deezer lookup runs.
 const SCAN_POLL_MS = 10_000
 
-export function Sidebar() {
+/** The library: the left panel on desktop, the Bibliothèque tab (`mobile`) on phones. */
+export function Sidebar({ mobile = false }: { mobile?: boolean }) {
   const navigate = useNavigate()
   const user = useCurrentUser()
   const { contextId, playing } = usePlayer()
-  const { likedIds, playlists, createPlaylist } = useCollection()
-  const [albums, setAlbums] = useState<Album[]>([])
-  const [artists, setArtists] = useState<Artist[]>([])
+  // Only what the user added: saved albums and followed artists, not the whole server library.
+  const { likedIds, playlists, savedAlbums: albums, followedArtists: artists, createPlaylist } = useCollection()
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [scanning, setScanning] = useState(false)
-
-  useEffect(() => {
-    const load = () => {
-      api.albums().then((r) => setAlbums(r.items)).catch(() => {})
-      api.artists().then((r) => setArtists(r.items)).catch(() => {})
-    }
-    load()
-    const interval = setInterval(load, REFRESH_MS)
-    return () => clearInterval(interval)
-  }, [])
 
   useEffect(() => {
     const check = () =>
@@ -96,7 +85,7 @@ export function Sidebar() {
             subtitle: `Album • ${a.artist.name}`,
             cover: <Cover src={images.album(a)} size={48} />,
             contextId: a.id,
-            sortKey: a.createdAt,
+            sortKey: a.savedAt,
           }))
         : []),
       ...(show('artists')
@@ -107,7 +96,7 @@ export function Sidebar() {
             subtitle: 'Artiste',
             cover: <Cover src={images.artist(a)} size={48} round />,
             contextId: a.id,
-            sortKey: '',
+            sortKey: a.followedAt,
           }))
         : []),
     ]
@@ -126,32 +115,40 @@ export function Sidebar() {
     </button>
   )
 
+  const headerActions = (
+    <>
+      <Link
+        to="/scan"
+        className={`icon-button${scanning ? ' scanning' : ''}`}
+        aria-label="Analyse de la bibliothèque"
+        title={scanning ? 'Analyse en cours…' : 'Analyse de la bibliothèque'}
+      >
+        <RefreshIcon className={scanning ? 'spin' : undefined} />
+      </Link>
+      <button
+        className="icon-button create-button"
+        onClick={() => void createPlaylist().then((id) => navigate(`/playlist/${id}`))}
+        aria-label="Créer une playlist"
+        title="Créer une playlist"
+      >
+        <PlusIcon />
+      </button>
+    </>
+  )
+
   return (
-    <aside className="sidebar panel">
-      <header className="sidebar-header">
-        <h2>
-          <LibraryIcon size={24} />
-          Bibliothèque
-        </h2>
-        <span className="sidebar-header-actions">
-          <Link
-            to="/scan"
-            className={`icon-button${scanning ? ' scanning' : ''}`}
-            aria-label="Analyse de la bibliothèque"
-            title={scanning ? 'Analyse en cours…' : 'Analyse de la bibliothèque'}
-          >
-            <RefreshIcon className={scanning ? 'spin' : undefined} />
-          </Link>
-          <button
-            className="icon-button create-button"
-            onClick={() => void createPlaylist().then((id) => navigate(`/playlist/${id}`))}
-            aria-label="Créer une playlist"
-            title="Créer une playlist"
-          >
-            <PlusIcon />
-          </button>
-        </span>
-      </header>
+    <aside className={mobile ? 'sidebar mobile' : 'sidebar panel'}>
+      {mobile ? (
+        <MobileHeader title="Bibliothèque">{headerActions}</MobileHeader>
+      ) : (
+        <header className="sidebar-header">
+          <h2>
+            <LibraryIcon size={24} />
+            <span>Bibliothèque</span>
+          </h2>
+          <span className="sidebar-header-actions">{headerActions}</span>
+        </header>
+      )}
 
       <div className="chips">
         {chip('playlists', 'Playlists')}
@@ -195,7 +192,7 @@ export function Sidebar() {
         })}
         {!items.length && (
           <li className="library-empty">
-            {search ? 'Aucun résultat' : 'Votre bibliothèque est vide. Cherchez des titres pour les télécharger.'}
+            {search ? 'Aucun résultat' : 'Votre bibliothèque est vide.'}
           </li>
         )}
       </ul>

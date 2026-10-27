@@ -28,7 +28,8 @@ services:
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
       SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-}
     volumes:
-      - ${MUSIC_DIR}:/music:ro
+      # Writable so duplicates can be deleted from the scan page.
+      - ${MUSIC_DIR}:/music
     # No published port: the web container proxies /api to it.
     depends_on:
       db:
@@ -37,7 +38,7 @@ services:
   web:
     build: ./frontend
     ports:
-      - "${WEB_PORT:-8080}:80"
+      - "${WEB_PORT:-8080}:8080"
     depends_on:
       - api
 

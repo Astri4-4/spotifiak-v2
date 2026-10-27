@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 
 interface FetchState<T> {
   key: string
@@ -64,4 +64,17 @@ export function useDominantColor() {
   }, [])
 
   return { color, fromImage }
+}
+
+/** Phone layout (bottom tabs, mini player); keep in sync with the CSS media queries. */
+const MOBILE_QUERY = '(max-width: 768px)'
+
+const subscribeMobile = (onChange: () => void) => {
+  const mq = window.matchMedia(MOBILE_QUERY)
+  mq.addEventListener('change', onChange)
+  return () => mq.removeEventListener('change', onChange)
+}
+
+export function useIsMobile() {
+  return useSyncExternalStore(subscribeMobile, () => window.matchMedia(MOBILE_QUERY).matches)
 }

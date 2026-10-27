@@ -79,7 +79,7 @@ async function createSession(reply: FastifyReply, userId: string, userAgent?: st
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
-    secure: config.COOKIE_SECURE,
+    secure: config.COOKIE_SECURE || reply.request.protocol === 'https',
     maxAge: SESSION_TTL_MS / 1000,
   })
 }

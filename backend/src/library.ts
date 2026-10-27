@@ -24,7 +24,7 @@ const trackOrder: Prisma.TrackOrderByWithRelationInput[] = [
 // One track per album/artist whose file art is the fallback when Deezer has no image.
 const coverTrack = { select: { id: true }, orderBy: trackOrder, take: 1 }
 
-const albumSelect = {
+export const albumSelect = {
   id: true,
   title: true,
   year: true,
@@ -35,7 +35,7 @@ const albumSelect = {
   _count: { select: { tracks: true } },
 } satisfies Prisma.AlbumSelect
 
-const artistSelect = {
+export const artistSelect = {
   id: true,
   name: true,
   pictureUrl: true,
@@ -48,11 +48,11 @@ export function toTrack<T extends { createdAt: Date }>({ createdAt, ...t }: T) {
   return { ...t, addedAt: createdAt }
 }
 
-function toAlbum<T extends { tracks: { id: string }[]; _count: { tracks: number } }>({ tracks, _count, ...a }: T) {
+export function toAlbum<T extends { tracks: { id: string }[]; _count: { tracks: number } }>({ tracks, _count, ...a }: T) {
   return { ...a, coverTrackId: tracks[0]?.id ?? null, trackCount: _count.tracks }
 }
 
-function toArtist<T extends { pictureUrl: string | null; tracks: { id: string }[]; albums: { coverUrl: string | null }[] }>({
+export function toArtist<T extends { pictureUrl: string | null; tracks: { id: string }[]; albums: { coverUrl: string | null }[] }>({
   tracks,
   albums,
   pictureUrl,

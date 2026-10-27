@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { api, images } from '../api'
 import { Cover } from '../components/Cover'
+import { SaveAlbumButton } from '../components/LibraryButtons'
 import { PlayButton } from '../components/PlayButton'
 import { TrackList } from '../components/TrackList'
 import { formatTotalDuration, pluralize } from '../format'
@@ -45,6 +46,7 @@ function AlbumView({ id }: { id: string }) {
 
       <div className="action-bar">
         <PlayButton size="lg" playing={isPlaying(album.id)} onClick={() => void playTracks(album.id, album.tracks)} />
+        <SaveAlbumButton album={album} />
       </div>
 
       <div className="page-inner">

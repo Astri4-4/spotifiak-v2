@@ -20,7 +20,9 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
-  // Set to true when Spotifiak is served over HTTPS so the session cookie is HTTPS-only.
+  // Forces HTTPS-only session cookies. Without it they're HTTPS-only when the request
+  // came over HTTPS (X-Forwarded-Proto from the proxies), so one deployment can serve
+  // both an HTTPS public address and a plain-HTTP LAN one.
   COOKIE_SECURE: z
     .enum(['true', 'false'])
     .default('false')

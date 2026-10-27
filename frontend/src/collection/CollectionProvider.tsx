@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { collection, type PlaylistSummary } from '../api'
+import { collection, type Album, type Artist, type FollowedArtist, type PlaylistSummary, type SavedAlbum } from '../api'
 import { CollectionContext, type CollectionState } from './context'
 
 const TOAST_MS = 3000
@@ -7,6 +7,8 @@ const TOAST_MS = 3000
 export function CollectionProvider({ children }: { children: ReactNode }) {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
   const [likesVersion, setLikesVersion] = useState(0)
+  const [savedAlbums, setSavedAlbums] = useState<SavedAlbum[]>([])
+  const [followedArtists, setFollowedArtists] = useState<FollowedArtist[]>([])
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([])
   const [playlistsVersion, setPlaylistsVersion] = useState(0)
   const [toast, setToast] = useState<{ id: number; message: string } | null>(null)
@@ -22,6 +24,11 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     collection.playlists().then(setPlaylists).catch(() => {})
   }, [playlistsVersion])
+
+  useEffect(() => {
+    collection.savedAlbums().then(setSavedAlbums).catch(() => {})
+    collection.followedArtists().then(setFollowedArtists).catch(() => {})
+  }, [])
 
   const notify = useCallback((message: string) => {
     clearTimeout(toastTimer.current)
@@ -56,6 +63,37 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     [likedIds, notify],
   )
 
+  // Optimistic like toggleLike: the list (and the button) change at once, then revert on error.
+  const toggleSaveAlbum = useCallback(
+    (album: Album) => {
+      const saved = savedAlbums.some((a) => a.id === album.id)
+      const before = savedAlbums
+      setSavedAlbums(saved ? before.filter((a) => a.id !== album.id) : [{ ...album, savedAt: new Date().toISOString() }, ...before])
+      notify(saved ? 'Retiré de la Bibliothèque' : 'Ajouté à la Bibliothèque')
+      ;(saved ? collection.unsaveAlbum(album.id) : collection.saveAlbum(album.id)).catch(() => {
+        setSavedAlbums(before)
+        notify('Impossible de modifier votre Bibliothèque')
+      })
+    },
+    [savedAlbums, notify],
+  )
+
+  const toggleFollowArtist = useCallback(
+    (artist: Artist) => {
+      const followed = followedArtists.some((a) => a.id === artist.id)
+      const before = followedArtists
+      setFollowedArtists(
+        followed ? before.filter((a) => a.id !== artist.id) : [{ ...artist, followedAt: new Date().toISOString() }, ...before],
+      )
+      notify(followed ? `Vous n'êtes plus abonné à ${artist.name}` : `Abonné à ${artist.name}`)
+      ;(followed ? collection.unfollowArtist(artist.id) : collection.followArtist(artist.id)).catch(() => {
+        setFollowedArtists(before)
+        notify('Impossible de modifier votre Bibliothèque')
+      })
+    },
+    [followedArtists, notify],
+  )
+
   const createPlaylist = useCallback(
     async (trackIds?: string[]) => {
       const { id, name } = await collection.createPlaylist()
@@ -86,13 +124,17 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       likesVersion,
       toggleLike,
       refreshLikes,
+      savedAlbums,
+      followedArtists,
+      toggleSaveAlbum,
+      toggleFollowArtist,
       playlists,
       refreshPlaylists,
       createPlaylist,
       addToPlaylist,
       notify,
     }),
-    [likedIds, likesVersion, toggleLike, refreshLikes, playlists, refreshPlaylists, createPlaylist, addToPlaylist, notify],
+    [likedIds, likesVersion, toggleLike, refreshLikes, savedAlbums, followedArtists, toggleSaveAlbum, toggleFollowArtist, playlists, refreshPlaylists, createPlaylist, addToPlaylist, notify],
   )
 
   return (

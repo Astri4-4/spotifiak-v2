@@ -14,7 +14,11 @@ export interface PlayerState {
   repeat: RepeatMode
   volume: number
   muted: boolean
+  /** In a Jam: playback follows the shared queue; shuffle and repeat are off. */
+  inJam: boolean
   playTracks: (tracks: Track[], startIndex?: number, contextId?: string) => void
+  /** "Ajouter à la file d'attente": after the queue's last track. */
+  addToQueue: (tracks: Track[]) => void
   toggle: () => void
   next: () => void
   prev: () => void

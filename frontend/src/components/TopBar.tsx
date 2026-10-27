@@ -1,37 +1,11 @@
-import { useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ChevronLeftIcon, ChevronRightIcon, HomeFilledIcon, HomeIcon, LogoIcon, SearchIcon } from '../icons'
+import { ChevronLeftIcon, ChevronRightIcon, HomeFilledIcon, HomeIcon, LogoIcon } from '../icons'
+import { SearchInput } from './SearchInput'
 import { UserMenu } from './UserMenu'
-
-const SEARCH_PREFIX = '/search/'
 
 export function TopBar() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const input = useRef<HTMLInputElement>(null)
-  const routeQuery = location.pathname.startsWith(SEARCH_PREFIX)
-    ? decodeURIComponent(location.pathname.slice(SEARCH_PREFIX.length))
-    : ''
-
-  // The input is uncontrolled: router updates are deferred, so a URL-driven value
-  // would drop fast keystrokes. Sync from the URL only when the user isn't typing
-  // (back/forward, leaving the search page).
-  useEffect(() => {
-    const el = input.current
-    if (el && document.activeElement !== el && el.value !== routeQuery) el.value = routeQuery
-  }, [routeQuery])
-
-  // window.location, not the router's: router updates lag behind fast typing.
-  const onSearchPage = () => window.location.pathname.startsWith('/search')
-
-  const onChange = (value: string) => {
-    const onSearch = onSearchPage()
-    const target = value.trim() ? `${SEARCH_PREFIX}${encodeURIComponent(value)}` : '/search'
-    // Typing replaces the history entry instead of adding one per keystroke.
-    navigate(target, { replace: onSearch })
-  }
-
-  const isHome = location.pathname === '/'
+  const isHome = useLocation().pathname === '/'
 
   return (
     <header className="topbar">
@@ -51,17 +25,7 @@ export function TopBar() {
         <Link to="/" className="home-button" aria-label="Accueil">
           {isHome ? <HomeFilledIcon size={24} /> : <HomeIcon size={24} />}
         </Link>
-        <label className="search-box">
-          <SearchIcon size={24} />
-          <input
-            ref={input}
-            defaultValue={routeQuery}
-            onChange={(e) => onChange(e.target.value)}
-            onFocus={() => !onSearchPage() && navigate('/search')}
-            placeholder="Que souhaitez-vous écouter ?"
-            aria-label="Rechercher"
-          />
-        </label>
+        <SearchInput />
       </div>
 
       <div className="topbar-right">

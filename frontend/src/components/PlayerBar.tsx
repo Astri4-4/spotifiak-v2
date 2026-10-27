@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { images } from '../api'
 import { formatDuration } from '../format'
 import {
+  JamIcon,
   NextIcon,
   PauseIcon,
   PlayIcon,
@@ -14,6 +15,7 @@ import {
   VolumeIcon,
   VolumeMuteIcon,
 } from '../icons'
+import { useJam } from '../jam/context'
 import { usePlayer, useProgress } from '../player/context'
 import { Cover } from './Cover'
 import { HeartButton } from './HeartButton'
@@ -24,7 +26,7 @@ interface PlayerBarProps {
   onToggleQueue: () => void
 }
 
-function Progress() {
+export function Progress() {
   const { seek } = usePlayer()
   const { currentTime, duration } = useProgress()
   const [preview, setPreview] = useState<number | null>(null)
@@ -38,10 +40,48 @@ function Progress() {
   )
 }
 
+/** Shuffle, previous, play/pause, next, repeat. Bigger icons in the phone player. */
+export function ControlButtons({ iconSize = 16 }: { iconSize?: number }) {
+  const p = usePlayer()
+  const disabled = !p.current
+
+  return (
+    <div className="control-buttons">
+      <button
+        className={`control${p.shuffle ? ' active' : ''}`}
+        onClick={p.toggleShuffle}
+        disabled={disabled || p.inJam}
+        aria-label={p.shuffle ? 'Désactiver la lecture aléatoire' : 'Activer la lecture aléatoire'}
+      >
+        <ShuffleIcon size={iconSize} />
+      </button>
+      <button className="control" onClick={p.prev} disabled={disabled} aria-label="Précédent">
+        <PrevIcon size={iconSize} />
+      </button>
+      <button className="control-play" onClick={p.toggle} disabled={disabled} aria-label={p.playing ? 'Pause' : 'Lecture'}>
+        {p.playing ? <PauseIcon size={iconSize} /> : <PlayIcon size={iconSize} />}
+      </button>
+      <button className="control" onClick={p.next} disabled={disabled} aria-label="Suivant">
+        <NextIcon size={iconSize} />
+      </button>
+      <button
+        className={`control${p.repeat !== 'off' ? ' active' : ''}`}
+        onClick={p.cycleRepeat}
+        disabled={disabled || p.inJam}
+        aria-label={
+          p.repeat === 'off' ? 'Activer la répétition' : p.repeat === 'all' ? 'Répéter le titre' : 'Désactiver la répétition'
+        }
+      >
+        {p.repeat === 'one' ? <RepeatOneIcon size={iconSize} /> : <RepeatIcon size={iconSize} />}
+      </button>
+    </div>
+  )
+}
+
 export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
   const p = usePlayer()
   const { current } = p
-  const disabled = !current
+  const { jam } = useJam()
 
   return (
     <footer className="player-bar">
@@ -67,39 +107,20 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
       </div>
 
       <div className="controls">
-        <div className="control-buttons">
-          <button
-            className={`control${p.shuffle ? ' active' : ''}`}
-            onClick={p.toggleShuffle}
-            disabled={disabled}
-            aria-label={p.shuffle ? 'Désactiver la lecture aléatoire' : 'Activer la lecture aléatoire'}
-          >
-            <ShuffleIcon />
-          </button>
-          <button className="control" onClick={p.prev} disabled={disabled} aria-label="Précédent">
-            <PrevIcon />
-          </button>
-          <button className="control-play" onClick={p.toggle} disabled={disabled} aria-label={p.playing ? 'Pause' : 'Lecture'}>
-            {p.playing ? <PauseIcon /> : <PlayIcon />}
-          </button>
-          <button className="control" onClick={p.next} disabled={disabled} aria-label="Suivant">
-            <NextIcon />
-          </button>
-          <button
-            className={`control${p.repeat !== 'off' ? ' active' : ''}`}
-            onClick={p.cycleRepeat}
-            disabled={disabled}
-            aria-label={
-              p.repeat === 'off' ? 'Activer la répétition' : p.repeat === 'all' ? 'Répéter le titre' : 'Désactiver la répétition'
-            }
-          >
-            {p.repeat === 'one' ? <RepeatOneIcon /> : <RepeatIcon />}
-          </button>
-        </div>
+        <ControlButtons />
         <Progress />
       </div>
 
       <div className="extra-controls">
+        {/* The Jam lives at the top of the queue panel. */}
+        <button
+          className={`control${jam ? ' active' : ''}`}
+          onClick={() => !queueOpen && onToggleQueue()}
+          aria-label={jam ? `Jam de ${jam.host.displayName}, ${jam.participants.length} participants` : 'Démarrer une Jam'}
+          title={jam ? `Jam · ${jam.participants.length} participant${jam.participants.length > 1 ? 's' : ''}` : 'Démarrer une Jam'}
+        >
+          <JamIcon />
+        </button>
         <button
           className={`control${queueOpen ? ' active' : ''}`}
           onClick={onToggleQueue}

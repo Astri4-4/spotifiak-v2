@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { PlaylistSummary } from '../api'
+import type { Album, Artist, FollowedArtist, PlaylistSummary, SavedAlbum } from '../api'
 
 export interface CollectionState {
   likedIds: Set<string>
@@ -8,6 +8,11 @@ export interface CollectionState {
   toggleLike: (trackId: string) => void
   /** Reloads likes from the server (after an import added some). */
   refreshLikes: () => void
+  /** Albums saved and artists followed: with playlists, what the library shows. */
+  savedAlbums: SavedAlbum[]
+  followedArtists: FollowedArtist[]
+  toggleSaveAlbum: (album: Album) => void
+  toggleFollowArtist: (artist: Artist) => void
   playlists: PlaylistSummary[]
   refreshPlaylists: () => void
   /** Creates a playlist (optionally with tracks) and returns its id. */

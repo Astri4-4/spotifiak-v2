@@ -6,6 +6,8 @@ import { parseFile, selectCover } from 'music-metadata'
 import { z, ZodError } from 'zod'
 import { requireAdmin, setupAuth } from './auth.js'
 import { collectionRoutes } from './collection.js'
+import { duplicateRoutes } from './duplicates.js'
+import { jamRoutes } from './jam.js'
 import { spotifyRoutes } from './spotify/routes.js'
 import { config } from './config.js'
 import { prisma } from './db.js'
@@ -19,7 +21,8 @@ import { resolveMusicPath, streamFile } from './stream.js'
 const RESCAN_AFTER_DOWNLOAD_MS = 30_000
 
 // trustProxy: the web container's nginx forwards requests; use the client's IP for login rate limiting.
-const app = Fastify({ logger: true, trustProxy: true })
+// forceCloseConnections: Jam event streams stay open; don't wait for them on shutdown.
+const app = Fastify({ logger: true, trustProxy: true, forceCloseConnections: true })
 // The frontend normally calls the API through its own origin (/api); CORS only matters
 // for a frontend served elsewhere, e.g. during development without the Vite proxy.
 await app.register(cors, { origin: config.CORS_ORIGIN, credentials: true })
@@ -42,6 +45,8 @@ await setupAuth(app)
 await app.register(libraryRoutes)
 await app.register(collectionRoutes)
 await app.register(spotifyRoutes)
+await app.register(duplicateRoutes)
+await app.register(jamRoutes)
 
 app.get('/deezer/search', async (req, reply) => {
   const { q } = z.object({ q: z.string().min(1) }).parse(req.query)
@@ -103,3 +108,11 @@ try {
 
 await app.listen({ port: config.PORT, host: '0.0.0.0' })
 startPeriodicScan(app.log)
+
+// docker stop / Kubernetes send SIGTERM: stop right away instead of being killed after the grace period.
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.once(signal, () => {
+    app.log.info({ signal }, 'shutting down')
+    void app.close().finally(() => process.exit(0))
+  })
+}

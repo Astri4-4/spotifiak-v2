@@ -58,6 +58,11 @@ export interface Album {
   trackCount: number
 }
 
+/** An album in the user's library; savedAt orders the library. */
+export interface SavedAlbum extends Album {
+  savedAt: string
+}
+
 export interface AlbumDetail extends Album {
   tracks: Track[]
 }
@@ -68,6 +73,10 @@ export interface Artist {
   /** From Deezer (or one of the artist's album covers); null when not matched. */
   pictureUrl: string | null
   coverTrackId: string | null
+}
+
+export interface FollowedArtist extends Artist {
+  followedAt: string
 }
 
 export interface ArtistDetail extends Artist {
@@ -119,6 +128,60 @@ export interface DeezerTrack {
   artist: { id: number; name: string }
   album: { id: number; title: string; cover_medium: string }
 }
+
+export interface DuplicateCopy {
+  id: string
+  title: string
+  artistName: string
+  album: { id: string; title: string } | null
+  durationSec: number | null
+  path: string
+  fileSize: number
+  format: string
+  bitrateKbps: number | null
+}
+
+/** Copies of the same track, best one first. */
+export interface DuplicateGroup {
+  tracks: DuplicateCopy[]
+}
+
+export interface JamPerson {
+  id: string
+  displayName: string
+}
+
+export interface JamEntry {
+  id: string
+  track: Track
+  addedBy: JamPerson
+}
+
+/** A shared listening session; position is in seconds when the server sent it. */
+export interface JamState {
+  id: string
+  host: JamPerson
+  participants: JamPerson[]
+  queue: JamEntry[]
+  index: number
+  playing: boolean
+  position: number
+}
+
+export interface JamInvite {
+  id: string
+  host: JamPerson
+  participants: JamPerson[]
+  joined: boolean
+}
+
+export type JamCommand =
+  | { type: 'play' | 'pause'; position?: number }
+  | { type: 'seek'; position: number }
+  | { type: 'next' | 'prev' }
+  | { type: 'ended' | 'jump' | 'remove'; entryId: string }
+  | { type: 'add'; trackIds: string[] }
+  | { type: 'playTracks'; trackIds: string[]; index: number }
 
 export type ScanMode = 'quick' | 'full'
 
@@ -179,6 +242,12 @@ export const collection = {
   liked: () => request<Track[]>('/me/likes'),
   like: (trackId: string) => send<void>('PUT', `/me/likes/${trackId}`),
   unlike: (trackId: string) => send<void>('DELETE', `/me/likes/${trackId}`),
+  savedAlbums: () => request<SavedAlbum[]>('/me/albums'),
+  saveAlbum: (id: string) => send<void>('PUT', `/me/albums/${id}`),
+  unsaveAlbum: (id: string) => send<void>('DELETE', `/me/albums/${id}`),
+  followedArtists: () => request<FollowedArtist[]>('/me/artists'),
+  followArtist: (id: string) => send<void>('PUT', `/me/artists/${id}`),
+  unfollowArtist: (id: string) => send<void>('DELETE', `/me/artists/${id}`),
   playlists: () => request<PlaylistSummary[]>('/playlists'),
   playlist: (id: string) => request<PlaylistDetail>(`/playlists/${id}`),
   createPlaylist: (name?: string) => send<{ id: string; name: string }>('POST', '/playlists', { name }),
@@ -244,6 +313,18 @@ export const spotify = {
   missing: (importId: string) => request<MissingTrack[]>(`/spotify/imports/${importId}/missing`),
 }
 
+export const jam = {
+  current: () => request<JamState | null>('/jam/current'),
+  start: (initial: { trackIds: string[]; index: number; position: number; playing: boolean }) =>
+    send<JamState>('POST', '/jam', initial),
+  invite: (id: string) => request<JamInvite>(`/jam/${encodeURIComponent(id)}`),
+  join: (id: string) => send<JamState>('POST', `/jam/${encodeURIComponent(id)}/join`),
+  leave: (id: string) => send<void>('POST', `/jam/${id}/leave`),
+  remove: (id: string, userId: string) => send<void>('DELETE', `/jam/${id}/participants/${userId}`),
+  command: (id: string, command: JamCommand) => send<void>('POST', `/jam/${id}/commands`, command),
+  eventsUrl: (id: string) => `${API_URL}/jam/${id}/events`,
+}
+
 export const users = {
   list: () => request<ManagedUser[]>('/users'),
   create: (data: { username: string; password: string; displayName?: string; role: Role }) =>
@@ -266,6 +347,9 @@ export const api = {
   download: (url: string) => send<{ queued: boolean }>('POST', '/downloads', { url }),
   scanStatus: () => request<ScanStatus>('/library/scan'),
   startScan: (mode: ScanMode) => send<{ started: boolean }>('POST', `/library/scan?full=${mode === 'full'}`),
+  duplicates: () => request<DuplicateGroup[]>('/library/duplicates'),
+  removeDuplicates: (groups: { keepId: string; removeIds: string[] }[]) =>
+    send<{ removed: number; failed: { path: string; error: string }[] }>('POST', '/library/duplicates/resolve', { groups }),
   streamUrl: (trackId: string) => `${API_URL}/tracks/${trackId}/stream`,
 }
 

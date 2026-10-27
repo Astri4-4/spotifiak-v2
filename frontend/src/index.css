@@ -118,7 +118,8 @@ ul {
   position: relative;
 }
 
-@media (max-width: 900px) {
+/* Narrow desktop: icon-only sidebar. Phones get their own layout (see the end). */
+@media (min-width: 769px) and (max-width: 900px) {
   .app,
   .app.with-queue {
     grid-template-columns: 72px 1fr;
@@ -1497,6 +1498,53 @@ a.now-playing-title:hover,
   color: var(--error);
 }
 
+.dup-groups {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.dup-group {
+  padding: 12px 0;
+  border-top: 1px solid var(--highlight);
+}
+
+.dup-title {
+  margin-bottom: 6px;
+}
+
+.dup-copy {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: var(--text-subdued);
+  cursor: pointer;
+}
+
+.dup-copy:hover {
+  background: var(--highlight);
+}
+
+.dup-copy.kept {
+  color: var(--text);
+}
+
+.dup-copy input {
+  grid-row: span 2;
+  accent-color: var(--green);
+}
+
+.dup-path {
+  grid-column: 2;
+  overflow: hidden;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Auth -------------------------------------------------------------------- */
 
 .splash {
@@ -1851,6 +1899,125 @@ a.now-playing-title:hover,
   color: var(--text-subdued);
 }
 
+/* Jam --------------------------------------------------------------------- */
+
+.jam-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--elevated);
+  font-size: 0.875rem;
+}
+
+.jam-card.active {
+  background: linear-gradient(135deg, rgba(30, 215, 96, 0.25), var(--elevated) 60%);
+}
+
+.jam-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.jam-card p {
+  margin: 0;
+  color: var(--text-subdued);
+}
+
+.jam-people {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: stretch;
+}
+
+.jam-people li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.jam-person-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.jam-host {
+  font-size: 0.75rem;
+  color: var(--green);
+}
+
+.jam-invite {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+}
+
+.jam-invite code {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--highlight);
+  font-size: 0.75rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  user-select: all;
+}
+
+.queue-item {
+  width: 100%;
+  text-align: left;
+}
+
+.queue-added-by {
+  font-size: 0.75rem;
+}
+
+.control.active svg {
+  color: var(--green);
+}
+
+.jam-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding-top: 64px;
+  text-align: center;
+}
+
+.jam-page h1 {
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.jam-page p {
+  margin: 0;
+}
+
+.jam-avatars {
+  display: flex;
+  gap: 4px;
+}
+
+.jam-join {
+  background: var(--green);
+}
+
 /* Likes, playlists, menus ------------------------------------------------- */
 
 .heart-button,
@@ -2058,6 +2225,26 @@ a.now-playing-title:hover,
 
 .create-button {
   background: var(--elevated);
+}
+
+/* Library buttons: album heart, artist "S'abonner" */
+.action-save {
+  width: 40px;
+  height: 40px;
+}
+
+.follow-button {
+  height: 32px;
+  padding: 0 15px;
+  border-radius: 500px;
+  box-shadow: inset 0 0 0 1px #7c7c7c;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.follow-button:hover {
+  box-shadow: inset 0 0 0 1px var(--text);
+  transform: scale(1.04);
 }
 
 /* Edit details dialog */
@@ -2370,4 +2557,664 @@ a.now-playing-title:hover,
 
 .missing-status.not_found {
   color: var(--text-subdued);
+}
+
+/* Phones ------------------------------------------------------------------ */
+/* Layout like the Spotify app: one scrolling page, the mini player and the tabs
+   floating at the bottom, a full-screen player. Breakpoint shared with useIsMobile. */
+
+@media (max-width: 768px) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+  }
+
+  .app.mobile {
+    display: block;
+    position: relative;
+    height: 100dvh;
+    padding: 0;
+    background: var(--base);
+  }
+
+  .app.mobile .main-view {
+    height: 100%;
+    border-radius: 0;
+    /* Room for the mini player and the tabs floating over the end of the page. */
+    padding-bottom: calc(140px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* iOS zooms into inputs smaller than 16px. */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  .page-inner {
+    padding: 0 16px;
+  }
+
+  /* Page titles (scan, account...) start below the back button. */
+  .greeting {
+    padding-top: calc(60px + env(safe-area-inset-top));
+    font-size: 1.75rem;
+  }
+
+  .section-title,
+  .shelf-title {
+    margin: 24px 0 12px;
+    font-size: 1.25rem;
+  }
+
+  /* Tab headers */
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: calc(16px + env(safe-area-inset-top)) 0 12px;
+  }
+
+  .mobile-header h1 {
+    flex: 1;
+    min-width: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-header .avatar {
+    width: 32px;
+    height: 32px;
+    background: none;
+  }
+
+  .mobile-header .menu {
+    left: 0;
+    right: auto;
+  }
+
+  .mobile-header-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  .mobile-back {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    height: 0;
+  }
+
+  /* Absolute, not a margin: a margin would collapse through the 0-height wrapper and push the page down. */
+  .mobile-back button {
+    position: absolute;
+    top: calc(12px + env(safe-area-inset-top));
+    left: 12px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  /* Bottom: mini player and tabs */
+  .mobile-dock {
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 30;
+  }
+
+  .bottom-nav {
+    display: flex;
+    padding: 20px 0 calc(8px + env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85) 35%, #000);
+  }
+
+  .bottom-nav a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.625rem;
+    color: var(--text-subdued);
+  }
+
+  .bottom-nav a.active {
+    color: var(--text);
+  }
+
+  .mini-player {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 56px;
+    margin: 0 8px -12px;
+    padding: 8px;
+    border-radius: 6px;
+    background: rgb(var(--header-color));
+    overflow: hidden;
+    cursor: pointer;
+    /* Above the tabs' gradient. */
+    z-index: 1;
+  }
+
+  .mini-player-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    font-size: 0.8125rem;
+  }
+
+  .mini-player-title,
+  .mini-player-artist {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .mini-player-title {
+    font-weight: 700;
+  }
+
+  .mini-player-artist {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .mini-player-buttons {
+    display: flex;
+    align-items: center;
+  }
+
+  .mini-play {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+  }
+
+  .mini-progress {
+    position: absolute;
+    inset: auto 8px 0;
+    height: 2px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  .mini-progress span {
+    display: block;
+    height: 100%;
+    border-radius: 1px;
+    background: var(--text);
+  }
+
+  /* Full-screen player */
+  .full-player {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: calc(12px + env(safe-area-inset-top)) 24px calc(32px + env(safe-area-inset-bottom));
+    background: linear-gradient(rgb(var(--header-color)), #121212 90%);
+    animation: slide-up 0.25s ease-out;
+  }
+
+  @keyframes slide-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
+
+  .full-player-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 -8px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+
+  .full-player-header .icon-button {
+    color: var(--text);
+  }
+
+  .full-player-header .icon-button.active {
+    color: var(--green);
+  }
+
+  .full-player-art {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  .full-player-cover {
+    width: 100% !important;
+    max-width: 100%;
+    max-height: 100%;
+    height: auto !important;
+    aspect-ratio: 1;
+    border-radius: 6px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .full-player .queue-panel {
+    flex: 1;
+    min-height: 0;
+    margin: 0 -8px;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  .full-player .queue-panel h2 {
+    display: none;
+  }
+
+  .full-player-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .full-player-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .full-player-title,
+  .full-player-artist {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .full-player-title {
+    font-size: 1.375rem;
+    font-weight: 700;
+  }
+
+  .full-player-artist {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .full-player .heart-button svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* Bar across the width, times underneath. */
+  .full-player .progress {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    row-gap: 4px;
+  }
+
+  .full-player .slider {
+    order: -1;
+    grid-column: 1 / -1;
+    height: 20px;
+  }
+
+  .full-player .slider-thumb {
+    opacity: 1;
+  }
+
+  .full-player .time {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .full-player .time:last-child {
+    text-align: right;
+  }
+
+  .full-player .control-buttons {
+    justify-content: space-between;
+  }
+
+  .full-player .control {
+    width: 48px;
+    height: 48px;
+    color: var(--text);
+  }
+
+  .full-player .control.active {
+    color: var(--green);
+  }
+
+  .full-player .control-play {
+    width: 64px;
+    height: 64px;
+  }
+
+  .full-player-footer {
+    display: flex;
+    margin: -8px -8px 0;
+  }
+
+  .full-player-footer .icon-button {
+    width: auto;
+    gap: 6px;
+    display: flex;
+    padding: 0 8px;
+    border-radius: 16px;
+    color: var(--text);
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+
+  .full-player-footer .icon-button.active {
+    color: var(--green);
+  }
+
+  .mini-player-jam {
+    color: var(--green);
+    font-weight: 700;
+  }
+
+  .toast {
+    bottom: calc(150px + env(safe-area-inset-bottom));
+    max-width: calc(100vw - 32px);
+  }
+
+  /* Library tab */
+  .sidebar.mobile {
+    padding: 0 8px;
+  }
+
+  .sidebar.mobile .mobile-header {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .sidebar.mobile .chips {
+    padding: 0 8px 8px;
+  }
+
+  .sidebar.mobile .sidebar-tools {
+    padding: 0 8px 4px;
+  }
+
+  .sidebar.mobile .library-list {
+    overflow: visible;
+    padding: 0;
+  }
+
+  .sidebar.mobile .library-search input {
+    width: 100%;
+  }
+
+  .sidebar.mobile .library-item .cover,
+  .sidebar.mobile .library-item .liked-cover {
+    width: 64px !important;
+    height: 64px !important;
+  }
+
+  /* Chips scroll sideways instead of wrapping */
+  .chips {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .search-tabs {
+    top: -1px;
+    padding: 8px 16px;
+  }
+
+  /* Search */
+  .search-box.mobile-search {
+    height: 48px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    background: var(--text);
+    color: var(--black);
+    box-shadow: none;
+  }
+
+  .search-box.mobile-search svg,
+  .search-box.mobile-search:focus-within svg {
+    color: var(--black);
+  }
+
+  .search-box.mobile-search input {
+    color: var(--black);
+    font-weight: 600;
+  }
+
+  .search-box.mobile-search input::placeholder {
+    color: #535353;
+  }
+
+  .browse-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .browse-tile {
+    padding: 12px;
+    font-size: 1rem;
+  }
+
+  .top-result-card {
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .top-result-name {
+    font-size: 1.5rem;
+  }
+
+  .top-result-type {
+    margin-top: -8px;
+  }
+
+  /* Home */
+  .quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quick-item {
+    height: 48px;
+    gap: 8px;
+  }
+
+  .quick-item .cover,
+  .quick-item .cover.mosaic,
+  .quick-item .liked-cover {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .quick-item-title {
+    font-size: 0.8125rem;
+  }
+
+  /* No hover on touch screens: play from the page or the row instead. */
+  .quick-item .play-button,
+  .card-cover .play-button,
+  .top-result-card .play-button {
+    display: none;
+  }
+
+  .shelf-row {
+    grid-auto-columns: 148px;
+    margin: 0 -8px;
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    margin: 12px -8px 0;
+  }
+
+  .card {
+    padding: 8px;
+  }
+
+  /* Album, artist, playlist headers: cover centered, title below */
+  .entity-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    padding: calc(56px + env(safe-area-inset-top)) 16px 0;
+    background: linear-gradient(rgb(var(--header-color)), rgba(var(--header-color), 0.35));
+  }
+
+  .entity-header > .entity-cover,
+  .entity-cover-button {
+    align-self: center;
+  }
+
+  .entity-cover {
+    width: min(64vw, 260px) !important;
+    height: min(64vw, 260px) !important;
+  }
+
+  .entity-type {
+    display: none;
+  }
+
+  .entity-title,
+  .entity-title.long {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .action-bar {
+    gap: 16px;
+    padding: 12px 16px;
+  }
+
+  /* Play button on the right, like the app. */
+  .action-bar .play-button {
+    order: 1;
+    margin-left: auto;
+  }
+
+  /* Track rows: title, artist and the "…" menu */
+  .tracklist.tracklist-full,
+  .tracklist.tracklist-album,
+  .tracklist.tracklist-compact,
+  .tracklist.tracklist-search {
+    --columns: minmax(0, 1fr) auto;
+  }
+
+  .tracklist-header,
+  .tracklist-row .col-index,
+  .tracklist-row .col-album,
+  .tracklist-row .col-added,
+  .tracklist-row .duration-text,
+  .tracklist-row .cover-play,
+  .tracklist-row .heart-button:not(.liked) {
+    display: none !important;
+  }
+
+  .tracklist-header,
+  .tracklist-row {
+    gap: 8px;
+    padding: 0;
+  }
+
+  .top-tracks .tracklist-row {
+    padding: 0;
+  }
+
+  .tracklist-row {
+    height: 60px;
+    cursor: pointer;
+  }
+
+  .tracklist-row:hover {
+    background: none;
+  }
+
+  .tracklist-row .cover {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .tracklist-row .more-button {
+    visibility: visible;
+  }
+
+  /* Taps leave :hover on; keep rows looking at rest. */
+  .tracklist-row:not(.current) .track-name {
+    color: var(--text);
+  }
+
+  .tracklist-row .track-artist {
+    color: var(--text-subdued) !important;
+  }
+
+  /* A tap on the artist plays the track, like the app. */
+  .tracklist-row .track-artist {
+    pointer-events: none;
+  }
+
+  .col-duration {
+    gap: 0;
+  }
+
+  .deezer-row {
+    grid-template-columns: minmax(0, 1fr) auto 40px;
+  }
+
+  /* Playlist: "Ajoutons quelque chose" */
+  .add-tracks-row {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 8px 0;
+  }
+
+  .add-tracks-row > .muted {
+    display: none;
+  }
+
+  /* Settings, scan, import */
+  .scan-card {
+    padding: 16px;
+  }
+
+  .scan-card-header {
+    flex-wrap: wrap;
+  }
+
+  .missing-list li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .missing-list li > span:nth-child(2) {
+    display: none;
+  }
+
+  .dialog-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .dialog {
+    max-width: none;
+    padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+    border-radius: 12px 12px 0 0;
+  }
 }

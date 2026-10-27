@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { images, type Track } from '../api'
 import { formatAddedAt, formatDuration } from '../format'
 import { ClockIcon, PauseIcon, PlayIcon } from '../icons'
+import { useIsMobile } from '../hooks'
 import { usePlayer } from '../player/context'
 import { Cover } from './Cover'
 import { HeartButton } from './HeartButton'
@@ -37,6 +38,7 @@ function Equalizer() {
 
 export function TrackList({ tracks, contextId, variant = 'full', rowKeys, onRemove, onMove }: TrackListProps) {
   const { current, playing, playTracks, toggle } = usePlayer()
+  const isMobile = useIsMobile()
   const [dragFrom, setDragFrom] = useState<number | null>(null)
   const [dropBefore, setDropBefore] = useState<number | null>(null)
   const showCover = variant !== 'album'
@@ -101,6 +103,10 @@ export function TrackList({ tracks, contextId, variant = 'full', rowKeys, onRemo
             className={`tracklist-row${isCurrent ? ' current' : ''}${dragFrom === i ? ' dragging' : ''}${dropClass}`}
             role="row"
             onDoubleClick={() => playTracks(tracks, i, contextId)}
+            // Phones have no double click: a tap on the row (not on its buttons) plays.
+            onClick={
+              isMobile ? (e) => !(e.target as HTMLElement).closest('button, a') && onPlay(i) : undefined
+            }
             {...dragHandlers(i)}
           >
             {showIndex && (

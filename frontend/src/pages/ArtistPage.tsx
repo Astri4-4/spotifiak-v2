@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { api, images } from '../api'
 import { Card } from '../components/Card'
 import { Cover } from '../components/Cover'
+import { FollowButton } from '../components/LibraryButtons'
 import { PlayButton } from '../components/PlayButton'
 import { Shelf } from '../components/Shelf'
 import { TrackList } from '../components/TrackList'
@@ -47,6 +48,7 @@ function ArtistView({ id }: { id: string }) {
 
       <div className="action-bar">
         <PlayButton size="lg" playing={isPlaying(artist.id)} onClick={() => void playTracks(artist.id, artist.tracks)} />
+        <FollowButton artist={artist} />
       </div>
 
       <div className="page-inner">

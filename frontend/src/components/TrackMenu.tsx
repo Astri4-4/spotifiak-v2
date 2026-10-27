@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Track } from '../api'
 import { useCollection } from '../collection/context'
+import { usePlayer } from '../player/context'
 import { ChevronRightIcon, MoreIcon, PlusIcon } from '../icons'
 import { PopoverMenu } from './PopoverMenu'
 
@@ -13,7 +14,8 @@ interface TrackMenuProps {
 
 export function TrackMenu({ track, onRemoveFromPlaylist }: TrackMenuProps) {
   const navigate = useNavigate()
-  const { likedIds, toggleLike, playlists, createPlaylist, addToPlaylist } = useCollection()
+  const { likedIds, toggleLike, playlists, createPlaylist, addToPlaylist, notify } = useCollection()
+  const { addToQueue, inJam } = usePlayer()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [submenu, setSubmenu] = useState(false)
 
@@ -75,6 +77,16 @@ export function TrackMenu({ track, onRemoveFromPlaylist }: TrackMenuProps) {
             </>
           ) : (
             <>
+              <button
+                role="menuitem"
+                className="menu-item"
+                onClick={run(() => {
+                  addToQueue([track])
+                  notify(inJam ? 'Ajouté à la file de la Jam' : "Ajouté à la file d'attente")
+                })}
+              >
+                Ajouter à la file d'attente
+              </button>
               <button role="menuitem" className="menu-item with-chevron" onClick={() => setSubmenu(true)}>
                 Ajouter à la playlist <ChevronRightIcon />
               </button>

@@ -7,7 +7,9 @@ import { PlayButton } from '../components/PlayButton'
 import { Shelf } from '../components/Shelf'
 import { TrackList } from '../components/TrackList'
 import { formatDuration } from '../format'
-import { useFetch } from '../hooks'
+import { MobileHeader } from '../components/Mobile'
+import { SearchInput } from '../components/SearchInput'
+import { useFetch, useIsMobile } from '../hooks'
 import { CheckIcon, DownloadIcon } from '../icons'
 import { usePlayContext } from '../player/usePlayContext'
 
@@ -233,6 +235,18 @@ function Results({ query }: { query: string }) {
 export function SearchPage() {
   const { query = '' } = useParams()
   const debounced = useDebounced(query.trim(), DEBOUNCE_MS)
+  const isMobile = useIsMobile()
 
-  return <div className="page search-page">{debounced ? <Results query={debounced} /> : <BrowseAll />}</div>
+  return (
+    <div className="page search-page">
+      {/* On phones the search field lives in the page, not in a top bar. */}
+      {isMobile && (
+        <div className="page-inner">
+          <MobileHeader title="Rechercher" />
+          <SearchInput className="mobile-search" />
+        </div>
+      )}
+      {debounced ? <Results query={debounced} /> : <BrowseAll />}
+    </div>
+  )
 }

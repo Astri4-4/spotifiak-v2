@@ -26,6 +26,8 @@ model User {
   playlists    Playlist[]
   likes        Like[]
   plays        Play[]
+  savedAlbums  SavedAlbum[]
+  following    FollowedArtist[]
 }
 
 model Session {
@@ -51,6 +53,7 @@ model Artist {
   updatedAt  DateTime  @default(now()) @updatedAt
   albums     Album[]
   tracks     Track[]
+  followers  FollowedArtist[]
 }
 
 model Album {
@@ -66,6 +69,7 @@ model Album {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @default(now()) @updatedAt
   tracks     Track[]
+  savedBy    SavedAlbum[]
 
   @@unique([artistId, title])
 }
@@ -136,6 +140,29 @@ model Like {
 
   @@id([userId, trackId])
   @@index([userId, likedAt])
+}
+
+// Albums and artists in a user's library ("Enregistrer", "S'abonner"), like Spotify.
+model SavedAlbum {
+  userId  String
+  albumId String
+  savedAt DateTime @default(now())
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  album   Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@id([userId, albumId])
+  @@index([userId, savedAt])
+}
+
+model FollowedArtist {
+  userId     String
+  artistId   String
+  followedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artist     Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([userId, artistId])
+  @@index([userId, followedAt])
 }
 
 model Play {

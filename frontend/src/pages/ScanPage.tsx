@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type ScanMode, type ScanStatus } from '../api'
 import { useCurrentUser } from '../auth/context'
+import { Duplicates } from '../components/Duplicates'
 import { formatAddedAt } from '../format'
 import { CheckIcon, RefreshIcon } from '../icons'
 
@@ -255,6 +256,8 @@ export function ScanPage() {
               </header>
               <Enrichment status={status} />
             </section>
+
+            {isAdmin && <Duplicates scanning={status.running} />}
           </>
         )}
       </div>
