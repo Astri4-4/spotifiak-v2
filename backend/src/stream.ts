@@ -9,14 +9,18 @@ export const MIME: Record<string, string> = {
   '.flac': 'audio/flac',
   '.m4a': 'audio/mp4',
   '.ogg': 'audio/ogg',
+  '.webm': 'audio/webm',
+  '.opus': 'audio/ogg',
 }
 
-// Resolves a path relative to MUSIC_DIR, refusing anything that escapes it.
-export function resolveMusicPath(relative: string): string | null {
-  const root = path.resolve(config.MUSIC_DIR)
+// Resolves a path relative to a folder, refusing anything that escapes it.
+export function resolveWithin(folder: string, relative: string): string | null {
+  const root = path.resolve(folder)
   const full = path.resolve(root, relative)
   return full.startsWith(root + path.sep) ? full : null
 }
+
+export const resolveMusicPath = (relative: string) => resolveWithin(config.MUSIC_DIR, relative)
 
 export async function streamFile(req: FastifyRequest, reply: FastifyReply, file: string) {
   const { size } = await stat(file)

@@ -44,7 +44,7 @@ export function episodeTrack(episode: Episode): Track {
     addedAt: episode.publishedAt,
     episode: {
       podcastId: episode.podcast.id,
-      audioUrl: episode.audioUrl,
+      audioUrl: episode.audioUrl ?? podcasts.audioUrl(episode.id),
       startAt: progress && !progress.completed ? progress.positionSec : 0,
     },
   }

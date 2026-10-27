@@ -29,6 +29,7 @@ model User {
   savedAlbums  SavedAlbum[]
   following    FollowedArtist[]
   podcasts     PodcastSubscription[]
+  ownPodcasts  Podcast[]
   episodes     EpisodeProgress[]
 }
 
@@ -181,9 +182,13 @@ model Play {
 // --- Podcasts ----------------------------------------------------------------
 
 // A podcast's RSS feed, shared by every user; episodes stream from the publisher.
+// Podcasts created in Spotifiak (ownerId set) have no feed: their episodes are
+// YouTube videos whose audio the server downloads (see youtube.ts).
 model Podcast {
   id            String                @id @default(cuid())
-  feedUrl       String                @unique
+  feedUrl       String                @unique // "local:<id>" for created podcasts
+  ownerId       String?
+  owner         User?                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   title         String
   author        String?
   description   String? // plain text
@@ -207,9 +212,21 @@ model PodcastEpisode {
   durationSec Int?
   publishedAt DateTime
   progress    EpisodeProgress[]
+  // Created podcasts: the video, and the downloaded audio relative to PODCAST_DIR
+  sourceUrl   String?
+  filePath    String?
+  status      EpisodeStatus     @default(ready)
+  error       String?
 
   @@unique([podcastId, guid])
   @@index([podcastId, publishedAt])
+}
+
+enum EpisodeStatus {
+  ready
+  queued // waiting for its download
+  downloading
+  failed
 }
 
 model PodcastSubscription {

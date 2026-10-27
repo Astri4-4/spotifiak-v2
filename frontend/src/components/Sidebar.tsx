@@ -9,6 +9,7 @@ import { LIKED_CONTEXT } from '../player/usePlayContext'
 import { LikedCover, PlaylistCover } from './CollectionCovers'
 import { Cover } from './Cover'
 import { MobileHeader } from './Mobile'
+import { PopoverMenu } from './PopoverMenu'
 
 type Filter = 'all' | 'playlists' | 'albums' | 'artists' | 'podcasts'
 
@@ -34,7 +35,9 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
   const user = useCurrentUser()
   const { contextId, playing } = usePlayer()
   // Only what the user added: saved albums and followed artists, not the whole server library.
-  const { likedIds, playlists, savedAlbums: albums, followedArtists: artists, podcasts, createPlaylist } = useCollection()
+  const { likedIds, playlists, savedAlbums: albums, followedArtists: artists, podcasts, createPlaylist, canCreatePodcast, createPodcast, notify } =
+    useCollection()
+  const [createMenu, setCreateMenu] = useState<HTMLElement | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
@@ -138,12 +141,43 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
       </Link>
       <button
         className="icon-button create-button"
-        onClick={() => void createPlaylist().then((id) => navigate(`/playlist/${id}`))}
-        aria-label="Créer une playlist"
-        title="Créer une playlist"
+        onClick={(e) =>
+          canCreatePodcast
+            ? setCreateMenu(createMenu ? null : e.currentTarget)
+            : void createPlaylist().then((id) => navigate(`/playlist/${id}`))
+        }
+        aria-label={canCreatePodcast ? 'Créer' : 'Créer une playlist'}
+        aria-haspopup={canCreatePodcast ? 'menu' : undefined}
+        title={canCreatePodcast ? 'Créer une playlist ou un podcast' : 'Créer une playlist'}
       >
         <PlusIcon />
       </button>
+      {createMenu && (
+        <PopoverMenu anchor={createMenu} onClose={() => setCreateMenu(null)} label="Créer">
+          <button
+            role="menuitem"
+            className="menu-item"
+            onClick={() => {
+              setCreateMenu(null)
+              void createPlaylist().then((id) => navigate(`/playlist/${id}`))
+            }}
+          >
+            Playlist
+          </button>
+          <button
+            role="menuitem"
+            className="menu-item"
+            onClick={() => {
+              setCreateMenu(null)
+              createPodcast()
+                .then((id) => navigate(`/podcast/${id}`))
+                .catch((err: Error) => notify(err.message))
+            }}
+          >
+            Podcast à partir de vidéos YouTube
+          </button>
+        </PopoverMenu>
+      )}
     </>
   )
 

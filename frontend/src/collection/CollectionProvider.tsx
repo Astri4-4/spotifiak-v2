@@ -20,6 +20,8 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const [savedAlbums, setSavedAlbums] = useState<SavedAlbum[]>([])
   const [followedArtists, setFollowedArtists] = useState<FollowedArtist[]>([])
   const [podcasts, setPodcasts] = useState<SubscribedPodcast[]>([])
+  const [podcastsVersion, setPodcastsVersion] = useState(0)
+  const [canCreatePodcast, setCanCreatePodcast] = useState(false)
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([])
   const [playlistsVersion, setPlaylistsVersion] = useState(0)
   const [toast, setToast] = useState<{ id: number; message: string } | null>(null)
@@ -39,8 +41,17 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     collection.savedAlbums().then(setSavedAlbums).catch(() => {})
     collection.followedArtists().then(setFollowedArtists).catch(() => {})
-    podcastsApi.subscriptions().then(setPodcasts).catch(() => {})
+    podcastsApi
+      .creation()
+      .then((c) => setCanCreatePodcast(c.enabled))
+      .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    podcastsApi.subscriptions().then(setPodcasts).catch(() => {})
+  }, [podcastsVersion])
+
+  const refreshPodcasts = useCallback(() => setPodcastsVersion((v) => v + 1), [])
 
   const notify = useCallback((message: string) => {
     clearTimeout(toastTimer.current)
@@ -122,6 +133,13 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     [podcasts, notify],
   )
 
+  const createPodcast = useCallback(async () => {
+    const { id, title } = await podcastsApi.create()
+    refreshPodcasts()
+    notify(`Podcast « ${title} » créé`)
+    return id
+  }, [notify, refreshPodcasts])
+
   const createPlaylist = useCallback(
     async (trackIds?: string[]) => {
       const { id, name } = await collection.createPlaylist()
@@ -158,13 +176,16 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       toggleFollowArtist,
       podcasts,
       toggleSubscribe,
+      refreshPodcasts,
+      canCreatePodcast,
+      createPodcast,
       playlists,
       refreshPlaylists,
       createPlaylist,
       addToPlaylist,
       notify,
     }),
-    [likedIds, likesVersion, toggleLike, refreshLikes, savedAlbums, followedArtists, toggleSaveAlbum, toggleFollowArtist, podcasts, toggleSubscribe, playlists, refreshPlaylists, createPlaylist, addToPlaylist, notify],
+    [likedIds, likesVersion, toggleLike, refreshLikes, savedAlbums, followedArtists, toggleSaveAlbum, toggleFollowArtist, podcasts, toggleSubscribe, refreshPodcasts, canCreatePodcast, createPodcast, playlists, refreshPlaylists, createPlaylist, addToPlaylist, notify],
   )
 
   return (

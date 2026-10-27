@@ -3395,3 +3395,38 @@ a.now-playing-title:hover,
     width: 48px;
   }
 }
+
+.add-video {
+  max-width: 760px;
+  margin-bottom: 32px;
+}
+
+.add-video p {
+  margin: 0 0 12px;
+}
+
+.add-video form {
+  display: flex;
+  gap: 8px;
+}
+
+.add-video input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--highlight-strong);
+  border-radius: 4px;
+  background: var(--elevated);
+  color: var(--text);
+  font: inherit;
+}
+
+.add-video input:focus {
+  border-color: var(--text);
+  outline: none;
+}
+
+.episode-title a:hover {
+  text-decoration: underline;
+}

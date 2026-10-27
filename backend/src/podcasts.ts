@@ -175,7 +175,10 @@ export async function refreshFeed(feedUrl: string) {
 
 /** Refreshes the feeds people subscribe to, one at a time. */
 async function refreshSubscribed(log: FastifyBaseLogger) {
-  const podcasts = await prisma.podcast.findMany({ where: { subscribers: { some: {} } }, select: { feedUrl: true } })
+  const podcasts = await prisma.podcast.findMany({
+    where: { ownerId: null, subscribers: { some: {} } },
+    select: { feedUrl: true },
+  })
   for (const { feedUrl } of podcasts) {
     await refreshFeed(feedUrl).catch((err: Error) => log.warn({ feedUrl, err: err.message }, 'podcast refresh failed'))
   }
@@ -196,6 +199,9 @@ const episodeSelect = {
   publishedAt: true,
   audioUrl: true,
   imageUrl: true,
+  sourceUrl: true,
+  status: true,
+  error: true,
   podcast: { select: { id: true, title: true, imageUrl: true } },
 } satisfies Prisma.PodcastEpisodeSelect
 
@@ -208,7 +214,11 @@ function toEpisode(e: EpisodeRow, progress?: { positionSec: number; completed: b
     description: e.description && e.description.slice(0, DESCRIPTION_PREVIEW),
     durationSec: e.durationSec,
     publishedAt: e.publishedAt,
-    audioUrl: e.audioUrl,
+    // Videos added to a created podcast are served by the API (see youtube.ts).
+    audioUrl: e.sourceUrl ? null : e.audioUrl,
+    sourceUrl: e.sourceUrl,
+    status: e.status,
+    error: e.error,
     // Images go through the API (see the image routes): same origin, no CORS trouble.
     hasImage: !!(e.imageUrl ?? e.podcast.imageUrl),
     podcast: { id: e.podcast.id, title: e.podcast.title },
@@ -384,7 +394,8 @@ export async function podcastRoutes(app: FastifyInstance) {
     let podcast = await prisma.podcast.findUnique({ where: { id } })
     if (!podcast) return reply.code(404).send({ error: 'Podcast introuvable' })
 
-    if (!podcast.fetchedAt || Date.now() - podcast.fetchedAt.getTime() > STALE_AFTER_MS) {
+    const owned = podcast.ownerId === userId
+    if (!podcast.ownerId && (!podcast.fetchedAt || Date.now() - podcast.fetchedAt.getTime() > STALE_AFTER_MS)) {
       // Shows what is stored when the publisher is unreachable.
       await refreshFeed(podcast.feedUrl).catch((err: Error) =>
         req.log.warn({ feedUrl: podcast!.feedUrl, err: err.message }, 'podcast refresh failed'),
@@ -392,15 +403,17 @@ export async function podcastRoutes(app: FastifyInstance) {
       podcast = (await prisma.podcast.findUnique({ where: { id } }))!
     }
 
+    // Others only see the videos of a created podcast once downloaded.
+    const visible = owned ? { podcastId: id } : { podcastId: id, status: 'ready' as const }
     const [episodes, subscription, total] = await Promise.all([
       prisma.podcastEpisode.findMany({
-        where: { podcastId: id },
+        where: visible,
         orderBy: { publishedAt: 'desc' },
         take: MAX_EPISODES_LISTED,
         select: episodeSelect,
       }),
       prisma.podcastSubscription.findUnique({ where: { userId_podcastId: { userId, podcastId: id } } }),
-      prisma.podcastEpisode.count({ where: { podcastId: id } }),
+      prisma.podcastEpisode.count({ where: visible }),
     ])
     const progress = await progressOf(
       userId,
@@ -410,7 +423,8 @@ export async function podcastRoutes(app: FastifyInstance) {
       ...podcastSummary(podcast),
       description: podcast.description,
       link: podcast.link,
-      feedUrl: podcast.feedUrl,
+      feedUrl: podcast.ownerId ? null : podcast.feedUrl,
+      owned,
       subscribed: !!subscription,
       episodeCount: total,
       episodes: episodes.map((e) => toEpisode(e, progress.get(e.id))),
@@ -470,6 +484,7 @@ export async function podcastRoutes(app: FastifyInstance) {
       where: {
         podcast: { subscribers: { some: { userId } } },
         progress: { none: { userId, completed: true } },
+        status: 'ready',
       },
       orderBy: { publishedAt: 'desc' },
       take: 20,

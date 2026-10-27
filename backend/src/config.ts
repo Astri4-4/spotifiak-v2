@@ -49,6 +49,12 @@ const schema = z.object({
   PODCAST_COUNTRY: z.string().length(2).default('FR'),
   // Subscribed podcasts are checked for new episodes this often; 0 disables
   PODCAST_REFRESH_MINUTES: z.coerce.number().min(0).default(60),
+  // Writable folder for the audio of YouTube videos added to created podcasts;
+  // creating podcasts is disabled without it. Needs yt-dlp (in the Docker image).
+  PODCAST_DIR: unsetIfEmpty(z.string().optional()),
+  YTDLP_PATH: z.string().default('yt-dlp'),
+  // Longest video accepted, in hours
+  YOUTUBE_MAX_HOURS: z.coerce.number().positive().default(6),
 })
 
 export const config = schema.parse(process.env)

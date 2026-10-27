@@ -16,6 +16,11 @@ export interface CollectionState {
   /** Podcasts the user subscribed to, also in the library. */
   podcasts: SubscribedPodcast[]
   toggleSubscribe: (podcast: PodcastSummary) => void
+  refreshPodcasts: () => void
+  /** Creating podcasts from YouTube videos needs PODCAST_DIR on the server. */
+  canCreatePodcast: boolean
+  /** Creates a podcast (in the library) and returns its id. */
+  createPodcast: () => Promise<string>
   playlists: PlaylistSummary[]
   refreshPlaylists: () => void
   /** Creates a playlist (optionally with tracks) and returns its id. */

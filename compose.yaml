@@ -27,9 +27,12 @@ services:
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
       SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-}
+      PODCAST_DIR: /podcasts
     volumes:
       # Writable so duplicates can be deleted from the scan page.
       - ${MUSIC_DIR}:/music
+      # Audio of the YouTube videos added to created podcasts
+      - podcasts:/podcasts
     # No published port: the web container proxies /api to it.
     depends_on:
       db:
@@ -44,3 +47,4 @@ services:
 
 volumes:
   db-data:
+  podcasts:

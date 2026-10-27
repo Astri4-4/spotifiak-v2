@@ -208,7 +208,12 @@ export interface Episode {
   description: string | null
   durationSec: number | null
   publishedAt: string
-  audioUrl: string
+  /** null for a YouTube video of a created podcast: the API serves its audio. */
+  audioUrl: string | null
+  sourceUrl: string | null
+  /** Videos of created podcasts are downloaded first; feed episodes are always ready. */
+  status: 'ready' | 'queued' | 'downloading' | 'failed'
+  error: string | null
   hasImage: boolean
   podcast: { id: string; title: string }
   progress: EpisodeProgress | null
@@ -217,7 +222,10 @@ export interface Episode {
 export interface PodcastDetail extends PodcastSummary {
   description: string | null
   link: string | null
-  feedUrl: string
+  /** null for podcasts created in Spotifiak. */
+  feedUrl: string | null
+  /** Created by this account: it adds videos, edits and deletes it. */
+  owned: boolean
   subscribed: boolean
   episodeCount: number
   /** Most recent first, at most 300. */
@@ -387,6 +395,15 @@ export const podcasts = {
   newEpisodes: () => request<Episode[]>('/me/podcasts/episodes'),
   saveProgress: (episodeId: string, progress: EpisodeProgress) =>
     send<void>('PUT', `/me/episodes/${episodeId}/progress`, progress),
+  audioUrl: (episodeId: string) => `${API_URL}/episodes/${episodeId}/audio`,
+  // Podcasts made of YouTube videos
+  creation: () => request<{ enabled: boolean }>('/podcasts/creation'),
+  create: () => send<{ id: string; title: string }>('POST', '/podcasts/created'),
+  update: (id: string, data: { title?: string; description?: string }) => send<void>('PATCH', `/podcasts/${id}`, data),
+  remove: (id: string) => send<void>('DELETE', `/podcasts/${id}`),
+  addVideo: (id: string, url: string) => send<{ id: string }>('POST', `/podcasts/${id}/episodes`, { url }),
+  retry: (id: string, episodeId: string) => send<void>('POST', `/podcasts/${id}/episodes/${episodeId}/retry`),
+  removeEpisode: (id: string, episodeId: string) => send<void>('DELETE', `/podcasts/${id}/episodes/${episodeId}`),
 }
 
 export const users = {
