@@ -5,6 +5,7 @@ import { useDominantColor } from '../hooks'
 import { ChevronLeftIcon, HomeFilledIcon, HomeIcon, JamIcon, LibraryIcon, PauseIcon, PlayIcon, QueueIcon, SearchIcon } from '../icons'
 import { useJam } from '../jam/context'
 import { usePlayer, useProgress } from '../player/context'
+import { artistLink } from '../podcasts'
 import { Cover } from './Cover'
 import { HeartButton } from './HeartButton'
 import { ControlButtons, Progress } from './PlayerBar'
@@ -101,7 +102,7 @@ export function MobilePlayer() {
         </span>
         {/* The buttons act on their own instead of opening the player. */}
         <span className="mini-player-buttons" onClick={(e) => e.stopPropagation()}>
-          <HeartButton trackId={current.id} />
+          {!current.episode && <HeartButton trackId={current.id} />}
           <button className="mini-play" onClick={toggle} aria-label={playing ? 'Pause' : 'Lecture'}>
             {playing ? <PauseIcon size={24} /> : <PlayIcon size={24} />}
           </button>
@@ -147,18 +148,21 @@ function FullPlayer({ color, onClose }: { color: string; onClose: () => void }) 
 
       <div className="full-player-info">
         <span className="full-player-text">
-          {current.album ? (
-            <Link to={`/album/${current.album.id}`} className="full-player-title">
+          {current.album || current.episode ? (
+            <Link
+              to={current.episode ? `/podcast/${current.episode.podcastId}` : `/album/${current.album!.id}`}
+              className="full-player-title"
+            >
               {current.title}
             </Link>
           ) : (
             <span className="full-player-title">{current.title}</span>
           )}
-          <Link to={`/artist/${current.artistId}`} className="full-player-artist">
+          <Link to={artistLink(current)} className="full-player-artist">
             {current.artistName}
           </Link>
         </span>
-        <HeartButton trackId={current.id} />
+        {!current.episode && <HeartButton trackId={current.id} />}
       </div>
 
       <Progress />

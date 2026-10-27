@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, images, type DeezerTrack } from '../api'
+import { api, images, podcasts, type DeezerTrack, type PodcastSearchResult } from '../api'
 import { Card } from '../components/Card'
 import { Cover } from '../components/Cover'
 import { PlayButton } from '../components/PlayButton'
@@ -13,13 +13,14 @@ import { useFetch, useIsMobile } from '../hooks'
 import { CheckIcon, DownloadIcon } from '../icons'
 import { usePlayContext } from '../player/usePlayContext'
 
-type Tab = 'all' | 'tracks' | 'albums' | 'artists' | 'deezer'
+type Tab = 'all' | 'tracks' | 'albums' | 'artists' | 'podcasts' | 'deezer'
 
 const TABS: [Tab, string][] = [
   ['all', 'Tout'],
   ['tracks', 'Titres'],
   ['albums', 'Albums'],
   ['artists', 'Artistes'],
+  ['podcasts', 'Podcasts'],
   ['deezer', 'Deezer'],
 ]
 
@@ -116,6 +117,34 @@ function DeezerResults({ query, limit }: { query: string; limit?: number }) {
       </div>
     </>
   )
+}
+
+const podcastLink = (r: PodcastSearchResult) =>
+  r.podcastId ? `/podcast/${r.podcastId}` : `/podcasts/open?feed=${encodeURIComponent(r.feedUrl)}`
+
+/** Podcasts from the directory; a pasted RSS address opens that feed. */
+function PodcastResults({ query, shelf = false }: { query: string; shelf?: boolean }) {
+  const isFeed = /^https?:\/\/\S+$/i.test(query)
+  const { data, error } = useFetch(() => (isFeed ? Promise.resolve([]) : podcasts.search(query)), [query])
+
+  if (isFeed) {
+    return (
+      <section>
+        <h2 className="section-title">Podcasts</h2>
+        <Link to={`/podcasts/open?feed=${encodeURIComponent(query)}`} className="pill-button small">
+          Ouvrir ce flux RSS
+        </Link>
+      </section>
+    )
+  }
+  if (error) return <p className="muted">La recherche de podcasts est indisponible.</p>
+  if (!data) return null
+  if (!data.length) return shelf ? null : <p className="muted">Aucun podcast pour « {query} ».</p>
+
+  const cards = data.map((r) => (
+    <Card key={r.feedUrl} to={podcastLink(r)} title={r.title} subtitle={r.author ?? 'Podcast'} image={r.imageUrl} />
+  ))
+  return shelf ? <Shelf title="Podcasts">{cards.slice(0, 8)}</Shelf> : <div className="card-grid">{cards}</div>
 }
 
 function Results({ query }: { query: string }) {
@@ -215,6 +244,7 @@ function Results({ query }: { query: string }) {
 
             {!!data?.artists.length && <Shelf title="Artistes">{artistCards}</Shelf>}
             {!!data?.albums.length && <Shelf title="Albums">{albumCards}</Shelf>}
+            <PodcastResults query={query} shelf />
 
             <section>
               <h2 className="section-title">Sur Deezer</h2>
@@ -226,6 +256,7 @@ function Results({ query }: { query: string }) {
         {tab === 'tracks' && data && <TrackList tracks={data.tracks} contextId={`search:${query}`} variant="full" />}
         {tab === 'albums' && <div className="card-grid">{albumCards}</div>}
         {tab === 'artists' && <div className="card-grid">{artistCards}</div>}
+        {tab === 'podcasts' && <PodcastResults query={query} />}
         {tab === 'deezer' && <DeezerResults query={query} />}
       </div>
     </>

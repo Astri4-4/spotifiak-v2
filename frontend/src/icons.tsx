@@ -148,3 +148,27 @@ export const LogoIcon = icon(
   </>,
   '0 0 24 24',
 )
+
+// Podcast controls: a circular arrow around "15", like Spotify's.
+const replay = 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8Z'
+const fifteen = (
+  <text x="12" y="15.6" fontSize="7" fontWeight="700" textAnchor="middle" fontFamily="inherit">
+    15
+  </text>
+)
+
+export const SkipBackIcon = icon(
+  <>
+    <path d={replay} />
+    {fifteen}
+  </>,
+  '0 0 24 24',
+)
+
+export const SkipForwardIcon = icon(
+  <>
+    <path d={replay} transform="matrix(-1 0 0 1 24 0)" />
+    {fifteen}
+  </>,
+  '0 0 24 24',
+)

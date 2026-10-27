@@ -16,6 +16,11 @@ export interface PlayerState {
   muted: boolean
   /** In a Jam: playback follows the shared queue; shuffle and repeat are off. */
   inJam: boolean
+  /** Podcast playback speed (music always plays at 1×). */
+  rate: number
+  setRate: (rate: number) => void
+  /** Moves forward (or back, when negative) by this many seconds. */
+  skip: (seconds: number) => void
   playTracks: (tracks: Track[], startIndex?: number, contextId?: string) => void
   /** "Ajouter à la file d'attente": after the queue's last track. */
   addToQueue: (tracks: Track[]) => void

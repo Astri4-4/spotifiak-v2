@@ -26,3 +26,17 @@ export function formatAddedAt(iso: string) {
 export function pluralize(n: number, word: string) {
   return `${n} ${word}${n > 1 ? 's' : ''}`
 }
+
+/** "21 oct." this year, "21 oct. 2025" before, like Spotify's episode dates. */
+export function formatEpisodeDate(iso: string) {
+  const date = new Date(iso)
+  const thisYear = date.getFullYear() === new Date().getFullYear()
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: thisYear ? undefined : 'numeric' })
+}
+
+/** "1 h 12 min", "34 min": episode lengths and time left. */
+export function formatListenTime(sec: number) {
+  const h = Math.floor(sec / 3600)
+  const m = Math.floor((sec % 3600) / 60)
+  return h ? `${h} h ${m} min` : `${Math.max(1, m)} min`
+}

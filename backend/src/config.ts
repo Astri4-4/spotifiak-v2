@@ -41,6 +41,14 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+  // Podcast search goes through Apple's public directory, completed by fyyd's for the
+  // feeds Apple hides (Radio France...); feeds and audio come from the publishers.
+  PODCAST_SEARCH_URL: z.string().url().default('https://itunes.apple.com'),
+  PODCAST_FYYD_URL: z.string().url().default('https://api.fyyd.de'),
+  // Store whose catalogue and ranking the search uses (two-letter country code)
+  PODCAST_COUNTRY: z.string().length(2).default('FR'),
+  // Subscribed podcasts are checked for new episodes this often; 0 disables
+  PODCAST_REFRESH_MINUTES: z.coerce.number().min(0).default(60),
 })
 
 export const config = schema.parse(process.env)

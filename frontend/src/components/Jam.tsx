@@ -31,9 +31,10 @@ export function JamSection() {
     const onStart = async () => {
       setBusy(true)
       try {
-        // The Jam starts with what is playing here, from the current track on.
-        const tracks = current ? [current, ...upNext] : []
-        await start({ trackIds: tracks.map((t) => t.id), index: 0, position: currentTime, playing })
+        // The Jam starts with what is playing here, from the current track on; a
+        // podcast episode stays out of it (the Jam shares library tracks).
+        const tracks = current && !current.episode ? [current, ...upNext] : []
+        await start({ trackIds: tracks.map((t) => t.id), index: 0, position: tracks.length ? currentTime : 0, playing: !!tracks.length && playing })
       } catch (err) {
         notify((err as Error).message)
       } finally {

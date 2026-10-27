@@ -28,6 +28,8 @@ model User {
   plays        Play[]
   savedAlbums  SavedAlbum[]
   following    FollowedArtist[]
+  podcasts     PodcastSubscription[]
+  episodes     EpisodeProgress[]
 }
 
 model Session {
@@ -174,6 +176,64 @@ model Play {
   track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
   @@index([userId, playedAt])
+}
+
+// --- Podcasts ----------------------------------------------------------------
+
+// A podcast's RSS feed, shared by every user; episodes stream from the publisher.
+model Podcast {
+  id            String                @id @default(cuid())
+  feedUrl       String                @unique
+  title         String
+  author        String?
+  description   String? // plain text
+  imageUrl      String?
+  link          String?
+  fetchedAt     DateTime? // last successful refresh
+  createdAt     DateTime              @default(now())
+  episodes      PodcastEpisode[]
+  subscribers   PodcastSubscription[]
+}
+
+model PodcastEpisode {
+  id          String            @id @default(cuid())
+  podcastId   String
+  podcast     Podcast           @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+  guid        String // from the feed, identifies the episode across refreshes
+  title       String
+  description String? // plain text
+  audioUrl    String
+  imageUrl    String?
+  durationSec Int?
+  publishedAt DateTime
+  progress    EpisodeProgress[]
+
+  @@unique([podcastId, guid])
+  @@index([podcastId, publishedAt])
+}
+
+model PodcastSubscription {
+  userId       String
+  podcastId    String
+  subscribedAt DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  podcast      Podcast  @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+
+  @@id([userId, podcastId])
+  @@index([podcastId])
+}
+
+// Where a user stopped in an episode, to resume it; completed once heard to the end.
+model EpisodeProgress {
+  userId      String
+  episodeId   String
+  positionSec Int
+  completed   Boolean        @default(false)
+  updatedAt   DateTime       @updatedAt
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  episode     PodcastEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, episodeId])
 }
 
 // --- Spotify import ----------------------------------------------------------

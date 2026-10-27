@@ -44,6 +44,8 @@ export interface Track {
   trackNumber: number | null
   discNumber: number | null
   addedAt: string
+  /** Set when this is a podcast episode played through the player (see podcasts.ts). */
+  episode?: { podcastId: string; audioUrl: string; startAt: number }
 }
 
 export interface Album {
@@ -182,6 +184,54 @@ export type JamCommand =
   | { type: 'ended' | 'jump' | 'remove'; entryId: string }
   | { type: 'add'; trackIds: string[] }
   | { type: 'playTracks'; trackIds: string[]; index: number }
+
+export interface PodcastSummary {
+  id: string
+  title: string
+  author: string | null
+  hasImage: boolean
+}
+
+export interface SubscribedPodcast extends PodcastSummary {
+  subscribedAt: string
+}
+
+export interface EpisodeProgress {
+  positionSec: number
+  completed: boolean
+}
+
+export interface Episode {
+  id: string
+  title: string
+  /** Plain text, shortened. */
+  description: string | null
+  durationSec: number | null
+  publishedAt: string
+  audioUrl: string
+  hasImage: boolean
+  podcast: { id: string; title: string }
+  progress: EpisodeProgress | null
+}
+
+export interface PodcastDetail extends PodcastSummary {
+  description: string | null
+  link: string | null
+  feedUrl: string
+  subscribed: boolean
+  episodeCount: number
+  /** Most recent first, at most 300. */
+  episodes: Episode[]
+}
+
+/** From the podcast directory; podcastId is set when Spotifiak already knows the feed. */
+export interface PodcastSearchResult {
+  feedUrl: string
+  title: string
+  author: string | null
+  imageUrl: string | null
+  podcastId: string | null
+}
 
 export type ScanMode = 'quick' | 'full'
 
@@ -325,6 +375,20 @@ export const jam = {
   eventsUrl: (id: string) => `${API_URL}/jam/${id}/events`,
 }
 
+export const podcasts = {
+  search: (q: string) => request<PodcastSearchResult[]>(`/podcasts/search?${query({ q })}`),
+  /** Reads the feed the first time; returns the podcast's id. */
+  open: (feedUrl: string) => send<{ id: string }>('POST', '/podcasts', { feedUrl }),
+  get: (id: string) => request<PodcastDetail>(`/podcasts/${id}`),
+  subscriptions: () => request<SubscribedPodcast[]>('/me/podcasts'),
+  subscribe: (id: string) => send<void>('PUT', `/me/podcasts/${id}`),
+  unsubscribe: (id: string) => send<void>('DELETE', `/me/podcasts/${id}`),
+  /** Unfinished episodes of the subscribed podcasts, newest first. */
+  newEpisodes: () => request<Episode[]>('/me/podcasts/episodes'),
+  saveProgress: (episodeId: string, progress: EpisodeProgress) =>
+    send<void>('PUT', `/me/episodes/${episodeId}/progress`, progress),
+}
+
 export const users = {
   list: () => request<ManagedUser[]>('/users'),
   create: (data: { username: string; password: string; displayName?: string; role: Role }) =>
@@ -357,8 +421,11 @@ const fileCover = (trackId: string | null) => (trackId ? `${API_URL}/tracks/${tr
 
 /** Deezer images when matched, otherwise the art from the audio files. */
 export const images = {
-  track: (t: Track) => t.album?.coverUrl ?? fileCover(t.id),
+  track: (t: Track) => (t.episode ? `${API_URL}/episodes/${t.id}/image` : (t.album?.coverUrl ?? fileCover(t.id))),
   album: (a: Album) => a.coverUrl ?? fileCover(a.coverTrackId),
   artist: (a: Artist) => a.pictureUrl ?? fileCover(a.coverTrackId),
   mosaic: (c: MosaicCover) => c.coverUrl ?? fileCover(c.trackId),
+  // Podcast artwork goes through the API: publishers' servers rarely allow CORS.
+  podcast: (p: PodcastSummary) => (p.hasImage ? `${API_URL}/podcasts/${p.id}/image` : null),
+  episode: (e: Episode) => (e.hasImage ? `${API_URL}/episodes/${e.id}/image` : null),
 }

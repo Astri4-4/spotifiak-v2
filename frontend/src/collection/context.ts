@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { Album, Artist, FollowedArtist, PlaylistSummary, SavedAlbum } from '../api'
+import type { Album, Artist, FollowedArtist, PlaylistSummary, PodcastSummary, SavedAlbum, SubscribedPodcast } from '../api'
 
 export interface CollectionState {
   likedIds: Set<string>
@@ -13,6 +13,9 @@ export interface CollectionState {
   followedArtists: FollowedArtist[]
   toggleSaveAlbum: (album: Album) => void
   toggleFollowArtist: (artist: Artist) => void
+  /** Podcasts the user subscribed to, also in the library. */
+  podcasts: SubscribedPodcast[]
+  toggleSubscribe: (podcast: PodcastSummary) => void
   playlists: PlaylistSummary[]
   refreshPlaylists: () => void
   /** Creates a playlist (optionally with tracks) and returns its id. */

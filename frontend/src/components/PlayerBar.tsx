@@ -12,11 +12,14 @@ import {
   RepeatIcon,
   RepeatOneIcon,
   ShuffleIcon,
+  SkipBackIcon,
+  SkipForwardIcon,
   VolumeIcon,
   VolumeMuteIcon,
 } from '../icons'
 import { useJam } from '../jam/context'
 import { usePlayer, useProgress } from '../player/context'
+import { artistLink } from '../podcasts'
 import { Cover } from './Cover'
 import { HeartButton } from './HeartButton'
 import { Slider } from './Slider'
@@ -40,10 +43,43 @@ export function Progress() {
   )
 }
 
+const RATES = [0.8, 1, 1.2, 1.5, 1.8, 2]
+const SKIP_SEC = 15
+
+/** Podcasts: speed, 15 s back, play/pause, 15 s forward. */
+function EpisodeButtons({ iconSize }: { iconSize: number }) {
+  const p = usePlayer()
+  const nextRate = RATES[(RATES.indexOf(p.rate) + 1) % RATES.length] ?? 1
+  return (
+    <div className="control-buttons">
+      <button
+        className={`control rate-button${p.rate !== 1 ? ' active' : ''}`}
+        onClick={() => p.setRate(nextRate)}
+        aria-label={`Vitesse de lecture ${p.rate}×, passer à ${nextRate}×`}
+        title="Vitesse de lecture"
+      >
+        {p.rate}×
+      </button>
+      <button className="control" onClick={() => p.skip(-SKIP_SEC)} aria-label="Reculer de 15 secondes">
+        <SkipBackIcon size={iconSize + 4} />
+      </button>
+      <button className="control-play" onClick={p.toggle} aria-label={p.playing ? 'Pause' : 'Lecture'}>
+        {p.playing ? <PauseIcon size={iconSize} /> : <PlayIcon size={iconSize} />}
+      </button>
+      <button className="control" onClick={() => p.skip(SKIP_SEC)} aria-label="Avancer de 15 secondes">
+        <SkipForwardIcon size={iconSize + 4} />
+      </button>
+      {/* Keeps play/pause centred like the music controls. */}
+      <span className="control rate-button" aria-hidden="true" />
+    </div>
+  )
+}
+
 /** Shuffle, previous, play/pause, next, repeat. Bigger icons in the phone player. */
 export function ControlButtons({ iconSize = 16 }: { iconSize?: number }) {
   const p = usePlayer()
   const disabled = !p.current
+  if (p.current?.episode) return <EpisodeButtons iconSize={iconSize} />
 
   return (
     <div className="control-buttons">
@@ -90,18 +126,22 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
           <>
             <Cover src={images.track(current)} size={56} />
             <div className="now-playing-text">
-              {current.album ? (
+              {current.episode ? (
+                <Link to={`/podcast/${current.episode.podcastId}`} className="now-playing-title">
+                  {current.title}
+                </Link>
+              ) : current.album ? (
                 <Link to={`/album/${current.album.id}`} className="now-playing-title">
                   {current.title}
                 </Link>
               ) : (
                 <span className="now-playing-title">{current.title}</span>
               )}
-              <Link to={`/artist/${current.artistId}`} className="now-playing-artist">
+              <Link to={artistLink(current)} className="now-playing-artist">
                 {current.artistName}
               </Link>
             </div>
-            <HeartButton trackId={current.id} className="now-playing-heart" />
+            {!current.episode && <HeartButton trackId={current.id} className="now-playing-heart" />}
           </>
         )}
       </div>

@@ -8,6 +8,7 @@ import { requireAdmin, setupAuth } from './auth.js'
 import { collectionRoutes } from './collection.js'
 import { duplicateRoutes } from './duplicates.js'
 import { jamRoutes } from './jam.js'
+import { podcastRoutes, startPodcastRefresh } from './podcasts.js'
 import { spotifyRoutes } from './spotify/routes.js'
 import { config } from './config.js'
 import { prisma } from './db.js'
@@ -47,6 +48,7 @@ await app.register(collectionRoutes)
 await app.register(spotifyRoutes)
 await app.register(duplicateRoutes)
 await app.register(jamRoutes)
+await app.register(podcastRoutes)
 
 app.get('/deezer/search', async (req, reply) => {
   const { q } = z.object({ q: z.string().min(1) }).parse(req.query)
@@ -108,6 +110,7 @@ try {
 
 await app.listen({ port: config.PORT, host: '0.0.0.0' })
 startPeriodicScan(app.log)
+startPodcastRefresh(app.log)
 
 // docker stop / Kubernetes send SIGTERM: stop right away instead of being killed after the grace period.
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {

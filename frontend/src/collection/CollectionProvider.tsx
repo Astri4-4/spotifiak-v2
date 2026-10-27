@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { collection, type Album, type Artist, type FollowedArtist, type PlaylistSummary, type SavedAlbum } from '../api'
+import {
+  collection,
+  podcasts as podcastsApi,
+  type Album,
+  type Artist,
+  type FollowedArtist,
+  type PlaylistSummary,
+  type PodcastSummary,
+  type SavedAlbum,
+  type SubscribedPodcast,
+} from '../api'
 import { CollectionContext, type CollectionState } from './context'
 
 const TOAST_MS = 3000
@@ -9,6 +19,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const [likesVersion, setLikesVersion] = useState(0)
   const [savedAlbums, setSavedAlbums] = useState<SavedAlbum[]>([])
   const [followedArtists, setFollowedArtists] = useState<FollowedArtist[]>([])
+  const [podcasts, setPodcasts] = useState<SubscribedPodcast[]>([])
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([])
   const [playlistsVersion, setPlaylistsVersion] = useState(0)
   const [toast, setToast] = useState<{ id: number; message: string } | null>(null)
@@ -28,6 +39,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     collection.savedAlbums().then(setSavedAlbums).catch(() => {})
     collection.followedArtists().then(setFollowedArtists).catch(() => {})
+    podcastsApi.subscriptions().then(setPodcasts).catch(() => {})
   }, [])
 
   const notify = useCallback((message: string) => {
@@ -94,6 +106,22 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     [followedArtists, notify],
   )
 
+  const toggleSubscribe = useCallback(
+    (podcast: PodcastSummary) => {
+      const subscribed = podcasts.some((p) => p.id === podcast.id)
+      const before = podcasts
+      setPodcasts(
+        subscribed ? before.filter((p) => p.id !== podcast.id) : [{ ...podcast, subscribedAt: new Date().toISOString() }, ...before],
+      )
+      notify(subscribed ? `Vous n'êtes plus abonné à ${podcast.title}` : `Abonné à ${podcast.title}`)
+      ;(subscribed ? podcastsApi.unsubscribe(podcast.id) : podcastsApi.subscribe(podcast.id)).catch(() => {
+        setPodcasts(before)
+        notify('Impossible de modifier votre Bibliothèque')
+      })
+    },
+    [podcasts, notify],
+  )
+
   const createPlaylist = useCallback(
     async (trackIds?: string[]) => {
       const { id, name } = await collection.createPlaylist()
@@ -128,13 +156,15 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       followedArtists,
       toggleSaveAlbum,
       toggleFollowArtist,
+      podcasts,
+      toggleSubscribe,
       playlists,
       refreshPlaylists,
       createPlaylist,
       addToPlaylist,
       notify,
     }),
-    [likedIds, likesVersion, toggleLike, refreshLikes, savedAlbums, followedArtists, toggleSaveAlbum, toggleFollowArtist, playlists, refreshPlaylists, createPlaylist, addToPlaylist, notify],
+    [likedIds, likesVersion, toggleLike, refreshLikes, savedAlbums, followedArtists, toggleSaveAlbum, toggleFollowArtist, podcasts, toggleSubscribe, playlists, refreshPlaylists, createPlaylist, addToPlaylist, notify],
   )
 
   return (

@@ -10,7 +10,7 @@ import { LikedCover, PlaylistCover } from './CollectionCovers'
 import { Cover } from './Cover'
 import { MobileHeader } from './Mobile'
 
-type Filter = 'all' | 'playlists' | 'albums' | 'artists'
+type Filter = 'all' | 'playlists' | 'albums' | 'artists' | 'podcasts'
 
 interface Item {
   key: string
@@ -34,7 +34,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
   const user = useCurrentUser()
   const { contextId, playing } = usePlayer()
   // Only what the user added: saved albums and followed artists, not the whole server library.
-  const { likedIds, playlists, savedAlbums: albums, followedArtists: artists, createPlaylist } = useCollection()
+  const { likedIds, playlists, savedAlbums: albums, followedArtists: artists, podcasts, createPlaylist } = useCollection()
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
@@ -99,12 +99,23 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
             sortKey: a.followedAt,
           }))
         : []),
+      ...(show('podcasts')
+        ? podcasts.map((p) => ({
+            key: `podcast-${p.id}`,
+            to: `/podcast/${p.id}`,
+            title: p.title,
+            subtitle: p.author ? `Podcast • ${p.author}` : 'Podcast',
+            cover: <Cover src={images.podcast(p)} size={48} />,
+            contextId: p.id,
+            sortKey: p.subscribedAt,
+          }))
+        : []),
     ]
     const q = search.trim().toLowerCase()
     return all
       .filter((i) => !q || i.title.toLowerCase().includes(q) || i.subtitle.toLowerCase().includes(q))
       .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.sortKey.localeCompare(a.sortKey))
-  }, [albums, artists, playlists, likedIds.size, filter, search, user.displayName])
+  }, [albums, artists, podcasts, playlists, likedIds.size, filter, search, user.displayName])
 
   const chip = (value: Exclude<Filter, 'all'>, label: string) => (
     <button
@@ -154,6 +165,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
         {chip('playlists', 'Playlists')}
         {chip('albums', 'Albums')}
         {chip('artists', 'Artistes')}
+        {chip('podcasts', 'Podcasts')}
       </div>
 
       <div className="sidebar-tools">

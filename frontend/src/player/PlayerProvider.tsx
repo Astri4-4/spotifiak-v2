@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api, images, type Track } from '../api'
 import { useJam } from '../jam/context'
+import { saveProgress } from '../podcasts'
 import { storage } from '../storage'
 import { PlayerContext, ProgressContext, type PlayerState, type RepeatMode } from './context'
 
@@ -9,6 +10,8 @@ const RESTART_THRESHOLD_SEC = 3
 // In a Jam, seek to the shared position when this far off (network delays, slow
 // loads); checked on every update and while playing.
 const JAM_DRIFT_SEC = 1
+// Podcasts: where the listener is in an episode is saved this often while playing.
+const SAVE_PROGRESS_EVERY_SEC = 15
 
 function shuffledOrder(length: number, first: number) {
   const rest = [...Array(length).keys()].filter((i) => i !== first)
@@ -34,6 +37,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [volume, setVolumeState] = useState(() => Number(storage.get('volume') ?? 0.7))
   const [muted, setMuted] = useState(false)
   const [progress, setProgress] = useState({ currentTime: 0, duration: 0 })
+  const [rate, setRateState] = useState(() => Number(storage.get('podcastRate') ?? 1))
+  const lastSavedAt = useRef(0)
 
   // In a Jam the server's queue replaces the local one (see JamProvider).
   const { jam, receivedAt, command } = useJam()
@@ -76,9 +81,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       el.removeAttribute('src')
       return
     }
-    const url = api.streamUrl(current.id)
+    const url = current.episode?.audioUrl ?? api.streamUrl(current.id)
     // Starting a Jam with the track already playing here: keep it, don't restart it.
     if (!(jam && el.src.endsWith(url))) el.src = url
+    // Episodes resume where they were left.
+    if (current.episode?.startAt) el.currentTime = current.episode.startAt
+    lastSavedAt.current = current.episode?.startAt ?? 0
     if (jam) syncToJam()
     else void el.play().catch(() => setPlaying(false))
   }, [source]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -93,6 +101,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [volume, muted])
 
   useEffect(() => storage.set('shuffle', String(shuffle)), [shuffle])
+
+  // The speed applies to podcasts only; loading a new source resets playbackRate
+  // to defaultPlaybackRate, hence both.
+  const isEpisode = !!current?.episode
+  useEffect(() => {
+    const el = audio.current
+    if (!el) return
+    el.defaultPlaybackRate = el.playbackRate = isEpisode ? rate : 1
+    storage.set('podcastRate', String(rate))
+  }, [isEpisode, rate, source])
+
+  const saveEpisode = useCallback(() => {
+    const el = audio.current
+    if (!el || !current?.episode || !el.currentSrc) return
+    lastSavedAt.current = el.currentTime
+    void saveProgress(current.id, el.currentTime, el.duration || 0)
+  }, [current])
   useEffect(() => storage.set('repeat', repeat), [repeat])
 
   const playTracks = useCallback(
@@ -161,9 +186,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const next = useCallback(() => (inJam ? command({ type: 'next' }) : advance(false)), [inJam, command, advance])
 
   const onEnded = useCallback(() => {
+    if (current?.episode) {
+      saveEpisode()
+      // Repeat doesn't apply to an episode heard to the end.
+      if (pos + 1 < order.length) advance(false)
+      return
+    }
     if (jamEntry) command({ type: 'ended', entryId: jamEntry.id })
     else if (!inJam) advance(true)
-  }, [jamEntry, inJam, command, advance])
+  }, [jamEntry, inJam, command, advance, current, saveEpisode, pos, order.length])
 
   const prev = useCallback(() => {
     const el = audio.current
@@ -184,6 +215,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     },
     [inJam, command],
   )
+
+  /** Podcasts: 15 s back, 15 s forward. */
+  const skip = useCallback(
+    (seconds: number) => {
+      const el = audio.current
+      if (el) seek(Math.min(Math.max(0, el.currentTime + seconds), el.duration || Infinity))
+    },
+    [seek],
+  )
+
+  const setRate = useCallback((r: number) => setRateState(r), [])
 
   const setVolume = useCallback((v: number) => {
     setVolumeState(Math.min(1, Math.max(0, v)))
@@ -226,7 +268,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     navigator.mediaSession.setActionHandler('nexttrack', next)
     navigator.mediaSession.setActionHandler('previoustrack', prev)
     navigator.mediaSession.setActionHandler('seekto', (d) => d.seekTime != null && seek(d.seekTime))
-  }, [current, toggle, next, prev, seek])
+    // Headsets and lock screens show ±15 s for podcasts.
+    const episode = !!current?.episode
+    navigator.mediaSession.setActionHandler('seekbackward', episode ? (d) => skip(-(d.seekOffset ?? 15)) : null)
+    navigator.mediaSession.setActionHandler('seekforward', episode ? (d) => skip(d.seekOffset ?? 15) : null)
+  }, [current, toggle, next, prev, seek, skip])
 
   // Space toggles playback unless the user is typing.
   useEffect(() => {
@@ -257,6 +303,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       volume,
       muted,
       inJam,
+      rate,
+      setRate,
+      skip,
       playTracks,
       addToQueue,
       toggle,
@@ -268,7 +317,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       toggleShuffle,
       cycleRepeat,
     }),
-    [current, contextId, playing, queue, upNext, shuffle, repeat, volume, muted, inJam, playTracks, addToQueue, toggle, next, prev, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat],
+    [current, contextId, playing, queue, upNext, shuffle, repeat, volume, muted, inJam, rate, setRate, skip, playTracks, addToQueue, toggle, next, prev, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat],
   )
 
   return (
@@ -278,11 +327,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         <audio
           ref={audio}
           onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
+          onPause={() => {
+            setPlaying(false)
+            saveEpisode()
+          }}
           onEnded={onEnded}
           onTimeUpdate={(e) => {
             setProgress({ currentTime: e.currentTarget.currentTime, duration: e.currentTarget.duration || 0 })
             if (jam?.playing && !e.currentTarget.seeking) syncToJam()
+            if (current?.episode && Math.abs(e.currentTarget.currentTime - lastSavedAt.current) >= SAVE_PROGRESS_EVERY_SEC) {
+              saveEpisode()
+            }
           }}
           onLoadedMetadata={(e) => {
             setProgress({ currentTime: e.currentTarget.currentTime, duration: e.currentTarget.duration || 0 })

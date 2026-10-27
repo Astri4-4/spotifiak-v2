@@ -19,6 +19,7 @@ import { ArtistPage } from './pages/ArtistPage'
 import { HomePage } from './pages/HomePage'
 import { LikedPage } from './pages/LikedPage'
 import { PlaylistPage } from './pages/PlaylistPage'
+import { OpenPodcastPage, PodcastPage } from './pages/PodcastPage'
 import { ScanPage } from './pages/ScanPage'
 import { SearchPage } from './pages/SearchPage'
 import { SpotifyImportPage } from './pages/SpotifyImportPage'
@@ -49,6 +50,8 @@ function MainApp() {
                 <Route path="/album/:id" element={<AlbumPage />} />
                 <Route path="/artist/:id" element={<ArtistPage />} />
                 <Route path="/playlist/:id" element={<PlaylistPage />} />
+                <Route path="/podcast/:id" element={<PodcastPage />} />
+                <Route path="/podcasts/open" element={<OpenPodcastPage />} />
                 <Route path="/collection/tracks" element={<LikedPage />} />
                 <Route path="/import/spotify" element={<SpotifyImportPage />} />
                 <Route path="/scan" element={<ScanPage />} />

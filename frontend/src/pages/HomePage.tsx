@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { api, images } from '../api'
+import { api, images, podcasts } from '../api'
 import { Card } from '../components/Card'
 import { Cover } from '../components/Cover'
 import { PlayButton } from '../components/PlayButton'
@@ -9,6 +9,7 @@ import { LikedCover, PlaylistCover } from '../components/CollectionCovers'
 import { MobileHeader } from '../components/Mobile'
 import { useFetch, useIsMobile } from '../hooks'
 import { LIKED_CONTEXT, usePlayContext } from '../player/usePlayContext'
+import { usePlayEpisode } from '../podcasts'
 
 function greeting() {
   const hour = new Date().getHours()
@@ -21,7 +22,10 @@ export function HomePage() {
   const { data: albums } = useFetch(() => api.albums().then((r) => r.items), [])
   const { data: artists } = useFetch(() => api.artists().then((r) => r.items), [])
   const { isPlaying, playAlbum, playArtist, playPlaylist, playLiked } = usePlayContext()
-  const { likedIds, playlists } = useCollection()
+  const { likedIds, playlists, podcasts: subscriptions } = useCollection()
+  // Reloaded when subscriptions change, so a new subscription shows up here.
+  const { data: episodes } = useFetch(() => podcasts.newEpisodes(), [subscriptions.length])
+  const episode = usePlayEpisode()
   const isMobile = useIsMobile()
 
   const empty = albums && artists && !albums.length && !artists.length
@@ -94,6 +98,22 @@ export function HomePage() {
                 image={images.album(album)}
                 playing={isPlaying(album.id)}
                 onPlay={() => void playAlbum(album.id)}
+              />
+            ))}
+          </Shelf>
+        )}
+
+        {episodes && episodes.length > 0 && (
+          <Shelf title="Nouveaux épisodes">
+            {episodes.map((e) => (
+              <Card
+                key={e.id}
+                to={`/podcast/${e.podcast.id}`}
+                title={e.title}
+                subtitle={e.podcast.title}
+                image={images.episode(e)}
+                playing={episode.isPlaying(e)}
+                onPlay={() => episode.play(e)}
               />
             ))}
           </Shelf>
