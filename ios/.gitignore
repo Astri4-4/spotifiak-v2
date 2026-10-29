@@ -1,3 +1,5 @@
 .build/
 *.xcodeproj
 DerivedData/
+# Written by xcodegen from project.yml
+Spotifiak/Info.plist

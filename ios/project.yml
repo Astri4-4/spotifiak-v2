@@ -1,0 +1,56 @@
+# Generate the Xcode project with `xcodegen` (see README.md); the .xcodeproj is not committed.
+name: Spotifiak
+options:
+  bundleIdPrefix: dev.spotifiak
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    # Set your own team locally (Xcode > Signing & Capabilities); left empty in the repo.
+    DEVELOPMENT_TEAM: ""
+packages:
+  SpotifiakCore:
+    path: SpotifiakCore
+targets:
+  Spotifiak:
+    type: application
+    platform: iOS
+    sources: [Spotifiak]
+    dependencies:
+      - package: SpotifiakCore
+    info:
+      path: Spotifiak/Info.plist
+      properties:
+        CFBundleDisplayName: Spotifiak
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UIBackgroundModes: [audio]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSAppTransportSecurity:
+          # Self-hosted servers on a LAN are plain HTTP.
+          NSAllowsArbitraryLoads: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.spotifiak.ios
+        TARGETED_DEVICE_FAMILY: "1"
+  SpotifiakTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [SpotifiakTests]
+    dependencies:
+      - target: Spotifiak
+      - package: SpotifiakCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Spotifiak:
+    build:
+      targets:
+        Spotifiak: all
+        SpotifiakTests: [test]
+    test:
+      targets: [SpotifiakTests]
