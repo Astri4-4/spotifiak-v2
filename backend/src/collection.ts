@@ -14,6 +14,7 @@ const entryParams = z.object({ id: z.string(), entryId: z.string() })
 const playlistBody = z.object({
   name: z.string().trim().min(1, 'Le nom ne peut pas être vide').max(100).optional(),
   description: z.string().trim().max(300).optional(),
+  public: z.boolean().optional(),
 })
 
 /** Up to 4 covers from distinct albums for the playlist mosaic, like Spotify. */
@@ -37,7 +38,7 @@ const mosaicEntries = {
 }
 
 export async function collectionRoutes(app: FastifyInstance) {
-  // Playlists are private: someone else's playlist is reported as missing, not forbidden.
+  // Only the owner edits a playlist: someone else's is reported as missing, not forbidden.
   async function ownedPlaylist(id: string, userId: string, reply: FastifyReply) {
     const playlist = await prisma.playlist.findFirst({ where: { id, ownerId: userId } })
     if (!playlist) reply.code(404).send({ error: 'Playlist introuvable' })
@@ -151,7 +152,27 @@ export async function collectionRoutes(app: FastifyInstance) {
         id: true,
         name: true,
         description: true,
+        public: true,
         updatedAt: true,
+        _count: { select: { tracks: true } },
+        tracks: mosaicEntries,
+      },
+    })
+    return playlists.map(({ _count, tracks, ...p }) => ({ ...p, trackCount: _count.tracks, covers: mosaic(tracks) }))
+  })
+
+  // Public playlists of the other accounts, for the home page.
+  app.get('/playlists/public', async (req) => {
+    const playlists = await prisma.playlist.findMany({
+      where: { public: true, ownerId: { not: req.user!.id }, tracks: { some: {} } },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        updatedAt: true,
+        owner: { select: { displayName: true } },
         _count: { select: { tracks: true } },
         tracks: mosaicEntries,
       },
@@ -175,12 +196,15 @@ export async function collectionRoutes(app: FastifyInstance) {
 
   app.get('/playlists/:id', async (req, reply) => {
     const { id } = playlistParams.parse(req.params)
+    // Readable by its owner, and by everyone once public.
     const playlist = await prisma.playlist.findFirst({
-      where: { id, ownerId: req.user!.id },
+      where: { id, OR: [{ ownerId: req.user!.id }, { public: true }] },
       select: {
         id: true,
         name: true,
         description: true,
+        public: true,
+        ownerId: true,
         updatedAt: true,
         owner: { select: { displayName: true } },
         tracks: {
@@ -190,9 +214,10 @@ export async function collectionRoutes(app: FastifyInstance) {
       },
     })
     if (!playlist) return reply.code(404).send({ error: 'Playlist introuvable' })
-    const { tracks, ...rest } = playlist
+    const { tracks, ownerId, ...rest } = playlist
     return {
       ...rest,
+      owned: ownerId === req.user!.id,
       covers: mosaic(tracks),
       entries: tracks.map((e) => {
         const { albumId: _, ...track } = e.track
@@ -210,8 +235,9 @@ export async function collectionRoutes(app: FastifyInstance) {
       data: {
         name: body.name,
         description: body.description === undefined ? undefined : body.description || null,
+        public: body.public,
       },
-      select: { id: true, name: true, description: true },
+      select: { id: true, name: true, description: true, public: true },
     })
     return playlist
   })

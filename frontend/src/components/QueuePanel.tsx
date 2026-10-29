@@ -1,8 +1,9 @@
-import { images, type Track } from '../api'
+import { images, type JamEntry, type Track } from '../api'
 import { useJam } from '../jam/context'
 import { usePlayer } from '../player/context'
 import { Cover } from './Cover'
 import { JamSection } from './Jam'
+import { useReorder } from './useReorder'
 
 interface QueueItemProps {
   track: Track
@@ -10,9 +11,12 @@ interface QueueItemProps {
   /** In a Jam: who added it. */
   addedBy?: string
   onPlay?: () => void
+  /** Drag and drop props and classes from useReorder. */
+  drag?: object
+  dragClass?: string
 }
 
-function QueueItem({ track, current = false, addedBy, onPlay }: QueueItemProps) {
+function QueueItem({ track, current = false, addedBy, onPlay, drag, dragClass = '' }: QueueItemProps) {
   const content = (
     <>
       <Cover src={images.track(track)} size={48} />
@@ -26,7 +30,7 @@ function QueueItem({ track, current = false, addedBy, onPlay }: QueueItemProps) 
     </>
   )
   return (
-    <li>
+    <li className={dragClass.trim() || undefined} {...drag}>
       {onPlay ? (
         <button className="queue-item" onClick={onPlay} aria-label={`Lire ${track.title}`}>
           {content}
@@ -38,9 +42,51 @@ function QueueItem({ track, current = false, addedBy, onPlay }: QueueItemProps) 
   )
 }
 
+/** Entries of the Jam that can be dragged to reorder them, within this list. */
+function JamList({ title, list, showAddedBy }: { title: string; list: JamEntry[]; showAddedBy: boolean }) {
+  const { command } = useJam()
+  const reorder = useReorder(list.length, (from, before) =>
+    command({ type: 'move', entryId: list[from].id, beforeEntryId: list[before]?.id ?? null }),
+  )
+  if (!list.length) return null
+  return (
+    <>
+      <h3>{title}</h3>
+      <ul className="queue-list">
+        {list.map((e, i) => (
+          <QueueItem
+            key={e.id}
+            track={e.track}
+            addedBy={showAddedBy ? e.addedBy.displayName : undefined}
+            onPlay={() => command({ type: 'jump', entryId: e.id })}
+            drag={reorder.handlers(i)}
+            dragClass={reorder.classes(i)}
+          />
+        ))}
+      </ul>
+    </>
+  )
+}
+
+function UpNext() {
+  const { upNext, moveInQueue } = usePlayer()
+  const reorder = useReorder(upNext.length, moveInQueue)
+  if (!upNext.length) return null
+  return (
+    <>
+      <h3>Suivant</h3>
+      <ul className="queue-list">
+        {upNext.map((t, i) => (
+          <QueueItem key={`${t.id}-${i}`} track={t} drag={reorder.handlers(i)} dragClass={reorder.classes(i)} />
+        ))}
+      </ul>
+    </>
+  )
+}
+
 export function QueuePanel() {
-  const { current, upNext } = usePlayer()
-  const { jam, command } = useJam()
+  const { current } = usePlayer()
+  const { jam } = useJam()
 
   return (
     <aside className="queue-panel panel">
@@ -53,21 +99,13 @@ export function QueuePanel() {
             <ul>
               <QueueItem track={jam.queue[jam.index].track} current addedBy={jam.queue[jam.index].addedBy.displayName} />
             </ul>
-            {jam.index + 1 < jam.queue.length && (
-              <>
-                <h3>Suivant dans la Jam</h3>
-                <ul>
-                  {jam.queue.slice(jam.index + 1).map((e) => (
-                    <QueueItem
-                      key={e.id}
-                      track={e.track}
-                      addedBy={e.addedBy.displayName}
-                      onPlay={() => command({ type: 'jump', entryId: e.id })}
-                    />
-                  ))}
-                </ul>
-              </>
-            )}
+            {/* What people add plays first, then the rest of what was launched. */}
+            <JamList title="Suivant dans la file" list={jam.queue.slice(jam.index + 1)} showAddedBy />
+            <JamList
+              title={jam.fallbackName ? `Ensuite, depuis « ${jam.fallbackName} »` : 'Ensuite'}
+              list={jam.fallback}
+              showAddedBy={false}
+            />
           </>
         ) : (
           <p className="muted">La file de la Jam est vide : lancez un titre ou ajoutez-en avec « … ».</p>
@@ -78,16 +116,7 @@ export function QueuePanel() {
           <ul>
             <QueueItem track={current} current />
           </ul>
-          {upNext.length > 0 && (
-            <>
-              <h3>Suivant</h3>
-              <ul>
-                {upNext.map((t, i) => (
-                  <QueueItem key={`${t.id}-${i}`} track={t} />
-                ))}
-              </ul>
-            </>
-          )}
+          <UpNext />
         </>
       ) : (
         <p className="muted">Ajoutez des titres à votre file d'attente en lançant un album ou un artiste.</p>

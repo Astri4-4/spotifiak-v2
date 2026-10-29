@@ -9,6 +9,10 @@ import { toTrack, trackSelect } from './library.js'
 // queue, in sync, and anyone can play, pause, skip and add tracks. The server holds
 // the state and pushes every change to the participants over Server-Sent Events.
 // Jams live in memory: restarting the API ends them.
+//
+// Like Spotify, the queue comes first: tracks someone adds play before the rest of what
+// was launched (a playlist, an album), which waits in `fallback` and takes over when
+// the queue runs out.
 
 // "Previous" restarts the track unless it is in its first seconds, like the player.
 const RESTART_THRESHOLD_SEC = 3
@@ -31,8 +35,13 @@ interface Jam {
   id: string
   host: Person
   participants: Map<string, Person>
+  /** Played tracks, the current one (at `index`), then the tracks added to the queue. */
   queue: Entry[]
   index: number
+  /** The rest of what was launched, played in order once the queue is empty. */
+  fallback: Entry[]
+  /** What `fallback` comes from ("Ma playlist"), when known. */
+  fallbackName: string | null
   playing: boolean
   /** Position (seconds) at `since`; advances with time while playing. */
   position: number
@@ -73,6 +82,8 @@ function view(jam: Jam) {
     participants: [...jam.participants.values()],
     queue: jam.queue,
     index: jam.index,
+    fallback: jam.fallback,
+    fallbackName: jam.fallbackName,
     playing: jam.playing,
     // Position when this message is sent; clients count from when they receive it.
     position: positionNow(jam),
@@ -128,9 +139,13 @@ function newCode() {
 
 const entries = (tracks: Track[], by: Person): Entry[] => tracks.map((track) => ({ id: randomUUID(), track, addedBy: by }))
 
+const sourceName = z.string().trim().max(200).optional()
+
 const startBody = z.object({
   trackIds: z.array(z.string()).max(MAX_QUEUE).default([]),
   index: z.number().int().min(0).default(0),
+  /** What is playing: the tracks after `index` become the fallback. */
+  source: sourceName,
   position: z.number().min(0).default(0),
   playing: z.boolean().default(false),
 })
@@ -145,19 +160,52 @@ const command = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ended'), entryId: z.string() }),
   z.object({ type: z.literal('jump'), entryId: z.string() }),
   z.object({ type: z.literal('add'), trackIds: z.array(z.string()).min(1).max(MAX_QUEUE) }),
-  // Play these now: they replace what comes after the current track.
-  z.object({ type: z.literal('playTracks'), trackIds: z.array(z.string()).min(1).max(MAX_QUEUE), index: z.number().int().min(0) }),
+  // Play these now (the one at `index`); the ones after it replace the fallback, the queue stays first.
+  z.object({
+    type: z.literal('playTracks'),
+    trackIds: z.array(z.string()).min(1).max(MAX_QUEUE),
+    index: z.number().int().min(0),
+    source: sourceName,
+  }),
   z.object({ type: z.literal('remove'), entryId: z.string() }),
+  // Reorders the queue or the fallback: before another entry of the same list, or at its end (null).
+  z.object({ type: z.literal('move'), entryId: z.string(), beforeEntryId: z.string().nullable() }),
 ])
 
 function advance(jam: Jam) {
   if (jam.index + 1 < jam.queue.length) {
     jam.index++
     setPosition(jam, 0)
+  } else if (jam.fallback.length) {
+    // The queue is empty: next from what was launched.
+    jam.queue.push(jam.fallback.shift()!)
+    jam.index++
+    setPosition(jam, 0)
   } else {
     // End of the queue: stop at the start of the last track, like the player.
     setPosition(jam, 0, false)
   }
+}
+
+/** Played tracks pile up in the queue: the oldest go once it's over the limit. */
+function trimHistory(jam: Jam) {
+  const drop = Math.min(Math.max(0, jam.queue.length - MAX_QUEUE), jam.index)
+  jam.queue.splice(0, drop)
+  jam.index -= drop
+}
+
+/** Moves `entryId` before `beforeEntryId` (or to the end) within `list`; false when not both in it. */
+function moveWithin(list: Entry[], entryId: string, beforeEntryId: string | null) {
+  const from = list.findIndex((e) => e.id === entryId)
+  if (from < 0) return false
+  const [entry] = list.splice(from, 1)
+  const to = beforeEntryId === null ? list.length : list.findIndex((e) => e.id === beforeEntryId)
+  if (to < 0) {
+    list.splice(from, 0, entry)
+    return false
+  }
+  list.splice(to, 0, entry)
+  return true
 }
 
 export async function jamRoutes(app: FastifyInstance) {
@@ -180,14 +228,17 @@ export async function jamRoutes(app: FastifyInstance) {
     const body = startBody.parse(req.body ?? {})
     const user = person(req.user!)
     leaveCurrent(user.id)
-    const tracks = await tracksById(body.trackIds)
+    const all = entries(await tracksById(body.trackIds), user)
+    const index = Math.min(body.index, Math.max(0, all.length - 1))
     const jam: Jam = {
       id: newCode(),
       host: user,
       participants: new Map([[user.id, user]]),
-      queue: entries(tracks, user),
-      index: Math.min(body.index, Math.max(0, tracks.length - 1)),
-      playing: body.playing && tracks.length > 0,
+      queue: all.slice(0, index + 1),
+      index,
+      fallback: all.slice(index + 1),
+      fallbackName: body.source ?? null,
+      playing: body.playing && all.length > 0,
       position: body.position,
       since: Date.now(),
       streams: new Map(),
@@ -274,34 +325,65 @@ export async function jamRoutes(app: FastifyInstance) {
         break
       case 'jump': {
         const index = jam.queue.findIndex((e) => e.id === cmd.entryId)
-        if (index < 0) return reply.code(404).send({ error: "Ce titre n'est plus dans la file" })
-        jam.index = index
+        const fromFallback = jam.fallback.findIndex((e) => e.id === cmd.entryId)
+        if (index >= 0) {
+          jam.index = index
+        } else if (fromFallback >= 0) {
+          // The fallback tracks before it are skipped; the queue still comes after it.
+          const entry = jam.fallback.splice(0, fromFallback + 1).pop()!
+          jam.queue.splice(jam.index + 1, 0, entry)
+          jam.index++
+        } else {
+          return reply.code(404).send({ error: "Ce titre n'est plus dans la file" })
+        }
         setPosition(jam, 0, true)
         break
       }
       case 'add': {
         const added = entries(await tracksById(cmd.trackIds), person(req.user!))
-        jam.queue = [...jam.queue, ...added].slice(0, MAX_QUEUE)
+        jam.queue.push(...added)
+        // Old played tracks make room before the new ones are cut.
+        trimHistory(jam)
+        jam.queue = jam.queue.slice(0, MAX_QUEUE)
         break
       }
       case 'playTracks': {
-        const tracks = await tracksById(cmd.trackIds)
-        if (!tracks.length) return reply.code(404).send({ error: 'Titres introuvables' })
-        const kept = current ? jam.queue.slice(0, jam.index + 1) : []
-        jam.queue = [...kept, ...entries(tracks, person(req.user!))].slice(0, MAX_QUEUE)
-        jam.index = Math.min(kept.length + cmd.index, jam.queue.length - 1)
+        const launched = entries(await tracksById(cmd.trackIds), person(req.user!))
+        if (!launched.length) return reply.code(404).send({ error: 'Titres introuvables' })
+        const start = Math.min(cmd.index, launched.length - 1)
+        const played = current ? jam.queue.slice(0, jam.index + 1) : []
+        const queued = jam.queue.slice(jam.index + 1)
+        jam.queue = [...played, launched[start], ...queued]
+        jam.index = played.length
+        jam.fallback = launched.slice(start + 1)
+        jam.fallbackName = cmd.source ?? null
         setPosition(jam, 0, true)
         break
       }
       case 'remove': {
         const index = jam.queue.findIndex((e) => e.id === cmd.entryId)
         // The current track can't be removed; skip it instead.
-        if (index < 0 || index === jam.index) break
+        if (index < 0) {
+          jam.fallback = jam.fallback.filter((e) => e.id !== cmd.entryId)
+          break
+        }
+        if (index === jam.index) break
         jam.queue.splice(index, 1)
         if (index < jam.index) jam.index--
         break
       }
+      case 'move': {
+        // Only what is still to come moves: the played tracks and the current one stay.
+        const queued = jam.queue.slice(jam.index + 1)
+        if (moveWithin(queued, cmd.entryId, cmd.beforeEntryId)) {
+          jam.queue = [...jam.queue.slice(0, jam.index + 1), ...queued]
+        } else if (!moveWithin(jam.fallback, cmd.entryId, cmd.beforeEntryId)) {
+          return reply.code(404).send({ error: "Ce titre n'est plus dans la file" })
+        }
+        break
+      }
     }
+    trimHistory(jam)
     broadcast(jam)
     return reply.code(204).send()
   })

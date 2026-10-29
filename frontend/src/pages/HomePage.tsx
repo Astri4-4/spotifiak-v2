@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { api, images, podcasts } from '../api'
+import { api, collection, images, podcasts } from '../api'
 import { Card } from '../components/Card'
 import { Cover } from '../components/Cover'
 import { PlayButton } from '../components/PlayButton'
@@ -21,6 +21,7 @@ function greeting() {
 export function HomePage() {
   const { data: albums } = useFetch(() => api.albums().then((r) => r.items), [])
   const { data: artists } = useFetch(() => api.artists().then((r) => r.items), [])
+  const { data: publicPlaylists } = useFetch(() => collection.publicPlaylists(), [])
   const { isPlaying, playAlbum, playArtist, playPlaylist, playLiked } = usePlayContext()
   const { likedIds, playlists, podcasts: subscriptions } = useCollection()
   // Reloaded when subscriptions change, so a new subscription shows up here.
@@ -61,7 +62,7 @@ export function HomePage() {
                   title: p.name,
                   cover: <PlaylistCover covers={p.covers} />,
                   id: p.id,
-                  play: () => playPlaylist(p.id),
+                  play: () => playPlaylist(p.id, p.name),
                 })),
               ...albums.map((a) => ({
                 key: a.id,
@@ -98,6 +99,23 @@ export function HomePage() {
                 image={images.album(album)}
                 playing={isPlaying(album.id)}
                 onPlay={() => void playAlbum(album.id)}
+              />
+            ))}
+          </Shelf>
+        )}
+
+        {publicPlaylists && publicPlaylists.length > 0 && (
+          <Shelf title="Playlists publiques">
+            {publicPlaylists.map((p) => (
+              <Card
+                key={p.id}
+                to={`/playlist/${p.id}`}
+                title={p.name}
+                subtitle={`De ${p.owner.displayName}`}
+                image={null}
+                cover={<PlaylistCover covers={p.covers} quality="md" />}
+                playing={isPlaying(p.id)}
+                onPlay={() => void playPlaylist(p.id, p.name)}
               />
             ))}
           </Shelf>

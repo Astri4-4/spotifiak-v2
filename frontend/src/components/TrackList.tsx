@@ -1,4 +1,3 @@
-import { useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { images, type Track } from '../api'
 import { formatAddedAt, formatDuration } from '../format'
@@ -8,10 +7,13 @@ import { usePlayer } from '../player/context'
 import { Cover } from './Cover'
 import { HeartButton } from './HeartButton'
 import { TrackMenu } from './TrackMenu'
+import { useReorder } from './useReorder'
 
 interface TrackListProps {
   tracks: Track[]
   contextId: string
+  /** Name of the list (a playlist), shown in a Jam as where the next tracks come from. */
+  contextName?: string
   /**
    * album: no covers, numbered by track number. full: every column.
    * compact: numbered, no header. search: no numbers, play button over the cover.
@@ -36,11 +38,10 @@ function Equalizer() {
   )
 }
 
-export function TrackList({ tracks, contextId, variant = 'full', rowKeys, onRemove, onMove }: TrackListProps) {
+export function TrackList({ tracks, contextId, contextName, variant = 'full', rowKeys, onRemove, onMove }: TrackListProps) {
   const { current, playing, playTracks, toggle } = usePlayer()
   const isMobile = useIsMobile()
-  const [dragFrom, setDragFrom] = useState<number | null>(null)
-  const [dropBefore, setDropBefore] = useState<number | null>(null)
+  const reorder = useReorder(tracks.length, onMove)
   const showCover = variant !== 'album'
   const showIndex = variant !== 'search'
   const showAlbum = variant === 'full'
@@ -48,36 +49,8 @@ export function TrackList({ tracks, contextId, variant = 'full', rowKeys, onRemo
 
   const onPlay = (index: number) => {
     if (current?.id === tracks[index].id) toggle()
-    else playTracks(tracks, index, contextId)
+    else playTracks(tracks, index, contextId, contextName)
   }
-
-  const dragHandlers = (i: number) =>
-    onMove && {
-      draggable: true,
-      onDragStart: (e: DragEvent) => {
-        setDragFrom(i)
-        e.dataTransfer.effectAllowed = 'move'
-      },
-      onDragOver: (e: DragEvent<HTMLDivElement>) => {
-        if (dragFrom === null) return
-        e.preventDefault()
-        const rect = e.currentTarget.getBoundingClientRect()
-        // Upper half of a row drops before it, lower half after it.
-        setDropBefore(e.clientY < rect.top + rect.height / 2 ? i : i + 1)
-      },
-      onDrop: (e: DragEvent) => {
-        e.preventDefault()
-        if (dragFrom !== null && dropBefore !== null && dropBefore !== dragFrom && dropBefore !== dragFrom + 1) {
-          onMove(dragFrom, dropBefore)
-        }
-        setDragFrom(null)
-        setDropBefore(null)
-      },
-      onDragEnd: () => {
-        setDragFrom(null)
-        setDropBefore(null)
-      },
-    }
 
   return (
     <div className={`tracklist tracklist-${variant}`} role="grid">
@@ -95,19 +68,17 @@ export function TrackList({ tracks, contextId, variant = 'full', rowKeys, onRemo
       {tracks.map((track, i) => {
         const isCurrent = current?.id === track.id
         const isPlaying = isCurrent && playing
-        const dropClass =
-          dropBefore === i ? ' drop-before' : dropBefore === i + 1 && i === tracks.length - 1 ? ' drop-after' : ''
         return (
           <div
             key={rowKeys?.[i] ?? track.id}
-            className={`tracklist-row${isCurrent ? ' current' : ''}${dragFrom === i ? ' dragging' : ''}${dropClass}`}
+            className={`tracklist-row${isCurrent ? ' current' : ''}${reorder.classes(i)}`}
             role="row"
-            onDoubleClick={() => playTracks(tracks, i, contextId)}
+            onDoubleClick={() => playTracks(tracks, i, contextId, contextName)}
             // Phones have no double click: a tap on the row (not on its buttons) plays.
             onClick={
               isMobile ? (e) => !(e.target as HTMLElement).closest('button, a') && onPlay(i) : undefined
             }
-            {...dragHandlers(i)}
+            {...reorder.handlers(i)}
           >
             {showIndex && (
               <span className="col-index">

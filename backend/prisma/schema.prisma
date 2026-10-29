@@ -110,6 +110,8 @@ model Playlist {
   id          String          @id @default(cuid())
   name        String
   description String?
+  // Public playlists are listed for, and playable by, every account; only the owner edits them.
+  public      Boolean         @default(false)
   ownerId     String
   owner       User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt   DateTime        @default(now())
@@ -118,6 +120,7 @@ model Playlist {
   imports     SpotifyImport[]
 
   @@index([ownerId])
+  @@index([public, updatedAt])
 }
 
 // An entry, not a track: the same track can appear twice in a playlist.

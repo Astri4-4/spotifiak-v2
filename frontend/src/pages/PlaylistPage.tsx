@@ -10,7 +10,8 @@ import { PopoverMenu } from '../components/PopoverMenu'
 import { TrackList } from '../components/TrackList'
 import { formatDuration, formatTotalDuration, pluralize } from '../format'
 import { useDominantColor, useFetch } from '../hooks'
-import { MoreIcon, PencilIcon, SearchIcon } from '../icons'
+import { MoreIcon, PencilIcon, SearchIcon, ShuffleIcon } from '../icons'
+import { usePlayer } from '../player/context'
 import { usePlayContext } from '../player/usePlayContext'
 
 const SEARCH_DEBOUNCE_MS = 250
@@ -119,13 +120,15 @@ function PlaylistView({ id }: { id: string }) {
   // Local order while a move is saved, so the row lands immediately.
   const [optimistic, setOptimistic] = useState<PlaylistEntry[] | null>(null)
   const { color, fromImage } = useDominantColor()
-  const { isPlaying, playTracks } = usePlayContext()
+  const { isPlaying, playTracks, playShuffled } = usePlayContext()
+  const { contextId, shuffle } = usePlayer()
   const [editing, setEditing] = useState(false)
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
 
   if (error) return <div className="page page-inner error">Playlist introuvable.</div>
   if (!playlist) return <div className="page" />
 
+  const owned = playlist.owned
   const entries = optimistic ?? playlist.entries
   const tracks = entries.map((e) => e.track)
   const total = tracks.reduce((sum, t) => sum + (t.durationSec ?? 0), 0)
@@ -156,6 +159,17 @@ function PlaylistView({ id }: { id: string }) {
     reload()
   }
 
+  const togglePublic = async () => {
+    setMenuAnchor(null)
+    try {
+      await collection.updatePlaylist(id, { public: !playlist.public })
+      notify(playlist.public ? 'Playlist rendue privée' : "Playlist publique : tout le monde peut l'écouter")
+      reload()
+    } catch (err) {
+      notify((err as Error).message)
+    }
+  }
+
   const deletePlaylist = async () => {
     setMenuAnchor(null)
     if (!window.confirm(`Supprimer « ${playlist.name} » ? Cette action est définitive.`)) return
@@ -168,26 +182,34 @@ function PlaylistView({ id }: { id: string }) {
   return (
     <div className="page" style={{ '--header-color': color } as React.CSSProperties}>
       <header className="entity-header">
-        <button className="entity-cover-button" onClick={() => setEditing(true)} aria-label="Modifier les informations">
+        {/* Hidden image only to sample the header colour from the first cover. */}
+        {playlist.covers[0] && (
+          <Cover src={images.mosaic(playlist.covers[0])} className="color-probe" onLoad={fromImage} />
+        )}
+        {owned ? (
+          <button className="entity-cover-button" onClick={() => setEditing(true)} aria-label="Modifier les informations">
+            <PlaylistCover covers={playlist.covers} className="entity-cover" quality="lg" />
+            <span className="entity-cover-edit">
+              <PencilIcon size={32} />
+              Modifier
+            </span>
+          </button>
+        ) : (
           <PlaylistCover covers={playlist.covers} className="entity-cover" quality="lg" />
-          {/* Hidden image only to sample the header colour from the first cover. */}
-          {playlist.covers[0] && (
-            <Cover src={images.mosaic(playlist.covers[0])} className="color-probe" onLoad={fromImage} />
-          )}
-          <span className="entity-cover-edit">
-            <PencilIcon size={32} />
-            Modifier
-          </span>
-        </button>
+        )}
         <div className="entity-info">
-          <span className="entity-type">Playlist privée</span>
-          <h1
-            className={`entity-title editable${playlist.name.length > 24 ? ' long' : ''}`}
-            onClick={() => setEditing(true)}
-            title="Modifier les informations"
-          >
-            {playlist.name}
-          </h1>
+          <span className="entity-type">{playlist.public ? 'Playlist publique' : 'Playlist privée'}</span>
+          {owned ? (
+            <h1
+              className={`entity-title editable${playlist.name.length > 24 ? ' long' : ''}`}
+              onClick={() => setEditing(true)}
+              title="Modifier les informations"
+            >
+              {playlist.name}
+            </h1>
+          ) : (
+            <h1 className={`entity-title${playlist.name.length > 24 ? ' long' : ''}`}>{playlist.name}</h1>
+          )}
           {playlist.description && <p className="entity-description">{playlist.description}</p>}
           <div className="entity-meta">
             <span className="entity-meta-artist">{playlist.owner.displayName}</span>
@@ -201,32 +223,49 @@ function PlaylistView({ id }: { id: string }) {
 
       <div className="action-bar">
         {tracks.length > 0 && (
-          <PlayButton size="lg" playing={isPlaying(id)} onClick={() => void playTracks(id, tracks)} />
-        )}
-        <button
-          className="icon-button action-more"
-          onClick={(e) => setMenuAnchor(menuAnchor ? null : e.currentTarget)}
-          aria-label={`Plus d'options pour ${playlist.name}`}
-          aria-haspopup="menu"
-        >
-          <MoreIcon size={24} />
-        </button>
-        {menuAnchor && (
-          <PopoverMenu anchor={menuAnchor} onClose={() => setMenuAnchor(null)} label={`Options pour ${playlist.name}`}>
+          <>
+            <PlayButton size="lg" playing={isPlaying(id)} onClick={() => void playTracks(id, tracks, playlist.name)} />
             <button
-              role="menuitem"
-              className="menu-item"
-              onClick={() => {
-                setMenuAnchor(null)
-                setEditing(true)
-              }}
+              className={`icon-button action-shuffle${shuffle && contextId === id ? ' active' : ''}`}
+              onClick={() => void playShuffled(id, tracks, playlist.name)}
+              aria-label={`Lecture aléatoire de ${playlist.name}`}
+              title="Lecture aléatoire"
             >
-              Modifier les informations
+              <ShuffleIcon size={28} />
             </button>
-            <button role="menuitem" className="menu-item danger" onClick={() => void deletePlaylist()}>
-              Supprimer
+          </>
+        )}
+        {owned && (
+          <>
+            <button
+              className="icon-button action-more"
+              onClick={(e) => setMenuAnchor(menuAnchor ? null : e.currentTarget)}
+              aria-label={`Plus d'options pour ${playlist.name}`}
+              aria-haspopup="menu"
+            >
+              <MoreIcon size={24} />
             </button>
-          </PopoverMenu>
+            {menuAnchor && (
+              <PopoverMenu anchor={menuAnchor} onClose={() => setMenuAnchor(null)} label={`Options pour ${playlist.name}`}>
+                <button
+                  role="menuitem"
+                  className="menu-item"
+                  onClick={() => {
+                    setMenuAnchor(null)
+                    setEditing(true)
+                  }}
+                >
+                  Modifier les informations
+                </button>
+                <button role="menuitem" className="menu-item" onClick={() => void togglePublic()}>
+                  {playlist.public ? 'Rendre privée' : 'Rendre publique'}
+                </button>
+                <button role="menuitem" className="menu-item danger" onClick={() => void deletePlaylist()}>
+                  Supprimer
+                </button>
+              </PopoverMenu>
+            )}
+          </>
         )}
       </div>
 
@@ -235,13 +274,14 @@ function PlaylistView({ id }: { id: string }) {
           <TrackList
             tracks={tracks}
             contextId={id}
+            contextName={playlist.name}
             variant="full"
             rowKeys={entries.map((e) => e.id)}
-            onRemove={(i) => void remove(i)}
-            onMove={(from, before) => void move(from, before)}
+            onRemove={owned ? (i) => void remove(i) : undefined}
+            onMove={owned ? (from, before) => void move(from, before) : undefined}
           />
         )}
-        <AddTracks onAdd={(t) => void add(t)} />
+        {owned && <AddTracks onAdd={(t) => void add(t)} />}
       </div>
 
       {editing && <EditDialog playlist={playlist} onClose={() => setEditing(false)} onSaved={reload} />}

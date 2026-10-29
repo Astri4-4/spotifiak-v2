@@ -7,6 +7,8 @@ export interface PlayerState {
   current: Track | null
   /** Identifies what is playing (album id, artist id, "liked"...) to highlight its play button. */
   contextId: string | null
+  /** Its name ("Ma playlist"), when known: a Jam shows where its next tracks come from. */
+  contextName: string | null
   playing: boolean
   queue: Track[]
   upNext: Track[]
@@ -21,7 +23,11 @@ export interface PlayerState {
   setRate: (rate: number) => void
   /** Moves forward (or back, when negative) by this many seconds. */
   skip: (seconds: number) => void
-  playTracks: (tracks: Track[], startIndex?: number, contextId?: string) => void
+  playTracks: (tracks: Track[], startIndex?: number, contextId?: string, contextName?: string) => void
+  /** Plays the tracks in a random order (and turns shuffle on). */
+  playShuffled: (tracks: Track[], contextId?: string, contextName?: string) => void
+  /** Reorders what plays next: upNext[from] goes before upNext[before]. */
+  moveInQueue: (from: number, before: number) => void
   /** "Ajouter à la file d'attente": after the queue's last track. */
   addToQueue: (tracks: Track[]) => void
   toggle: () => void

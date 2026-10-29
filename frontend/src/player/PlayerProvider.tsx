@@ -31,6 +31,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Bumped on every explicit "play this", so replaying the same track restarts it.
   const [loadKey, setLoadKey] = useState(0)
   const [contextId, setContextId] = useState<string | null>(null)
+  const [contextName, setContextName] = useState<string | null>(null)
   const [playing, setPlaying] = useState(false)
   const [shuffle, setShuffle] = useState(() => storage.get('shuffle') === 'true')
   const [repeat, setRepeat] = useState<RepeatMode>(() => (storage.get('repeat') as RepeatMode) ?? 'off')
@@ -121,10 +122,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => storage.set('repeat', repeat), [repeat])
 
   const playTracks = useCallback(
-    (tracks: Track[], startIndex = 0, ctx?: string) => {
+    (tracks: Track[], startIndex = 0, ctx?: string, name?: string) => {
       setContextId(ctx ?? null)
+      setContextName(name ?? null)
       if (inJam) {
-        command({ type: 'playTracks', trackIds: tracks.map((t) => t.id), index: startIndex })
+        command({ type: 'playTracks', trackIds: tracks.map((t) => t.id), index: startIndex, source: name })
         return
       }
       setQueue(tracks)
@@ -138,6 +140,37 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setLoadKey((k) => k + 1)
     },
     [shuffle, inJam, command],
+  )
+
+  const playShuffled = useCallback(
+    (tracks: Track[], ctx?: string, name?: string) => {
+      if (!tracks.length) return
+      const shuffled = shuffledOrder(tracks.length, Math.floor(Math.random() * tracks.length))
+      setContextId(ctx ?? null)
+      setContextName(name ?? null)
+      // A Jam has no shuffle mode: it gets the tracks already shuffled.
+      if (inJam) {
+        command({ type: 'playTracks', trackIds: shuffled.map((i) => tracks[i].id), index: 0, source: name })
+        return
+      }
+      setShuffle(true)
+      setQueue(tracks)
+      setOrder(shuffled)
+      setPos(0)
+      setLoadKey((k) => k + 1)
+    },
+    [inJam, command],
+  )
+
+  /** Moves upNext[from] before upNext[before] (upNext.length = to the end). In a Jam, see QueuePanel. */
+  const moveInQueue = useCallback(
+    (from: number, before: number) => {
+      const upcoming = order.slice(pos + 1)
+      const [moved] = upcoming.splice(from, 1)
+      upcoming.splice(before > from ? before - 1 : before, 0, moved)
+      setOrder([...order.slice(0, pos + 1), ...upcoming])
+    },
+    [order, pos],
   )
 
   const addToQueue = useCallback(
@@ -287,7 +320,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [toggle])
 
   const upNext = useMemo(
-    () => (jam ? jam.queue.slice(jam.index + 1).map((e) => e.track) : order.slice(pos + 1).map((i) => queue[i])),
+    () =>
+      jam
+        ? [...jam.queue.slice(jam.index + 1), ...jam.fallback].map((e) => e.track)
+        : order.slice(pos + 1).map((i) => queue[i]),
     [jam, order, pos, queue],
   )
 
@@ -295,6 +331,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     () => ({
       current,
       contextId,
+      contextName,
       playing,
       queue,
       upNext,
@@ -307,6 +344,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setRate,
       skip,
       playTracks,
+      playShuffled,
+      moveInQueue,
       addToQueue,
       toggle,
       next,
@@ -317,7 +356,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       toggleShuffle,
       cycleRepeat,
     }),
-    [current, contextId, playing, queue, upNext, shuffle, repeat, volume, muted, inJam, rate, setRate, skip, playTracks, addToQueue, toggle, next, prev, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat],
+    [current, contextId, contextName, playing, queue, upNext, shuffle, repeat, volume, muted, inJam, rate, setRate, skip, playTracks, playShuffled, moveInQueue, addToQueue, toggle, next, prev, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat],
   )
 
   return (

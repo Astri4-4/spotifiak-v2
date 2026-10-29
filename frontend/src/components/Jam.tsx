@@ -23,7 +23,7 @@ export function JamSection() {
   const user = useCurrentUser()
   const { notify } = useCollection()
   const { jam, start, leave, removeParticipant } = useJam()
-  const { current, upNext, playing } = usePlayer()
+  const { current, upNext, playing, contextName } = usePlayer()
   const { currentTime } = useProgress()
   const [busy, setBusy] = useState(false)
 
@@ -34,7 +34,14 @@ export function JamSection() {
         // The Jam starts with what is playing here, from the current track on; a
         // podcast episode stays out of it (the Jam shares library tracks).
         const tracks = current && !current.episode ? [current, ...upNext] : []
-        await start({ trackIds: tracks.map((t) => t.id), index: 0, position: tracks.length ? currentTime : 0, playing: !!tracks.length && playing })
+        // What comes next becomes the Jam's fallback: tracks people add play first.
+        await start({
+          trackIds: tracks.map((t) => t.id),
+          index: 0,
+          position: tracks.length ? currentTime : 0,
+          playing: !!tracks.length && playing,
+          source: contextName ?? undefined,
+        })
       } catch (err) {
         notify((err as Error).message)
       } finally {

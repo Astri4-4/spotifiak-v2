@@ -2083,6 +2083,23 @@ a.now-playing-title:hover,
   box-shadow: inset 0 -2px 0 var(--green);
 }
 
+/* The queue reorders like a playlist. */
+.queue-list li[draggable='true'] {
+  cursor: grab;
+}
+
+.queue-list li.dragging {
+  opacity: 0.4;
+}
+
+.queue-list li.drop-before {
+  box-shadow: inset 0 2px 0 var(--green);
+}
+
+.queue-list li.drop-after {
+  box-shadow: inset 0 -2px 0 var(--green);
+}
+
 /* Popover menus (fixed, rendered in a portal) */
 .menu.popover {
   position: fixed;
@@ -2220,6 +2237,15 @@ a.now-playing-title:hover,
 .action-more {
   width: 40px;
   height: 40px;
+}
+
+.action-shuffle {
+  width: 40px;
+  height: 40px;
+}
+
+.action-shuffle.active {
+  color: var(--green);
 }
 
 .sidebar-header-actions {

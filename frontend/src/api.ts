@@ -95,9 +95,16 @@ export interface PlaylistSummary {
   id: string
   name: string
   description: string | null
+  /** Listed for, and playable by, every account. */
+  public: boolean
   updatedAt: string
   trackCount: number
   covers: MosaicCover[]
+}
+
+/** Another account's public playlist. */
+export interface PublicPlaylist extends Omit<PlaylistSummary, 'public'> {
+  owner: { displayName: string }
 }
 
 export interface PlaylistEntry {
@@ -110,6 +117,9 @@ export interface PlaylistDetail {
   id: string
   name: string
   description: string | null
+  public: boolean
+  /** Only the owner edits it; others see it once it is public. */
+  owned: boolean
   updatedAt: string
   owner: { displayName: string }
   covers: MosaicCover[]
@@ -164,10 +174,23 @@ export interface JamState {
   id: string
   host: JamPerson
   participants: JamPerson[]
+  /** Played tracks, the current one (at index), then the tracks added to the queue. */
   queue: JamEntry[]
   index: number
+  /** The rest of what was launched (a playlist...): plays once the queue is empty. */
+  fallback: JamEntry[]
+  fallbackName: string | null
   playing: boolean
   position: number
+}
+
+/** What a Jam starts with: the tracks after `index` become its fallback. */
+export interface JamStart {
+  trackIds: string[]
+  index: number
+  position: number
+  playing: boolean
+  source?: string
 }
 
 export interface JamInvite {
@@ -183,7 +206,9 @@ export type JamCommand =
   | { type: 'next' | 'prev' }
   | { type: 'ended' | 'jump' | 'remove'; entryId: string }
   | { type: 'add'; trackIds: string[] }
-  | { type: 'playTracks'; trackIds: string[]; index: number }
+  | { type: 'playTracks'; trackIds: string[]; index: number; source?: string }
+  /** Within the queue or within the fallback: before another entry, or at the end (null). */
+  | { type: 'move'; entryId: string; beforeEntryId: string | null }
 
 export interface PodcastSummary {
   id: string
@@ -307,10 +332,11 @@ export const collection = {
   followArtist: (id: string) => send<void>('PUT', `/me/artists/${id}`),
   unfollowArtist: (id: string) => send<void>('DELETE', `/me/artists/${id}`),
   playlists: () => request<PlaylistSummary[]>('/playlists'),
+  publicPlaylists: () => request<PublicPlaylist[]>('/playlists/public'),
   playlist: (id: string) => request<PlaylistDetail>(`/playlists/${id}`),
   createPlaylist: (name?: string) => send<{ id: string; name: string }>('POST', '/playlists', { name }),
-  updatePlaylist: (id: string, data: { name?: string; description?: string }) =>
-    send<{ id: string; name: string; description: string | null }>('PATCH', `/playlists/${id}`, data),
+  updatePlaylist: (id: string, data: { name?: string; description?: string; public?: boolean }) =>
+    send<{ id: string; name: string; description: string | null; public: boolean }>('PATCH', `/playlists/${id}`, data),
   deletePlaylist: (id: string) => send<void>('DELETE', `/playlists/${id}`),
   addToPlaylist: (id: string, trackIds: string[]) =>
     send<{ added: number }>('POST', `/playlists/${id}/tracks`, { trackIds }),
@@ -373,7 +399,7 @@ export const spotify = {
 
 export const jam = {
   current: () => request<JamState | null>('/jam/current'),
-  start: (initial: { trackIds: string[]; index: number; position: number; playing: boolean }) =>
+  start: (initial: JamStart) =>
     send<JamState>('POST', '/jam', initial),
   invite: (id: string) => request<JamInvite>(`/jam/${encodeURIComponent(id)}`),
   join: (id: string) => send<JamState>('POST', `/jam/${encodeURIComponent(id)}/join`),
