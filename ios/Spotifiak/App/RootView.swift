@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Login until there is a user, then the tabs.
+/// Login until there is a user, then the tabs, each with its own navigation stack.
 struct RootView: View {
     @Environment(Session.self) private var session
     @Environment(PlayerEngine.self) private var player
@@ -10,34 +10,30 @@ struct RootView: View {
             ProgressView()
         } else if case .loggedIn = session.state {
             TabView {
-                placeholder("Accueil", systemImage: "house")
-                placeholder("Rechercher", systemImage: "magnifyingglass")
-                placeholder("Bibliothèque", systemImage: "books.vertical")
-            }
-            .overlay(alignment: .top) {
-                if let toast = player.toast {
-                    Text(toast)
-                        .font(.subheadline)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(.regularMaterial, in: Capsule())
-                        .padding(.top, 8)
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                tab("Accueil", systemImage: "house") { HomeView() }
+                tab("Rechercher", systemImage: "magnifyingglass") { SearchView() }
+                tab("Bibliothèque", systemImage: "books.vertical") {
+                    ContentUnavailableView("Bientôt disponible", systemImage: "books.vertical")
+                        .navigationTitle("Bibliothèque")
+                        .toolbar {
+                            Button("Se déconnecter") { Task { await session.logout() } }
+                        }
                 }
             }
-            .animation(.default, value: player.toast)
+            .toast(player.toast)
         } else {
             LoginView()
         }
     }
 
-    private func placeholder(_ title: String, systemImage: String) -> some View {
+    private func tab<Content: View>(_ title: String, systemImage: String, @ViewBuilder content: () -> Content) -> some View {
         NavigationStack {
-            Text(title)
-                .navigationTitle(title)
-                .toolbar {
-                    Button("Se déconnecter") { Task { await session.logout() } }
+            content().navigationDestination(for: Route.self) { route in
+                switch route {
+                case .album(let id): AlbumView(id: id)
+                case .artist(let id): ArtistView(id: id)
                 }
+            }
         }
         .safeAreaInset(edge: .bottom) { MiniPlayer() }
         .tabItem { Label(title, systemImage: systemImage) }

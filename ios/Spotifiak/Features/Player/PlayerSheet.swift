@@ -11,7 +11,7 @@ struct PlayerSheet: View {
     var body: some View {
         VStack(spacing: 24) {
             if let track = player.queue.current {
-                CoverImage(url: session.api?.coverURL(track: track))
+                RemoteImage(url: session.api?.coverURL(track: track))
                     .aspectRatio(1, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .shadow(radius: 12)
@@ -69,9 +69,9 @@ struct PlayerSheet: View {
                 }
             )
             HStack {
-                Text(Self.time(scrubbing ?? player.position))
+                Text(formatDuration(scrubbing ?? player.position))
                 Spacer()
-                Text(player.duration.map(Self.time) ?? "--:--")
+                Text(formatDuration(player.duration))
             }
             .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)
@@ -84,10 +84,5 @@ struct PlayerSheet: View {
         case .all: "Répéter le titre"
         case .one: "Ne plus répéter"
         }
-    }
-
-    static func time(_ seconds: Double) -> String {
-        let total = Int(seconds.rounded(.down))
-        return String(format: "%d:%02d", total / 60, total % 60)
     }
 }

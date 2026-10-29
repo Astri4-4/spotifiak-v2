@@ -10,7 +10,7 @@ struct MiniPlayer: View {
     var body: some View {
         if let track = player.queue.current {
             HStack(spacing: 12) {
-                CoverImage(url: session.api?.coverURL(track: track))
+                RemoteImage(url: session.api?.coverURL(track: track))
                     .frame(width: 44, height: 44)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                 VStack(alignment: .leading, spacing: 2) {
@@ -34,22 +34,6 @@ struct MiniPlayer: View {
             .contentShape(Rectangle())
             .onTapGesture { showsPlayer = true }
             .sheet(isPresented: $showsPlayer) { PlayerSheet() }
-        }
-    }
-}
-
-/// A cover from the API, with a neutral placeholder while it loads or when there is none.
-struct CoverImage: View {
-    let url: URL?
-
-    var body: some View {
-        AsyncImage(url: url) { image in
-            image.resizable().scaledToFill()
-        } placeholder: {
-            ZStack {
-                Color.secondary.opacity(0.2)
-                Image(systemName: "music.note").foregroundStyle(.secondary)
-            }
         }
     }
 }
