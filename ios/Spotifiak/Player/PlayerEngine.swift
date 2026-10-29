@@ -31,6 +31,7 @@ final class PlayerEngine {
     /// The restored current track isn't loaded until the user presses play.
     private var needsLoad = false
     private var failures = 0
+    private var resumeAfterInterruption = false
     private var lastSave = Date.distantPast
     private var unsaved = false
     private var toastTask: Task<Void, Never>?
@@ -82,6 +83,17 @@ final class PlayerEngine {
     func pause() {
         output.pause()
         isPlaying = false
+    }
+
+    /// A call, Siri, an alarm… Resume afterwards only if music was playing.
+    func interruptionBegan() {
+        resumeAfterInterruption = isPlaying
+        pause()
+    }
+
+    func interruptionEnded(shouldResume: Bool) {
+        if shouldResume && resumeAfterInterruption { play() }
+        resumeAfterInterruption = false
     }
 
     func togglePlay() {
@@ -175,6 +187,11 @@ final class PlayerEngine {
 
     private func failed() {
         failures += 1
+        if failures == 1 {
+            // Streams bypass APIClient, so a 401 here would go unnoticed: ask the server.
+            let api = api()
+            Task { await api?.checkSession() }
+        }
         if failures >= 3 {
             failures = 0
             pause()

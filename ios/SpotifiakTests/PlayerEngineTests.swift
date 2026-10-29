@@ -21,7 +21,8 @@ final class FakeAudioOutput: AudioOutput {
     func seek(to seconds: Double) { seeks.append(seconds) }
 }
 
-private let api = APIClient(base: URL(string: "https://h/api")!, transport: FakeTransport()) {}
+private let transport = FakeTransport()
+private let api = APIClient(base: URL(string: "https://h/api")!, transport: transport) {}
 private let tracks = (0..<5).map { Track(id: String($0), title: "Track \($0)", artistName: "A", artistId: "a") }
 
 @MainActor
@@ -117,4 +118,30 @@ private func makeEngine(defaults: UserDefaults? = nil) -> (PlayerEngine, FakeAud
     restored.togglePlay()
     #expect(output.loads.last?.url == api.streamURL(for: tracks[2]))
     #expect(restored.isPlaying)
+}
+
+@MainActor @Test func interruptionResumesOnlyWhatWasPlaying() {
+    let (engine, output) = makeEngine()
+    engine.play(tracks, startAt: 0)
+    engine.interruptionBegan()
+    #expect(!engine.isPlaying)
+    engine.interruptionEnded(shouldResume: true)
+    #expect(engine.isPlaying)
+
+    engine.pause()
+    let plays = output.plays
+    engine.interruptionBegan()
+    engine.interruptionEnded(shouldResume: true)
+    #expect(!engine.isPlaying)
+    #expect(output.plays == plays)
+}
+
+@MainActor @Test func aFailureChecksTheSession() async {
+    let (engine, output) = makeEngine()
+    engine.play(tracks, startAt: 0)
+    output.onFailed?(URLError(.badServerResponse))
+    for _ in 0..<100 where !transport.requests.contains(where: { $0.url?.path == "/api/auth/status" }) {
+        await Task.yield()
+    }
+    #expect(transport.requests.contains { $0.url?.path == "/api/auth/status" })
 }

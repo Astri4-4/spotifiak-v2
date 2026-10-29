@@ -29,8 +29,8 @@ final class NowPlaying {
             let options = AVAudioSession.InterruptionOptions(rawValue: info?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0)
             MainActor.assumeIsolated {
                 switch type {
-                case .began: engine.pause()
-                case .ended where options.contains(.shouldResume): engine.play()
+                case .began: engine.interruptionBegan()
+                case .ended: engine.interruptionEnded(shouldResume: options.contains(.shouldResume))
                 default: break
                 }
             }

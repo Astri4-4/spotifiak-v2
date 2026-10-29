@@ -69,6 +69,13 @@ public final class APIClient: Sendable {
         return response.user
     }
 
+    /// Expires the session (onUnauthorized) when the server no longer knows our cookie. For
+    /// requests that don't go through this client, like streams played by AVFoundation.
+    public func checkSession() async {
+        guard let status = try? await authStatus(), status.user == nil else { return }
+        onUnauthorized()
+    }
+
     public func logout() async throws {
         _ = try await data("POST", "/auth/logout", body: nil as [String: String]?)
     }

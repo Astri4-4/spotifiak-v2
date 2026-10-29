@@ -9,6 +9,8 @@ final class AVQueuePlayerOutput: AudioOutput {
 
     private let player = AVQueuePlayer()
     private var statusObservation: NSKeyValueObservation?
+    /// The item the engine last asked for; failures of any other item are stale.
+    private var expectedItem: ObjectIdentifier?
     private var observers: [NSObjectProtocol] = []
 
     init() {
@@ -17,7 +19,7 @@ final class AVQueuePlayerOutput: AudioOutput {
         observers.append(center.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: nil, queue: .main) { [weak self] note in
             let item = (note.object as AnyObject?).map(ObjectIdentifier.init)
             MainActor.assumeIsolated {
-                guard let self, item == self.currentItemID else { return }
+                guard let self, item == self.expectedItem else { return }
                 self.onItemEnded?()
             }
         })
@@ -25,7 +27,7 @@ final class AVQueuePlayerOutput: AudioOutput {
             let item = (note.object as AnyObject?).map(ObjectIdentifier.init)
             let error = note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error ?? URLError(.unknown)
             MainActor.assumeIsolated {
-                guard let self, item == self.currentItemID else { return }
+                guard let self, item == self.expectedItem else { return }
                 self.onFailed?(error)
             }
         })
@@ -56,6 +58,7 @@ final class AVQueuePlayerOutput: AudioOutput {
         }
         for stale in player.items().dropFirst() { player.remove(stale) }
         if let next { player.insert(Self.item(next), after: nil) }
+        expectedItem = currentItemID
         observeStatus()
     }
 
@@ -82,7 +85,7 @@ final class AVQueuePlayerOutput: AudioOutput {
         statusObservation = player.currentItem.map {
             Self.observeFailure(of: $0) { [weak self] id, error in
                 Task { @MainActor in
-                    guard let self, id == self.currentItemID else { return }
+                        guard let self, id == self.expectedItem else { return }
                     self.onFailed?(error)
                 }
             }
@@ -93,7 +96,8 @@ final class AVQueuePlayerOutput: AudioOutput {
     private nonisolated static func observeFailure(
         of item: AVPlayerItem, report: @escaping @Sendable (ObjectIdentifier, Error) -> Void
     ) -> NSKeyValueObservation {
-        item.observe(\.status) { item, _ in
+        // .initial: a preloaded item may have failed before it became current.
+        item.observe(\.status, options: [.initial, .new]) { item, _ in
             guard item.status == .failed else { return }
             report(ObjectIdentifier(item), item.error ?? URLError(.unknown))
         }

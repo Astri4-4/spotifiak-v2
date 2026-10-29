@@ -102,3 +102,15 @@ private func track(format: String?) -> Track {
     #expect(api.coverURL(album: bare) == nil)
     #expect(api.pictureURL(artist: artist)?.absoluteString == "https://h/api/tracks/trk9/cover")
 }
+
+@Test func checkSessionExpiresOnlyWhenTheServerForgotUs() async {
+    let transport = FakeTransport()
+    let counter = Counter()
+    let api = APIClient(base: URL(string: "https://h/api")!, transport: transport) { counter.increment() }
+    transport.respond("https://h/api/auth/status", #"{ "user": { "id": "u1", "username": "a", "displayName": "A", "role": "user" }, "needsSetup": false, "signupOpen": false }"#)
+    await api.checkSession()
+    #expect(counter.value == 0)
+    transport.respond("https://h/api/auth/status", #"{ "user": null, "needsSetup": false, "signupOpen": false }"#)
+    await api.checkSession()
+    #expect(counter.value == 1)
+}
