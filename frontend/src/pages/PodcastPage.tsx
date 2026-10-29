@@ -64,18 +64,26 @@ function EditDialog({ podcast, onClose, onSaved }: { podcast: PodcastDetail; onC
   )
 }
 
-/** Created podcasts: paste a YouTube link, the server downloads its audio. */
+/** Created podcasts: paste a YouTube video or playlist link, the server downloads its audio. */
 function AddVideo({ podcastId, onAdded }: { podcastId: string; onAdded: () => void }) {
   const [url, setUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true)
     setError(null)
+    setResult(null)
     try {
-      await podcasts.addVideo(podcastId, url)
+      const { added, skipped } = await podcasts.addVideo(podcastId, url)
+      if (added > 1 || skipped) {
+        setResult(
+          `${added} vidéo${added > 1 ? 's' : ''} ajoutée${added > 1 ? 's' : ''}` +
+            (skipped ? `, ${skipped} déjà présente${skipped > 1 ? 's' : ''}` : ''),
+        )
+      }
       setUrl('')
       onAdded()
     } catch (err) {
@@ -87,15 +95,15 @@ function AddVideo({ podcastId, onAdded }: { podcastId: string; onAdded: () => vo
 
   return (
     <section className="add-video">
-      <h2 className="section-title">Ajouter une vidéo YouTube</h2>
-      <p className="muted">Le son de la vidéo devient un épisode de ce podcast.</p>
+      <h2 className="section-title">Ajouter une vidéo ou une playlist YouTube</h2>
+      <p className="muted">Le son de chaque vidéo devient un épisode de ce podcast.</p>
       <form onSubmit={onSubmit}>
         <input
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://www.youtube.com/watch?v=…"
-          aria-label="Lien de la vidéo YouTube"
+          placeholder="https://www.youtube.com/watch?v=… ou playlist?list=…"
+          aria-label="Lien de la vidéo ou de la playlist YouTube"
           required
         />
         <button className="pill-button small" disabled={busy || !url.trim()}>
@@ -103,6 +111,7 @@ function AddVideo({ podcastId, onAdded }: { podcastId: string; onAdded: () => vo
         </button>
       </form>
       {error && <p className="error">{error}</p>}
+      {result && <p className="muted">{result}</p>}
     </section>
   )
 }

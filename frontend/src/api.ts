@@ -401,7 +401,9 @@ export const podcasts = {
   create: () => send<{ id: string; title: string }>('POST', '/podcasts/created'),
   update: (id: string, data: { title?: string; description?: string }) => send<void>('PATCH', `/podcasts/${id}`, data),
   remove: (id: string) => send<void>('DELETE', `/podcasts/${id}`),
-  addVideo: (id: string, url: string) => send<{ id: string }>('POST', `/podcasts/${id}/episodes`, { url }),
+  /** A video or a whole playlist: skipped counts its videos already in the podcast. */
+  addVideo: (id: string, url: string) =>
+    send<{ added: number; skipped: number }>('POST', `/podcasts/${id}/episodes`, { url }),
   retry: (id: string, episodeId: string) => send<void>('POST', `/podcasts/${id}/episodes/${episodeId}/retry`),
   removeEpisode: (id: string, episodeId: string) => send<void>('DELETE', `/podcasts/${id}/episodes/${episodeId}`),
 }

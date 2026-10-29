@@ -16,6 +16,8 @@ const DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1000
 const MAX_FILE_SIZE = '1G'
 // m4a plays everywhere (Safari included) and needs no conversion, hence no ffmpeg.
 const AUDIO_FORMAT = 'bestaudio[ext=m4a]/bestaudio'
+// Mixes (list=RD…) are endless: only their first videos are taken.
+const MAX_PLAYLIST_VIDEOS = 500
 
 const idParams = z.object({ id: z.string() })
 const episodeParams = z.object({ id: z.string(), episodeId: z.string() })
@@ -36,6 +38,20 @@ export function youtubeVideoId(input: string) {
       ? url.pathname.slice(1)
       : (url.searchParams.get('v') ?? url.pathname.match(/^\/(?:shorts|live|embed)\/([^/]+)/)?.[1])
   return candidate && /^[A-Za-z0-9_-]{11}$/.test(candidate) ? candidate : null
+}
+
+/** The playlist id of a YouTube playlist link (playlist?list=…), or null. A watch link
+ *  inside a playlist (watch?v=…&list=…) stays a single video. */
+export function youtubePlaylistId(input: string) {
+  let url: URL
+  try {
+    url = new URL(input.trim())
+  } catch {
+    return null
+  }
+  if (!YOUTUBE_HOSTS.has(url.hostname.toLowerCase()) || youtubeVideoId(input)) return null
+  const list = url.searchParams.get('list')
+  return list && /^[A-Za-z0-9_-]{2,64}$/.test(list) ? list : null
 }
 
 // --- Downloads -----------------------------------------------------------------
@@ -74,6 +90,28 @@ function ytdlp(args: string[]) {
       reject(new Error(message.replace(/^ERROR:\s*(\[[^\]]+\]\s*)?(\w{11}:\s*)?/, '')))
     })
   })
+}
+
+interface PlaylistInfo {
+  entries?: { id?: string; title?: string }[]
+}
+
+/** The video ids of a playlist, in its order; private and deleted videos are left out. */
+async function playlistVideoIds(playlistId: string) {
+  const stdout = await ytdlp([
+    '--flat-playlist',
+    '--dump-single-json',
+    '--js-runtimes',
+    'node',
+    '--playlist-end',
+    String(MAX_PLAYLIST_VIDEOS),
+    `https://www.youtube.com/playlist?list=${playlistId}`,
+  ])
+  const info = JSON.parse(stdout) as PlaylistInfo
+  return (info.entries ?? [])
+    .filter((e) => !/^\[(private|deleted) video\]$/i.test(e.title ?? ''))
+    .map((e) => e.id)
+    .filter((id): id is string => !!id && /^[A-Za-z0-9_-]{11}$/.test(id))
 }
 
 async function removeFiles(dir: string, prefix: string) {
@@ -229,21 +267,54 @@ export async function youtubeRoutes(app: FastifyInstance) {
     const { url } = z.object({ url: z.string().max(500) }).parse(req.body)
     if (!enabled()) return reply.code(503).send({ error: "La création de podcasts n'est pas activée (PODCAST_DIR)" })
     if (!(await ownedPodcast(id, req.user!.id, reply))) return
+    const playlistId = youtubePlaylistId(url)
     const videoId = youtubeVideoId(url)
-    if (!videoId) return reply.code(400).send({ error: "Ce n'est pas un lien de vidéo YouTube" })
+    if (!videoId && !playlistId) return reply.code(400).send({ error: "Ce n'est pas un lien de vidéo ou de playlist YouTube" })
 
-    const guid = `youtube:${videoId}`
-    if (await prisma.podcastEpisode.findUnique({ where: { podcastId_guid: { podcastId: id, guid } } })) {
-      return reply.code(409).send({ error: 'Cette vidéo est déjà dans le podcast' })
+    let videoIds: string[]
+    if (videoId) {
+      videoIds = [videoId]
+    } else {
+      try {
+        videoIds = await playlistVideoIds(playlistId!)
+      } catch (err) {
+        return reply.code(400).send({ error: `Playlist illisible : ${(err as Error).message}` })
+      }
+      if (!videoIds.length) return reply.code(400).send({ error: 'Cette playlist ne contient aucune vidéo disponible' })
     }
-    // Only the canonical address reaches yt-dlp, whatever was pasted.
-    const sourceUrl = `https://www.youtube.com/watch?v=${videoId}`
-    const episode = await prisma.podcastEpisode.create({
-      data: { podcastId: id, guid, title: 'Vidéo YouTube', audioUrl: sourceUrl, sourceUrl, status: 'queued', publishedAt: new Date() },
-      select: { id: true },
+
+    const existing = await prisma.podcastEpisode.findMany({
+      where: { podcastId: id, guid: { in: videoIds.map((v) => `youtube:${v}`) } },
+      select: { guid: true },
     })
-    enqueue(episode.id)
-    return reply.code(201).send(episode)
+    const known = new Set(existing.map((e) => e.guid))
+    const fresh = [...new Set(videoIds)].filter((v) => !known.has(`youtube:${v}`))
+    if (!fresh.length) {
+      return reply.code(409).send({ error: videoId ? 'Cette vidéo est déjà dans le podcast' : 'Ces vidéos sont déjà dans le podcast' })
+    }
+
+    // Episodes list newest first: a playlist's first video gets the latest date to keep its order.
+    const now = Date.now()
+    const created = await prisma.$transaction(
+      fresh.map((v, i) => {
+        // Only the canonical address reaches yt-dlp, whatever was pasted.
+        const sourceUrl = `https://www.youtube.com/watch?v=${v}`
+        return prisma.podcastEpisode.create({
+          data: {
+            podcastId: id,
+            guid: `youtube:${v}`,
+            title: 'Vidéo YouTube',
+            audioUrl: sourceUrl,
+            sourceUrl,
+            status: 'queued',
+            publishedAt: new Date(now - i),
+          },
+          select: { id: true },
+        })
+      }),
+    )
+    for (const episode of created) enqueue(episode.id)
+    return reply.code(201).send({ added: created.length, skipped: videoIds.length - created.length })
   })
 
   app.post('/podcasts/:id/episodes/:episodeId/retry', async (req, reply) => {
