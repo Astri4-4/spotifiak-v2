@@ -7,6 +7,7 @@ import { prisma } from './db.js'
 import { enrichLibrary } from './enrich.js'
 import { resolvePendingImports } from './spotify/importer.js'
 import { MIME } from './stream.js'
+import { pruneTranscodes } from './transcode.js'
 
 const COVER_NAMES = ['cover.jpg', 'cover.png', 'folder.jpg']
 
@@ -334,6 +335,13 @@ export async function scanLibrary(log: FastifyBaseLogger, mode: ScanMode = 'quic
     // Drop albums and artists left without tracks (e.g. after retagging or deleting files).
     await prisma.album.deleteMany({ where: { tracks: { none: {} } } })
     await prisma.artist.deleteMany({ where: { tracks: { none: {} }, albums: { none: {} } } })
+
+    // Converted copies of tracks and episodes that no longer exist.
+    const [trackIds, episodeIds] = await Promise.all([
+      prisma.track.findMany({ select: { id: true } }),
+      prisma.podcastEpisode.findMany({ where: { filePath: { not: null } }, select: { id: true } }),
+    ])
+    await pruneTranscodes(new Set([...trackIds, ...episodeIds].map((r) => r.id)))
 
     scanStatus.lastResult = result
     scanStatus.lastError = null

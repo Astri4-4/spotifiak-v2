@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { config } from './config.js'
 import { prisma } from './db.js'
 import { plainText } from './podcasts.js'
-import { resolveWithin, streamFile } from './stream.js'
+import { audioQuery, resolveWithin, streamAudio } from './stream.js'
 
 // Podcasts created in Spotifiak: their episodes are YouTube videos, whose audio
 // yt-dlp downloads into PODCAST_DIR/<podcast id>/<episode id>.<ext>, one at a time.
@@ -341,9 +341,10 @@ export async function youtubeRoutes(app: FastifyInstance) {
 
   app.get('/episodes/:id/audio', async (req, reply) => {
     const { id } = idParams.parse(req.params)
+    const { compat } = audioQuery.parse(req.query)
     const episode = await prisma.podcastEpisode.findUnique({ where: { id }, select: { filePath: true } })
     const file = config.PODCAST_DIR && episode?.filePath && resolveWithin(config.PODCAST_DIR, episode.filePath)
     if (!file) return reply.code(404).send({ error: 'Épisode introuvable' })
-    return streamFile(req, reply, file)
+    return streamAudio(req, reply, file, id, compat)
   })
 }

@@ -1,3 +1,4 @@
+import path from 'node:path'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from './db.js'
@@ -13,6 +14,8 @@ export const trackSelect = {
   trackNumber: true,
   discNumber: true,
   createdAt: true,
+  // Only its extension is sent (format): clients pick a playable stream from it.
+  path: true,
 } satisfies Prisma.TrackSelect
 
 const trackOrder: Prisma.TrackOrderByWithRelationInput[] = [
@@ -44,8 +47,8 @@ export const artistSelect = {
   albums: { select: { coverUrl: true }, where: { coverUrl: { not: null } }, take: 1 },
 } satisfies Prisma.ArtistSelect
 
-export function toTrack<T extends { createdAt: Date }>({ createdAt, ...t }: T) {
-  return { ...t, addedAt: createdAt }
+export function toTrack<T extends { createdAt: Date; path: string }>({ createdAt, path: file, ...t }: T) {
+  return { ...t, format: path.extname(file).slice(1).toLowerCase(), addedAt: createdAt }
 }
 
 export function toAlbum<T extends { tracks: { id: string }[]; _count: { tracks: number } }>({ tracks, _count, ...a }: T) {

@@ -44,6 +44,8 @@ export interface Track {
   trackNumber: number | null
   discNumber: number | null
   addedAt: string
+  /** File extension ("flac"); absent on podcast episodes. */
+  format?: string
   /** Set when this is a podcast episode played through the player (see podcasts.ts). */
   episode?: { podcastId: string; audioUrl: string; startAt: number }
 }
