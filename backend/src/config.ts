@@ -1,3 +1,5 @@
+import os from 'node:os'
+import path from 'node:path'
 import { z } from 'zod'
 
 // compose passes unset optional variables as empty strings.
@@ -55,6 +57,10 @@ const schema = z.object({
   YTDLP_PATH: z.string().default('yt-dlp'),
   // Longest video accepted, in hours
   YOUTUBE_MAX_HOURS: z.coerce.number().positive().default(6),
+  // Cache of files converted to AAC for players that can't read their format (iOS
+  // and ogg/opus/webm); a cache, so it may be wiped.
+  TRANSCODE_DIR: z.string().default(path.join(os.tmpdir(), 'spotifiak-transcode')),
+  FFMPEG_PATH: z.string().default('ffmpeg'),
 })
 
 export const config = schema.parse(process.env)

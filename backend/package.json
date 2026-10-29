@@ -6,7 +6,8 @@
     "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "test": "node --import tsx --test test/*.test.ts"
   },
   "type": "module",
   "dependencies": {
