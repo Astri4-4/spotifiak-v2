@@ -120,8 +120,8 @@ extension JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let text = try decoder.singleValueContainer().decode(String.self)
-            if let date = try? Date(text, strategy: .iso8601.year().month().day().time(includingFractionalSeconds: true))
-                ?? Date(text, strategy: .iso8601) {
+            if let date = (try? Date(text, strategy: .iso8601.year().month().day().time(includingFractionalSeconds: true)))
+                ?? (try? Date(text, strategy: .iso8601)) {
                 return date
             }
             throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Invalid date: \(text)"))

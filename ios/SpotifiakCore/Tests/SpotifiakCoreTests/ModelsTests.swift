@@ -41,3 +41,8 @@ func decode<T: Decodable>(_ type: T.Type, _ name: String) throws -> T {
     #expect(track.album == nil)
     #expect(track.addedAt == Date(timeIntervalSince1970: 1_793_021_518))
 }
+
+@Test func decodesDatesWithoutFractionalSeconds() throws {
+    let date = try JSONDecoder.spotifiak.decode([Date].self, from: Data(#"["2026-10-29T11:11:41Z"]"#.utf8))
+    #expect(date[0].timeIntervalSince1970 == 1_793_272_301)
+}
