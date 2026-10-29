@@ -1,0 +1,14 @@
+{
+  "id": "alb1", "title": "Random Access Memories", "year": 2013, "createdAt": "2026-10-26T13:31:58.123Z",
+  "coverUrl": "https://cdn-images.dzcdn.net/images/cover/abc/500x500.jpg",
+  "artist": { "id": "art1", "name": "Daft Punk", "pictureUrl": null },
+  "coverTrackId": "trk1", "trackCount": 2,
+  "tracks": [
+    { "id": "trk1", "title": "Give Life Back to Music", "artistName": "Daft Punk", "artistId": "art1",
+      "album": { "id": "alb1", "title": "Random Access Memories", "coverUrl": "https://cdn-images.dzcdn.net/images/cover/abc/500x500.jpg" },
+      "durationSec": 274.5, "trackNumber": 1, "discNumber": 1, "format": "flac", "addedAt": "2026-10-26T13:31:58.123Z" },
+    { "id": "trk2", "title": "The Game of Love", "artistName": "Daft Punk", "artistId": "art1",
+      "album": { "id": "alb1", "title": "Random Access Memories", "coverUrl": null },
+      "durationSec": null, "trackNumber": null, "discNumber": null, "format": "ogg", "addedAt": "2026-10-26T13:32:00Z" }
+  ]
+}

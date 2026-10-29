@@ -1,0 +1,4 @@
+{ "id": "art1", "name": "Daft Punk", "pictureUrl": "https://cdn-images.dzcdn.net/images/artist/x/500x500.jpg", "coverTrackId": "trk1",
+  "albums": [ { "id": "alb1", "title": "Random Access Memories", "year": 2013, "createdAt": "2026-10-26T13:31:58.123Z", "coverUrl": null,
+    "artist": { "id": "art1", "name": "Daft Punk", "pictureUrl": null }, "coverTrackId": "trk1", "trackCount": 2 } ],
+  "tracks": [] }

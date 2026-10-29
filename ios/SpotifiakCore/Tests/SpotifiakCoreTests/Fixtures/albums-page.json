@@ -1,0 +1,4 @@
+{ "items": [
+  { "id": "alb2", "title": "Untitled", "year": null, "createdAt": "2026-10-27T09:00:00.000Z", "coverUrl": null,
+    "artist": { "id": "art2", "name": "Unknown", "pictureUrl": null }, "coverTrackId": null, "trackCount": 0 }
+] }
