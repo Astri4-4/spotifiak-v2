@@ -28,6 +28,9 @@ What the unit tests can't cover: run these on a real iPhone before calling a mil
 - [ ] Lock screen and Control Center: play/pause, next, previous and scrubbing all work.
 - [ ] AirPods / headphones: unplugging (or taking them off) pauses; double tap skips.
 - [ ] A phone call or Siri during playback pauses; music resumes after the call when iOS offers it.
+- [ ] Pause, then take a call: music stays paused after hanging up.
+- [ ] A queue whose second track fails (file removed on the server): playback skips it with a toast instead of stalling.
+- [ ] Revoke the session while music plays: when the next track fails to load, the app returns to Login.
 - [ ] Previous within the first 3 seconds goes to the previous track; later it restarts the track.
 - [ ] Repeat one loops the track; repeat all wraps from the last track to the first; off stops at the end.
 - [ ] Shuffle on keeps the current track; shuffle off continues in album order after it.
