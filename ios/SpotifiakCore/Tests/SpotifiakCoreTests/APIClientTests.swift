@@ -203,3 +203,20 @@ private func track(format: String?) -> Track {
     let user = try JSONDecoder().decode(User.self, from: Data(#"{"id":"u","username":"u","displayName":"U","role":"user"}"#.utf8))
     #expect(user.shareActivity == nil)
 }
+
+@Test func avatarsUploadAsJPEGAndChangeURLWhenUpdated() async throws {
+    let transport = FakeTransport()
+    transport.respond("https://h/api/me/avatar", #"{"avatarUpdatedAt":"2026-01-02T03:04:05.678Z"}"#)
+    let api = client(transport)
+    let date = try await api.uploadAvatar(jpeg: Data([0xff, 0xd8, 0xff]))
+    let request = try #require(transport.requests.last)
+    #expect(request.httpMethod == "PUT")
+    #expect(request.value(forHTTPHeaderField: "content-type") == "image/jpeg")
+    #expect(request.httpBody == Data([0xff, 0xd8, 0xff]))
+
+    let person = Person(id: "u1", username: "a", displayName: "A", avatarUpdatedAt: date)
+    let later = Person(id: "u1", username: "a", displayName: "A", avatarUpdatedAt: date.addingTimeInterval(1))
+    #expect(api.avatarURL(for: person)?.path == "/api/people/u1/avatar")
+    #expect(api.avatarURL(for: person) != api.avatarURL(for: later))
+    #expect(api.avatarURL(for: Person(id: "u1", username: "a", displayName: "A", avatarUpdatedAt: nil)) == nil)
+}

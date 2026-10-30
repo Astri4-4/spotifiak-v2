@@ -25,7 +25,20 @@ export function isListening(playedAt: Date, durationSec: number | null, now = ne
   return now.getTime() - playedAt.getTime() < (durationSec ?? DEFAULT_TRACK_SEC) * 1000
 }
 
-const personSelect = { id: true, username: true, displayName: true } as const
+const personSelect = { id: true, username: true, displayName: true, avatarUpdatedAt: true } as const
+
+// Clients send a small resized picture; this leaves room for a large PNG.
+const MAX_AVATAR_BYTES = 1024 * 1024
+
+/** The image type of a picture from its first bytes (what the client claims isn't trusted). */
+export function imageType(data: Buffer): 'image/jpeg' | 'image/png' | 'image/webp' | null {
+  if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) return 'image/jpeg'
+  if (data.length >= 8 && data.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return 'image/png'
+  }
+  if (data.length >= 12 && data.toString('ascii', 0, 4) === 'RIFF' && data.toString('ascii', 8, 12) === 'WEBP') return 'image/webp'
+  return null
+}
 const userIdParams = z.object({ userId: z.string() })
 
 function friendshipBetween(a: string, b: string) {
@@ -63,6 +76,41 @@ function toPlay(play: { playedAt: Date; track: Parameters<typeof toTrack>[0] & {
 }
 
 export async function socialRoutes(app: FastifyInstance) {
+  // Profile pictures arrive as raw image bytes (only within these routes).
+  app.addContentTypeParser(['image/jpeg', 'image/png', 'image/webp'], { parseAs: 'buffer', bodyLimit: MAX_AVATAR_BYTES }, (_req, body, done) =>
+    done(null, body),
+  )
+
+  // --- Profile pictures ---
+
+  app.put('/me/avatar', async (req, reply) => {
+    const data = req.body
+    const type = Buffer.isBuffer(data) ? imageType(data) : null
+    if (!type) return reply.code(400).send({ error: 'Image JPEG, PNG ou WebP attendue' })
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { avatar: new Uint8Array(data as Buffer), avatarType: type, avatarUpdatedAt: new Date() },
+      select: { avatarUpdatedAt: true },
+    })
+    return user
+  })
+
+  app.delete('/me/avatar', async (req, reply) => {
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { avatar: null, avatarType: null, avatarUpdatedAt: null },
+    })
+    return reply.code(204).send()
+  })
+
+  // Clients add ?v=<avatarUpdatedAt>: a new picture gets a new URL, so this one can be cached.
+  app.get('/people/:userId/avatar', async (req, reply) => {
+    const { userId } = userIdParams.parse(req.params)
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { avatar: true, avatarType: true } })
+    if (!user?.avatar || !user.avatarType) return reply.code(404).send({ error: 'Pas de photo' })
+    return reply.type(user.avatarType).header('cache-control', 'private, max-age=31536000, immutable').send(Buffer.from(user.avatar))
+  })
+
   // --- Finding people and friend requests ---
 
   app.get('/people', async (req) => {

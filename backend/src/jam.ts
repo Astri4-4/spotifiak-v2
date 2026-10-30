@@ -23,7 +23,7 @@ const HEARTBEAT_MS = 25_000
 const MAX_QUEUE = 1000
 
 type Track = ReturnType<typeof toTrack<Awaited<ReturnType<typeof loadTracks>>[number]>>
-type Person = { id: string; displayName: string }
+type Person = { id: string; displayName: string; avatarUpdatedAt: Date | null }
 
 interface Entry {
   id: string
@@ -60,7 +60,7 @@ export function isInJam(id: string, userId: string) {
 
 export const jamRuns = (id: string) => jams.has(id)
 
-const person = (u: AuthUser): Person => ({ id: u.id, displayName: u.displayName })
+const person = (u: AuthUser): Person => ({ id: u.id, displayName: u.displayName, avatarUpdatedAt: u.avatarUpdatedAt })
 
 async function loadTracks(ids: string[]) {
   return prisma.track.findMany({ where: { id: { in: ids } }, select: trackSelect })

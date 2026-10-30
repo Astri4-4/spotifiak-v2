@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth, useCurrentUser } from '../auth/context'
-
-function initials(name: string) {
-  return name.trim().charAt(0).toUpperCase() || '?'
-}
+import { PersonAvatar } from './PersonAvatar'
 
 export function UserMenu() {
   const user = useCurrentUser()
@@ -37,7 +34,7 @@ export function UserMenu() {
         aria-label={`Profil de ${user.displayName}`}
         title={user.displayName}
       >
-        <span className="avatar-initial">{initials(user.displayName)}</span>
+        <PersonAvatar person={user} size={32} />
       </button>
 
       {open && (

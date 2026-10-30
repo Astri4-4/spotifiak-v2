@@ -11,6 +11,8 @@ export interface User {
   role: Role
   /** Friends see what this user listens to. */
   shareActivity: boolean
+  /** When the profile picture last changed; null without one. */
+  avatarUpdatedAt: string | null
 }
 
 export interface ManagedUser extends User {
@@ -167,6 +169,7 @@ export interface DuplicateGroup {
 export interface JamPerson {
   id: string
   displayName: string
+  avatarUpdatedAt?: string | null
 }
 
 export interface JamEntry {
@@ -447,6 +450,7 @@ export interface Person {
   id: string
   username: string
   displayName: string
+  avatarUpdatedAt: string | null
 }
 
 export interface FriendPlay {
@@ -507,6 +511,10 @@ export const social = {
   counts: () => request<{ unread: number; friendRequests: number }>('/me/notifications/count'),
   markRead: () => send<void>('POST', '/me/notifications/read'),
   removeNotification: (id: string) => send<void>('DELETE', `/me/notifications/${id}`),
+  /** A small picture (see resizeAvatar): JPEG, PNG or WebP, 1 MB at most. */
+  uploadAvatar: (picture: Blob) =>
+    request<{ avatarUpdatedAt: string }>('/me/avatar', { method: 'PUT', headers: { 'content-type': picture.type }, body: picture }),
+  removeAvatar: () => send<void>('DELETE', '/me/avatar'),
 }
 
 export const users = {
@@ -541,6 +549,9 @@ const fileCover = (trackId: string | null) => (trackId ? `${API_URL}/tracks/${tr
 
 /** Deezer images when matched, otherwise the art from the audio files. */
 export const images = {
+  /** The profile picture; the date in the URL makes a new one bypass the cache. */
+  avatar: (p: { id: string; avatarUpdatedAt?: string | null }) =>
+    p.avatarUpdatedAt ? `${API_URL}/people/${p.id}/avatar?v=${encodeURIComponent(p.avatarUpdatedAt)}` : null,
   track: (t: Track) => (t.episode ? `${API_URL}/episodes/${t.id}/image` : (t.album?.coverUrl ?? fileCover(t.id))),
   album: (a: Album) => a.coverUrl ?? fileCover(a.coverTrackId),
   artist: (a: Artist) => a.pictureUrl ?? fileCover(a.coverTrackId),

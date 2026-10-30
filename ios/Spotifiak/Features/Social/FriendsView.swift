@@ -115,13 +115,18 @@ private struct ActivityRow: View {
     let item: FriendActivity
     @Environment(Session.self) private var session
     @Environment(PlayerEngine.self) private var player
+    @Environment(\.navigate) private var navigate
 
     var body: some View {
         HStack(spacing: 12) {
-            NavigationLink(value: Route.person(item.user.id)) { Avatar(name: item.user.displayName, size: 40) }
-                .buttonStyle(.plain)
+            // Buttons, not NavigationLinks: in a List row a link gets a chevron and stretches.
+            Button { navigate(.person(item.user.id)) } label: { Avatar(person: item.user, size: 40) }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Profil de \(item.user.displayName)")
             VStack(alignment: .leading, spacing: 4) {
-                Text(item.user.displayName).font(.subheadline.bold())
+                Button { navigate(.person(item.user.id)) } label: { Text(item.user.displayName).font(.subheadline.bold()) }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.white)
                 Button { player.play([item.track], startAt: 0) } label: {
                     HStack(spacing: 6) {
                         RemoteImage(url: session.api?.coverURL(track: item.track)).frame(width: 20, height: 20)
@@ -130,15 +135,17 @@ private struct ActivityRow: View {
                     .font(.caption)
                     .foregroundStyle(Theme.subdued)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
                 .accessibilityLabel("Écouter \(item.track.title) de \(item.track.artistName)")
             }
             Spacer(minLength: 4)
             if item.listening {
-                Label("En écoute", systemImage: "circle.fill")
-                    .labelStyle(.titleAndIcon)
-                    .font(.caption2)
-                    .foregroundStyle(Theme.green)
+                HStack(spacing: 4) {
+                    Circle().frame(width: 6, height: 6)
+                    Text("En écoute")
+                }
+                .font(.caption2)
+                .foregroundStyle(Theme.green)
             } else {
                 Text(item.playedAt.formatted(.relative(presentation: .named))).font(.caption2).foregroundStyle(Theme.subdued)
             }
@@ -150,19 +157,22 @@ private struct ActivityRow: View {
 struct PersonRow<Trailing: View>: View {
     let person: Person
     @ViewBuilder let trailing: Trailing
+    @Environment(\.navigate) private var navigate
 
     var body: some View {
         HStack(spacing: 12) {
-            NavigationLink(value: Route.person(person.id)) {
+            Button { navigate(.person(person.id)) } label: {
                 HStack(spacing: 12) {
-                    Avatar(name: person.displayName, size: 40)
+                    Avatar(person: person, size: 40)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(person.displayName)
                         Text("@\(person.username)").font(.caption).foregroundStyle(Theme.subdued)
                     }
                 }
+                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
+            .foregroundStyle(.white)
             Spacer(minLength: 4)
             trailing
         }
@@ -219,18 +229,33 @@ struct RelationButtons: View {
     }
 }
 
-/// A person's initial in a colored circle (accounts have no pictures).
-struct Avatar: View {
-    let name: String
+/// A person's profile picture, or their initial in a colored circle (shown while it loads,
+/// and when there's none).
+struct Avatar<Someone: HasAvatar>: View {
+    let person: Someone
     var size: CGFloat = 32
+    @Environment(Session.self) private var session
+    @State private var image: UIImage?
 
     var body: some View {
-        Text(name.trimmingCharacters(in: .whitespaces).prefix(1).uppercased())
-            .font(.system(size: size * 0.42, weight: .bold))
-            .foregroundStyle(.black)
-            .frame(width: size, height: size)
-            .background(Color(red: 1, green: 0.6, blue: 0.4), in: Circle())
-            .accessibilityHidden(true)
+        let url = session.api?.avatarURL(for: person)
+        ZStack {
+            Color(red: 1, green: 0.6, blue: 0.4)
+            if let image, url != nil {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
+                Text(person.displayName.trimmingCharacters(in: .whitespaces).prefix(1).uppercased())
+                    .font(.system(size: size * 0.42, weight: .bold))
+                    .foregroundStyle(.black)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .accessibilityHidden(true)
+        .task(id: url) {
+            image = nil
+            if let url { image = await ImageCache.shared.image(for: url) }
+        }
     }
 }
 

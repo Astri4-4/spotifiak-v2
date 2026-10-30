@@ -14,7 +14,18 @@ public struct User: Codable, Sendable, Hashable, Identifiable {
     public let role: Role
     /// Friends see what this user listens to; nil from servers before friends existed.
     public let shareActivity: Bool?
+    /// When the profile picture last changed; nil without one.
+    public let avatarUpdatedAt: Date?
 }
+
+/// Anyone shown with a profile picture (or their initial without one).
+public protocol HasAvatar {
+    var id: String { get }
+    var displayName: String { get }
+    var avatarUpdatedAt: Date? { get }
+}
+
+extension User: HasAvatar {}
 
 public struct AuthStatus: Codable, Sendable, Hashable {
     public let user: User?
@@ -261,9 +272,10 @@ public struct PodcastSearchResult: Codable, Sendable, Hashable {
 
 // MARK: - Jam
 
-public struct JamPerson: Codable, Sendable, Hashable, Identifiable {
+public struct JamPerson: Codable, Sendable, Hashable, Identifiable, HasAvatar {
     public let id: String
     public let displayName: String
+    public let avatarUpdatedAt: Date?
 }
 
 public struct JamEntry: Codable, Sendable, Hashable, Identifiable {
@@ -591,19 +603,21 @@ public enum Relation: String, Codable, Sendable, Hashable {
     case friend, sent, received
 }
 
-public struct Person: Codable, Sendable, Hashable, Identifiable {
+public struct Person: Codable, Sendable, Hashable, Identifiable, HasAvatar {
     public let id: String
     public let username: String
     public let displayName: String
+    public let avatarUpdatedAt: Date?
 }
 
 public struct PersonResult: Codable, Sendable, Hashable, Identifiable {
     public let id: String
     public let username: String
     public let displayName: String
+    public let avatarUpdatedAt: Date?
     public let relation: Relation?
 
-    public var person: Person { Person(id: id, username: username, displayName: displayName) }
+    public var person: Person { Person(id: id, username: username, displayName: displayName, avatarUpdatedAt: avatarUpdatedAt) }
 }
 
 public struct Friends: Codable, Sendable, Hashable {
@@ -611,7 +625,8 @@ public struct Friends: Codable, Sendable, Hashable {
         public let id: String
         public let username: String
         public let displayName: String
-        public var person: Person { Person(id: id, username: username, displayName: displayName) }
+        public let avatarUpdatedAt: Date?
+        public var person: Person { Person(id: id, username: username, displayName: displayName, avatarUpdatedAt: avatarUpdatedAt) }
     }
 
     public let friends: [Entry]

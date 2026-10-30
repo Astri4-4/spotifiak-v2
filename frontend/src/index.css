@@ -3672,3 +3672,30 @@ a.now-playing-title:hover,
   margin: 12px 0 4px;
   font-size: 0.875rem;
 }
+
+/* Profile pictures ------------------------------------------------------------ */
+
+img.person-avatar {
+  object-fit: cover;
+}
+
+.avatar-editor {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.avatar-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.avatar-editor-actions label {
+  cursor: pointer;
+}
+
+.avatar-editor-actions label.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
