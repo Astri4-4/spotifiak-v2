@@ -220,3 +220,13 @@ private func track(format: String?) -> Track {
     #expect(api.avatarURL(for: person) != api.avatarURL(for: later))
     #expect(api.avatarURL(for: Person(id: "u1", username: "a", displayName: "A", avatarUpdatedAt: nil)) == nil)
 }
+
+@Test func decodesTheCalendar() async throws {
+    let transport = FakeTransport()
+    let artist = #"{"id":"a1","name":"Ana","pictureUrl":null}"#
+    transport.respond("https://h/api/me/calendar", #"{"concertsEnabled":true,"loading":1,"releases":[{"id":42,"title":"New","type":"single","date":"2026-10-16","coverUrl":"https://c/42.jpg","link":"https://www.deezer.com/album/42","albumId":null,"artist":\#(artist)}],"concerts":[{"id":"e1","name":"Tour","date":"2027-06-20","time":"20:00","venue":"Arena","city":"Paris","country":"France","url":"https://t/e1","cancelled":false,"artist":\#(artist)}]}"#)
+    let calendar = try await client(transport).calendar()
+    #expect(calendar.loading == 1)
+    #expect(calendar.releases.first?.id == 42)
+    #expect(calendar.concerts.first?.venue == "Arena")
+}

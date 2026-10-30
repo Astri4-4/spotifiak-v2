@@ -682,3 +682,53 @@ public struct NotificationCounts: Codable, Sendable, Hashable {
         self.friendRequests = friendRequests
     }
 }
+
+// MARK: - Calendar
+
+/// The followed artist a calendar entry is about.
+public struct CalendarArtist: Codable, Sendable, Hashable, Identifiable {
+    public let id: String
+    public let name: String
+    public let pictureUrl: URL?
+}
+
+/// A Deezer release of a followed artist (the last six months, and announced ones).
+public struct CalendarRelease: Codable, Sendable, Hashable, Identifiable {
+    /// Deezer album id.
+    public let id: Int
+    public let title: String
+    /// album, single, ep or compile.
+    public let type: String
+    /// YYYY-MM-DD
+    public let date: String
+    public let coverUrl: URL?
+    /// The Deezer page, which deemix downloads.
+    public let link: String
+    /// The album in the library, when it's there already.
+    public let albumId: String?
+    public let artist: CalendarArtist
+}
+
+/// An upcoming show of a followed artist, from Ticketmaster.
+public struct CalendarConcert: Codable, Sendable, Hashable, Identifiable {
+    public let id: String
+    public let name: String
+    /// YYYY-MM-DD and HH:MM, local to the venue.
+    public let date: String
+    public let time: String?
+    public let venue: String?
+    public let city: String?
+    public let country: String?
+    public let url: URL?
+    public let cancelled: Bool
+    public let artist: CalendarArtist
+}
+
+public struct ArtistCalendar: Codable, Sendable, Hashable {
+    /// Off without a Ticketmaster key on the server.
+    public let concertsEnabled: Bool
+    /// Artists whose releases or shows are still loading: ask again until 0.
+    public let loading: Int
+    public let releases: [CalendarRelease]
+    public let concerts: [CalendarConcert]
+}

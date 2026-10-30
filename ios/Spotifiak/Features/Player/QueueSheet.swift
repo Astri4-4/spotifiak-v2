@@ -6,7 +6,6 @@ import SwiftUI
 struct QueueSheet: View {
     @Environment(PlayerEngine.self) private var player
     @Environment(JamSession.self) private var jamSession
-    @Environment(Session.self) private var session
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -59,15 +58,29 @@ struct QueueSheet: View {
     }
 
     private func row(_ track: Track, addedBy: JamPerson?) -> some View {
+        QueueTrackRow(track: track, addedBy: addedBy)
+    }
+}
+
+/// A track of a queue: cover, title, artist, and in a Jam the picture of who added it.
+struct QueueTrackRow: View {
+    let track: Track
+    var addedBy: JamPerson?
+    @Environment(Session.self) private var session
+
+    var body: some View {
         HStack(spacing: 12) {
             RemoteImage(url: session.api?.coverURL(track: track)).frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title).lineLimit(1)
-                Text(track.artistName + (addedBy.map { " • ajouté par \($0.displayName)" } ?? ""))
-                    .font(.caption)
-                    .foregroundStyle(Theme.subdued)
-                    .lineLimit(1)
+                Text(track.artistName).font(.caption).foregroundStyle(Theme.subdued).lineLimit(1)
             }
+            Spacer(minLength: 8)
+            if let addedBy { Avatar(person: addedBy, size: 24) }
         }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel([track.title, track.artistName, addedBy.map { "ajouté par \($0.displayName)" }]
+            .compactMap { $0 }.joined(separator: ", "))
     }
 }

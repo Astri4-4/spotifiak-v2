@@ -169,18 +169,7 @@ struct JamSheet: View {
     }
 
     private func entryRow(_ entry: JamEntry) -> some View {
-        HStack(spacing: 12) {
-            RemoteImage(url: session.api?.coverURL(track: entry.track)).frame(width: 40, height: 40)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entry.track.title).lineLimit(1)
-                Text("\(entry.track.artistName) • ajouté par \(entry.addedBy.displayName)")
-                    .font(.caption)
-                    .foregroundStyle(Theme.subdued)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-        }
-        .contentShape(Rectangle())
+        QueueTrackRow(track: entry.track, addedBy: entry.addedBy)
     }
 
     // MARK: - Helpers

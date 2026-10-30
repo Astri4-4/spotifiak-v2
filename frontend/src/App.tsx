@@ -16,6 +16,7 @@ import { TopBar } from './components/TopBar'
 import { useIsMobile } from './hooks'
 import { AccountPage } from './pages/AccountPage'
 import { AlbumPage } from './pages/AlbumPage'
+import { CalendarPage } from './pages/CalendarPage'
 import { FriendsPage } from './pages/FriendsPage'
 import { InboxPage } from './pages/InboxPage'
 import { ProfilePage } from './pages/ProfilePage'
@@ -64,6 +65,7 @@ function MainApp() {
                 <Route path="/admin/users" element={<UsersPage />} />
                 <Route path="/jam/:id" element={<JamPage />} />
                 <Route path="/friends" element={<FriendsPage />} />
+                <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/inbox" element={<InboxPage />} />
                 <Route path="/user/:id" element={<ProfilePage />} />
               </Routes>

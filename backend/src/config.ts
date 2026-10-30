@@ -55,6 +55,11 @@ const schema = z.object({
   // creating podcasts is disabled without it. Needs yt-dlp (in the Docker image).
   PODCAST_DIR: unsetIfEmpty(z.string().optional()),
   YTDLP_PATH: z.string().default('yt-dlp'),
+  // Concert dates in the calendar (optional): a Ticketmaster Discovery API key, free at
+  // developer.ticketmaster.com. Without it the calendar only shows new releases.
+  TICKETMASTER_API_KEY: unsetIfEmpty(z.string().optional()),
+  // Overridable for tests against a mock server.
+  TICKETMASTER_API_URL: z.string().url().default('https://app.ticketmaster.com/discovery/v2'),
   // Longest video accepted, in hours
   YOUTUBE_MAX_HOURS: z.coerce.number().positive().default(6),
   // Cache of files converted to AAC for players that can't read their format (iOS

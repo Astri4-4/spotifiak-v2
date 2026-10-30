@@ -1985,8 +1985,20 @@ a.now-playing-title:hover,
   text-align: left;
 }
 
+/* Who added a Jam entry: their picture at the end of the row. */
 .queue-added-by {
-  font-size: 0.75rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Read by screen readers, not shown. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .control.active svg {
@@ -3698,4 +3710,150 @@ img.person-avatar {
 .avatar-editor-actions label.disabled {
   opacity: 0.5;
   pointer-events: none;
+}
+
+/* Calendar: releases and shows of followed artists ---------------------------- */
+
+.calendar-month-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calendar-month-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  text-transform: capitalize;
+}
+
+.calendar-grid {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.calendar-grid th {
+  padding-bottom: 8px;
+  color: var(--text-subdued);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.calendar-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.calendar-day:hover {
+  background: var(--highlight);
+}
+
+.calendar-day.today {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.calendar-day.selected {
+  background: var(--highlight-strong);
+}
+
+.calendar-dots {
+  display: flex;
+  gap: 3px;
+  height: 6px;
+}
+
+.dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.dot.release {
+  background: var(--green);
+}
+
+.dot.concert {
+  background: #f573a0;
+}
+
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+}
+
+.calendar-legend .dot.concert {
+  margin-left: 8px;
+}
+
+.calendar-clear {
+  align-self: flex-start;
+}
+
+.calendar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.calendar-row:hover {
+  background: var(--highlight);
+}
+
+.calendar-row > .title-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.calendar-row.cancelled .title-text {
+  opacity: 0.6;
+}
+
+.concert-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  background: var(--elevated);
+  color: var(--text-subdued);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.concert-date strong {
+  color: var(--text);
+  font-size: 1.25rem;
+}
+
+.concert-cancelled {
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(243, 114, 127, 0.2);
+  color: var(--error);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }

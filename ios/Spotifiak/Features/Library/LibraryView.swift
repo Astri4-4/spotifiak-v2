@@ -92,6 +92,7 @@ struct LibraryView: View {
             Menu {
                 Section(user.displayName) {
                     Button("Compte", systemImage: "person.crop.circle") { navigate(.account) }
+                    Button("Calendrier", systemImage: "calendar") { navigate(.calendar) }
                     Button("Importer depuis Spotify", systemImage: "square.and.arrow.down") { navigate(.spotifyImport) }
                     Button("Analyse de la bibliothèque", systemImage: "arrow.triangle.2.circlepath") { navigate(.scan) }
                     if user.role == .admin {
