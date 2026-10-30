@@ -21,10 +21,20 @@ struct LoginView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Serveur") {
-                    TextField("Adresse du serveur", text: $serverInput)
+        ScrollView {
+            VStack(spacing: 16) {
+                Image(systemName: "waveform.circle.fill")
+                    .font(.system(size: 64))
+                    .foregroundStyle(.white)
+                    .padding(.top, 48)
+                    .accessibilityHidden(true)
+                Text("Des millions de titres.\nSur votre serveur.")
+                    .font(.title.bold())
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 24)
+
+                field("Adresse du serveur") {
+                    TextField("", text: $serverInput, prompt: prompt("music.example.com"))
                         .textContentType(.URL)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
@@ -33,45 +43,76 @@ struct LoginView: View {
                 }
 
                 if let status {
-                    let mustRegister = status.needsSetup
-                    Section(mustRegister || registering ? "Créer un compte" : "Connexion") {
-                        TextField("Nom d'utilisateur", text: $username)
+                    let creating = status.needsSetup || registering
+                    field("Nom d'utilisateur") {
+                        TextField("", text: $username)
                             .textContentType(.username)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
-                        SecureField("Mot de passe", text: $password)
-                            .textContentType(mustRegister || registering ? .newPassword : .password)
-                        if mustRegister || registering {
-                            TextField("Nom affiché", text: $displayName)
-                        }
                     }
-                    Section {
-                        Button(mustRegister || registering ? "Créer le compte" : "Se connecter") {
-                            run(mustRegister || registering ? register : login)
-                        }
+                    field("Mot de passe") {
+                        SecureField("", text: $password)
+                            .textContentType(creating ? .newPassword : .password)
+                    }
+                    if creating {
+                        field("Nom affiché") { TextField("", text: $displayName) }
+                    }
+                    pill(creating ? "Créer le compte" : "Se connecter") { run(creating ? register : login) }
                         .disabled(username.isEmpty || password.isEmpty)
-                        if status.signupOpen && !mustRegister {
-                            Button(registering ? "J'ai déjà un compte" : "Créer un compte") { registering.toggle() }
-                        }
+                    if status.signupOpen && !status.needsSetup {
+                        Button(registering ? "J'ai déjà un compte" : "Créer un compte") { registering.toggle() }
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.white)
                     }
                 } else {
-                    Section {
-                        Button("Continuer") { run(connect) }
-                            .disabled(serverInput.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
+                    pill("Continuer") { run(connect) }
+                        .disabled(serverInput.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
 
                 if let error {
-                    Section { Text(error).foregroundStyle(.red) }
+                    Label(error, systemImage: "exclamationmark.circle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.error)
                 }
             }
-            .disabled(busy)
-            .overlay { if busy { ProgressView() } }
-            .navigationTitle("Spotifiak")
+            .padding(.horizontal, 32)
+        }
+        .disabled(busy)
+        .overlay { if busy { ProgressView() } }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            LinearGradient(colors: [Color(white: 0.16), .black], startPoint: .top, endPoint: .center).ignoresSafeArea()
         }
         .onAppear {
             if case .loggedOut(let input, _) = session.state { serverInput = input }
         }
+    }
+
+    private func field<Field: View>(_ label: String, @ViewBuilder content: () -> Field) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label).font(.subheadline.bold())
+            content()
+                .padding(.horizontal, 12)
+                .frame(height: 48)
+                .background(Theme.elevated, in: RoundedRectangle(cornerRadius: 4))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(white: 0.5)))
+        }
+    }
+
+    private func prompt(_ text: String) -> Text {
+        Text(text).foregroundStyle(Color(white: 0.45))
+    }
+
+    private func pill(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(Theme.green, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 8)
     }
 
     private func connect() async throws {

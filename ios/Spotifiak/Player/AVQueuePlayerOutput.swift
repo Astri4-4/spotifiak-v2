@@ -71,6 +71,12 @@ final class AVQueuePlayerOutput: AudioOutput {
         player.pause()
     }
 
+    /// Applies at once when playing, and to the next play() otherwise.
+    func setRate(_ rate: Float) {
+        player.defaultRate = rate
+        if player.rate > 0 { player.rate = rate }
+    }
+
     func seek(to seconds: Double) {
         player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600))
     }

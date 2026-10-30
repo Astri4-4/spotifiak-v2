@@ -38,7 +38,7 @@ final class NowPlaying {
         observers.append(center.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [engine] note in
             let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt).flatMap(AVAudioSession.RouteChangeReason.init)
             MainActor.assumeIsolated {
-                if reason == .oldDeviceUnavailable { engine.pause() }
+                if reason == .oldDeviceUnavailable { engine.pauseHere() }
             }
         })
     }
@@ -69,7 +69,7 @@ final class NowPlaying {
 
     private func update() {
         let center = MPNowPlayingInfoCenter.default()
-        guard let track = engine.queue.current else {
+        guard let track = engine.current else {
             center.nowPlayingInfo = nil
             return
         }
@@ -77,7 +77,7 @@ final class NowPlaying {
             MPMediaItemPropertyTitle: track.title,
             MPMediaItemPropertyArtist: track.artistName,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: engine.position,
-            MPNowPlayingInfoPropertyPlaybackRate: engine.isPlaying ? 1.0 : 0.0,
+            MPNowPlayingInfoPropertyPlaybackRate: engine.isPlaying ? (track.episode == nil ? 1.0 : Double(engine.episodeRate)) : 0.0,
         ]
         if let album = track.album?.title { info[MPMediaItemPropertyAlbumTitle] = album }
         if let duration = engine.duration { info[MPMediaItemPropertyPlaybackDuration] = duration }

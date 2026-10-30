@@ -52,4 +52,46 @@ extension Session {
 enum Route: Hashable {
     case album(String)
     case artist(String)
+    case playlist(String)
+    case liked
+    case podcast(String)
+    /// A podcast from the directory the server may not know yet.
+    case podcastFeed(String)
+    case account
+    case spotifyImport
+    case scan
+    case users
+    case inbox
+    case person(String)
+}
+
+extension EnvironmentValues {
+    /// Pushes a page on the current tab's stack (for pages opened after an action).
+    @Entry var navigate: (Route) -> Void = { _ in }
+}
+
+/// The page of each route.
+struct RouteView: View {
+    let route: Route
+
+    var body: some View {
+        Group {
+            switch route {
+            case .album(let id): AlbumView(id: id)
+            case .artist(let id): ArtistView(id: id)
+            case .playlist(let id): PlaylistView(id: id)
+            case .liked: LikedView()
+            case .podcast(let id): PodcastView(id: id)
+            case .podcastFeed(let feedUrl): OpenPodcastView(feedUrl: feedUrl)
+            case .account: AccountView()
+            case .spotifyImport: SpotifyImportView()
+            case .scan: ScanView()
+            case .users: UsersView()
+            case .inbox: InboxView()
+            case .person(let id): ProfileView(id: id)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.base)
+    }
 }

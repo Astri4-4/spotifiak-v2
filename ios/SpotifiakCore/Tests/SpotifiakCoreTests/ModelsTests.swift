@@ -46,3 +46,17 @@ func decode<T: Decodable>(_ type: T.Type, _ name: String) throws -> T {
     let date = try JSONDecoder.spotifiak.decode([Date].self, from: Data(#"["2026-10-29T11:11:41Z"]"#.utf8))
     #expect(date[0].timeIntervalSince1970 == 1_793_272_301)
 }
+
+@Test func playlistFilterMatchesEveryWordWithoutCaseOrAccents() {
+    let track = Track(id: "t", title: "Été indien", artistName: "Joe Dassin", artistId: "a",
+                      album: TrackAlbum(id: "al", title: "Le Jardin", coverUrl: nil))
+    #expect(track.matches("ete"))
+    #expect(track.matches("dassin JARDIN"))
+    #expect(!track.matches("dassin rock"))
+    #expect(track.matches("  "))
+}
+
+@Test func searchResultsFromOlderServersHaveNoPlaylists() throws {
+    let results = try JSONDecoder.spotifiak.decode(SearchResults.self, from: Data(#"{"tracks":[],"albums":[],"artists":[]}"#.utf8))
+    #expect(results.playlists.isEmpty)
+}
