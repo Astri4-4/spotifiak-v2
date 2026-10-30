@@ -10,6 +10,8 @@ export interface AuthUser {
   username: string
   displayName: string
   role: 'admin' | 'user'
+  /** Friends see what this user listens to. */
+  shareActivity: boolean
 }
 
 declare module 'fastify' {
@@ -84,7 +86,7 @@ async function createSession(reply: FastifyReply, userId: string, userAgent?: st
   })
 }
 
-const userSelect = { id: true, username: true, displayName: true, role: true } as const
+const userSelect = { id: true, username: true, displayName: true, role: true, shareActivity: true } as const
 
 async function userFromSession(req: FastifyRequest): Promise<AuthUser | null> {
   const token = req.cookies[COOKIE_NAME]
@@ -245,7 +247,7 @@ export async function setupAuth(app: FastifyInstance) {
   // --- Own account (requires a session; /me is not under /auth/) ---
 
   app.patch('/me', async (req) => {
-    const body = z.object({ displayName }).parse(req.body)
+    const body = z.object({ displayName: displayName.optional(), shareActivity: z.boolean().optional() }).parse(req.body)
     const user = await prisma.user.update({ where: { id: req.user!.id }, data: body, select: userSelect })
     return { user }
   })

@@ -13,24 +13,30 @@ enum Role {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  username     String     @unique // stored lowercase
-  displayName  String
-  email        String?    @unique
-  passwordHash String // scrypt, see auth.ts
-  role         Role       @default(user)
-  createdAt    DateTime   @default(now())
-  sessions     Session[]
-  spotify      SpotifyAccount?
-  imports      SpotifyImport[]
-  playlists    Playlist[]
-  likes        Like[]
-  plays        Play[]
-  savedAlbums  SavedAlbum[]
-  following    FollowedArtist[]
-  podcasts     PodcastSubscription[]
-  ownPodcasts  Podcast[]
-  episodes     EpisodeProgress[]
+  id                     String                @id @default(cuid())
+  username               String                @unique // stored lowercase
+  displayName            String
+  email                  String?               @unique
+  passwordHash           String // scrypt, see auth.ts
+  role                   Role                  @default(user)
+  createdAt              DateTime              @default(now())
+  sessions               Session[]
+  spotify                SpotifyAccount?
+  imports                SpotifyImport[]
+  playlists              Playlist[]
+  likes                  Like[]
+  plays                  Play[]
+  savedAlbums            SavedAlbum[]
+  following              FollowedArtist[]
+  podcasts               PodcastSubscription[]
+  ownPodcasts            Podcast[]
+  episodes               EpisodeProgress[]
+  /// Friends see what this user listens to (Play rows) when true.
+  shareActivity          Boolean               @default(true)
+  friendRequestsSent     Friendship[]          @relation("requester")
+  friendRequestsReceived Friendship[]          @relation("addressee")
+  notifications          Notification[]        @relation("recipient")
+  notificationsSent      Notification[]        @relation("sender")
 }
 
 model Session {
@@ -46,31 +52,31 @@ model Session {
 }
 
 model Artist {
-  id         String    @id @default(cuid())
-  name       String    @unique
+  id         String           @id @default(cuid())
+  name       String           @unique
   // Filled from the Deezer API (see enrich.ts)
   deezerId   Int?
   pictureUrl String?
   enrichedAt DateTime? // last lookup attempt, matched or not
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @default(now()) @updatedAt
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @default(now()) @updatedAt
   albums     Album[]
   tracks     Track[]
   followers  FollowedArtist[]
 }
 
 model Album {
-  id         String    @id @default(cuid())
+  id         String       @id @default(cuid())
   title      String
   artistId   String
-  artist     Artist    @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artist     Artist       @relation(fields: [artistId], references: [id], onDelete: Cascade)
   year       Int?
   // Filled from the Deezer API (see enrich.ts)
   deezerId   Int?
   coverUrl   String?
   enrichedAt DateTime? // last lookup attempt, matched or not
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @default(now()) @updatedAt
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @default(now()) @updatedAt
   tracks     Track[]
   savedBy    SavedAlbum[]
 
@@ -79,28 +85,29 @@ model Album {
 
 // A file in MUSIC_DIR, indexed from its tags.
 model Track {
-  id           String          @id @default(cuid())
-  deezerId     String?         @unique
-  path         String          @unique // relative to MUSIC_DIR
-  fileSize     Int
-  fileMtime    DateTime
-  indexVersion Int             @default(0) // files indexed by an older scanner get re-read
-  title        String
-  isrc         String? // from tags; deemix writes it, used to match on Deezer
-  artistName   String // full artist tag as displayed, may list several artists
-  artistId     String // primary artist
-  artist       Artist          @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  albumId      String?
-  album        Album?          @relation(fields: [albumId], references: [id], onDelete: SetNull)
-  durationSec  Int?
-  trackNumber  Int?
-  discNumber   Int?
-  coverPath    String? // folder cover relative to MUSIC_DIR; null means use embedded art
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  playlists    PlaylistTrack[]
-  likes        Like[]
-  plays        Play[]
+  id            String          @id @default(cuid())
+  deezerId      String?         @unique
+  path          String          @unique // relative to MUSIC_DIR
+  fileSize      Int
+  fileMtime     DateTime
+  indexVersion  Int             @default(0) // files indexed by an older scanner get re-read
+  title         String
+  isrc          String? // from tags; deemix writes it, used to match on Deezer
+  artistName    String // full artist tag as displayed, may list several artists
+  artistId      String // primary artist
+  artist        Artist          @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  albumId       String?
+  album         Album?          @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  durationSec   Int?
+  trackNumber   Int?
+  discNumber    Int?
+  coverPath     String? // folder cover relative to MUSIC_DIR; null means use embedded art
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  playlists     PlaylistTrack[]
+  likes         Like[]
+  plays         Play[]
+  notifications Notification[]
 
   @@index([albumId])
   @@index([artistId])
@@ -171,6 +178,49 @@ model FollowedArtist {
   @@index([userId, followedAt])
 }
 
+/// A friend request (pending) or a friendship (accepted), one row per pair of users.
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(pending)
+  createdAt   DateTime         @default(now())
+  acceptedAt  DateTime?
+  requester   User             @relation("requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User             @relation("addressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId])
+}
+
+enum FriendshipStatus {
+  pending
+  accepted
+}
+
+/// What a friend sent: a track (share) or an invitation to a Jam (jam, valid while it runs).
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  fromId    String
+  type      NotificationType
+  trackId   String?
+  jamId     String?
+  message   String?
+  createdAt DateTime         @default(now())
+  readAt    DateTime?
+  user      User             @relation("recipient", fields: [userId], references: [id], onDelete: Cascade)
+  from      User             @relation("sender", fields: [fromId], references: [id], onDelete: Cascade)
+  track     Track?           @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+enum NotificationType {
+  share
+  jam
+}
+
 model Play {
   id       String   @id @default(cuid())
   userId   String
@@ -188,19 +238,19 @@ model Play {
 // Podcasts created in Spotifiak (ownerId set) have no feed: their episodes are
 // YouTube videos whose audio the server downloads (see youtube.ts).
 model Podcast {
-  id            String                @id @default(cuid())
-  feedUrl       String                @unique // "local:<id>" for created podcasts
-  ownerId       String?
-  owner         User?                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  title         String
-  author        String?
-  description   String? // plain text
-  imageUrl      String?
-  link          String?
-  fetchedAt     DateTime? // last successful refresh
-  createdAt     DateTime              @default(now())
-  episodes      PodcastEpisode[]
-  subscribers   PodcastSubscription[]
+  id          String                @id @default(cuid())
+  feedUrl     String                @unique // "local:<id>" for created podcasts
+  ownerId     String?
+  owner       User?                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title       String
+  author      String?
+  description String? // plain text
+  imageUrl    String?
+  link        String?
+  fetchedAt   DateTime? // last successful refresh
+  createdAt   DateTime              @default(now())
+  episodes    PodcastEpisode[]
+  subscribers PodcastSubscription[]
 }
 
 model PodcastEpisode {
@@ -278,19 +328,19 @@ enum SpotifyImportStatus {
 }
 
 model SpotifyImport {
-  id                String              @id @default(cuid())
+  id                String               @id @default(cuid())
   userId            String
-  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   // null when importing the user's Spotify liked tracks
   spotifyPlaylistId String?
   name              String
   // Target playlist; null for liked tracks (they go to the user's likes)
   playlistId        String?
-  playlist          Playlist?           @relation(fields: [playlistId], references: [id], onDelete: SetNull)
-  status            SpotifyImportStatus @default(running)
+  playlist          Playlist?            @relation(fields: [playlistId], references: [id], onDelete: SetNull)
+  status            SpotifyImportStatus  @default(running)
   error             String?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
   tracks            SpotifyImportTrack[]
 
   @@index([userId, createdAt])

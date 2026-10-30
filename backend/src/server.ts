@@ -10,6 +10,7 @@ import { duplicateRoutes } from './duplicates.js'
 import { jamRoutes } from './jam.js'
 import { podcastRoutes, startPodcastRefresh } from './podcasts.js'
 import { resumeDownloads, youtubeRoutes } from './youtube.js'
+import { socialRoutes } from './social.js'
 import { spotifyRoutes } from './spotify/routes.js'
 import { config } from './config.js'
 import { prisma } from './db.js'
@@ -51,6 +52,7 @@ await app.register(duplicateRoutes)
 await app.register(jamRoutes)
 await app.register(podcastRoutes)
 await app.register(youtubeRoutes)
+await app.register(socialRoutes)
 
 app.get('/deezer/search', async (req, reply) => {
   const { q } = z.object({ q: z.string().min(1) }).parse(req.query)

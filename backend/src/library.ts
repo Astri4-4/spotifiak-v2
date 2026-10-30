@@ -72,6 +72,28 @@ const paging = z.object({
 
 const contains = (q: string) => ({ contains: q, mode: 'insensitive' as const })
 
+const MOSAIC_SIZE = 4
+
+/** Up to 4 covers from distinct albums for the playlist mosaic, like Spotify. */
+export function mosaic(entries: { track: { id: string; albumId: string | null; album: { coverUrl: string | null } | null } }[]) {
+  const seen = new Set<string>()
+  const covers: { trackId: string; coverUrl: string | null }[] = []
+  for (const { track } of entries) {
+    const key = track.albumId ?? track.id
+    if (seen.has(key)) continue
+    seen.add(key)
+    covers.push({ trackId: track.id, coverUrl: track.album?.coverUrl ?? null })
+    if (covers.length === MOSAIC_SIZE) break
+  }
+  return covers
+}
+
+export const mosaicEntries = {
+  orderBy: { position: 'asc' as const },
+  take: 30,
+  select: { track: { select: { id: true, albumId: true, album: { select: { coverUrl: true } } } } },
+}
+
 export async function libraryRoutes(app: FastifyInstance) {
   app.get('/tracks', async (req) => {
     const { limit, offset } = paging.parse(req.query)
@@ -145,7 +167,7 @@ export async function libraryRoutes(app: FastifyInstance) {
 
   app.get('/search', async (req) => {
     const { q } = z.object({ q: z.string().min(1) }).parse(req.query)
-    const [tracks, albums, artists] = await Promise.all([
+    const [tracks, albums, artists, playlists] = await Promise.all([
       prisma.track.findMany({
         where: { OR: [{ title: contains(q) }, { artistName: contains(q) }, { album: { title: contains(q) } }] },
         select: trackSelect,
@@ -164,7 +186,32 @@ export async function libraryRoutes(app: FastifyInstance) {
         orderBy: { name: 'asc' },
         take: 12,
       }),
+      // The user's own playlists, and everyone's public ones that have tracks.
+      prisma.playlist.findMany({
+        where: {
+          AND: [
+            { OR: [{ name: contains(q) }, { description: contains(q) }] },
+            { OR: [{ ownerId: req.user!.id }, { public: true, tracks: { some: {} } }] },
+          ],
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 12,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          updatedAt: true,
+          owner: { select: { displayName: true } },
+          _count: { select: { tracks: true } },
+          tracks: mosaicEntries,
+        },
+      }),
     ])
-    return { tracks: tracks.map(toTrack), albums: albums.map(toAlbum), artists: artists.map(toArtist) }
+    return {
+      tracks: tracks.map(toTrack),
+      albums: albums.map(toAlbum),
+      artists: artists.map(toArtist),
+      playlists: playlists.map(({ _count, tracks, ...p }) => ({ ...p, trackCount: _count.tracks, covers: mosaic(tracks) })),
+    }
   })
 }

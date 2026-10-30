@@ -53,6 +53,13 @@ interface Jam {
 const jams = new Map<string, Jam>()
 const jamOfUser = new Map<string, string>()
 
+/** The Jam `id` runs and `userId` is in it (Jam invitations, see social.ts). */
+export function isInJam(id: string, userId: string) {
+  return jams.get(id)?.participants.has(userId) ?? false
+}
+
+export const jamRuns = (id: string) => jams.has(id)
+
 const person = (u: AuthUser): Person => ({ id: u.id, displayName: u.displayName })
 
 async function loadTracks(ids: string[]) {
