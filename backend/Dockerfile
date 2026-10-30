@@ -1,4 +1,6 @@
 FROM node:24-slim
+# ffmpeg converts the audio formats some players can't read (iOS: ogg, opus, webm).
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 # yt-dlp, for YouTube videos added to podcasts: the standalone build (no Python), the
 # latest release on purpose since YouTube changes often; rebuild the image to update.
 ADD --chmod=755 https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux /usr/local/bin/yt-dlp
@@ -10,7 +12,7 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY . .
 RUN npm run build
 # Owned by node so a fresh Docker volume mounted there is writable.
-RUN mkdir /podcasts && chown node:node /podcasts
+RUN mkdir /podcasts /transcode && chown node:node /podcasts /transcode
 # Unprivileged, as Kubernetes' restricted pod security requires (uid 1000).
 USER node
 # exec: node becomes PID 1 and gets SIGTERM directly (sh and npm don't forward it).

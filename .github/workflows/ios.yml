@@ -1,0 +1,26 @@
+name: iOS
+
+on:
+  push:
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  pull_request:
+    paths: ['ios/**', '.github/workflows/ios.yml']
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    container: swift:6.1
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd ios/SpotifiakCore && swift test
+
+  app:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: cd ios && xcodegen
+      - name: Test
+        run: |
+          SIM=$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid')
+          xcodebuild test -project ios/Spotifiak.xcodeproj -scheme Spotifiak -destination "id=$SIM" CODE_SIGNING_ALLOWED=NO -quiet

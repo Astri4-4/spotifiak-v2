@@ -2,7 +2,9 @@ import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
 import type { FastifyReply, FastifyRequest } from 'fastify'
+import { z } from 'zod'
 import { config } from './config.js'
+import { compatFile } from './transcode.js'
 
 export const MIME: Record<string, string> = {
   '.mp3': 'audio/mpeg',
@@ -44,4 +46,19 @@ export async function streamFile(req: FastifyRequest, reply: FastifyReply, file:
     .header('content-range', `bytes ${start}-${end}/${size}`)
     .header('content-length', end - start + 1)
     .send(createReadStream(file, { start, end }))
+}
+
+/** Query of the audio routes: compat=1 asks for a format every player reads (see transcode.ts). */
+export const audioQuery = z.object({ compat: z.stringbool().optional() })
+
+export async function streamAudio(req: FastifyRequest, reply: FastifyReply, file: string, id: string, compat = false) {
+  if (!compat) return streamFile(req, reply, file)
+  let playable: string
+  try {
+    playable = await compatFile(file, id)
+  } catch (err) {
+    req.log.error({ err, file }, 'audio conversion failed')
+    return reply.code(500).send({ error: 'Conversion audio impossible' })
+  }
+  return streamFile(req, reply, playable)
 }

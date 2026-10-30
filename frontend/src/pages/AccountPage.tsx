@@ -37,7 +37,7 @@ export function AccountPage() {
   const saveProfile = (e: FormEvent) => {
     e.preventDefault()
     void profile.run(async () => {
-      const res = await auth.updateProfile(displayName)
+      const res = await auth.updateProfile({ displayName })
       setUser(res.user)
       return 'Profil enregistré'
     })
@@ -77,6 +77,26 @@ export function AccountPage() {
               Enregistrer
             </button>
           </form>
+        </section>
+
+        <section className="scan-card">
+          <h2 className="settings-title">Confidentialité</h2>
+          <label className="settings-toggle">
+            <input
+              type="checkbox"
+              checked={user.shareActivity}
+              onChange={(e) =>
+                void auth
+                  .updateProfile({ shareActivity: e.target.checked })
+                  .then((res) => setUser(res.user))
+                  .catch(() => {})
+              }
+            />
+            <span>
+              Partager mon activité d'écoute avec mes amis
+              <span className="muted">Vos amis voient ce que vous écoutez et vos dernières écoutes.</span>
+            </span>
+          </label>
         </section>
 
         <section className="scan-card">

@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { jam as jamApi, type JamPerson } from '../api'
+import { jam as jamApi, social, type JamPerson } from '../api'
 import { useCurrentUser } from '../auth/context'
 import { useCollection } from '../collection/context'
 import { useFetch } from '../hooks'
 import { JamIcon, PlusIcon } from '../icons'
 import { useJam } from '../jam/context'
 import { usePlayer, useProgress } from '../player/context'
+import { useSocial } from '../social/context'
 
 function Avatar({ person }: { person: JamPerson }) {
   return (
@@ -23,6 +24,9 @@ export function JamSection() {
   const user = useCurrentUser()
   const { notify } = useCollection()
   const { jam, start, leave, removeParticipant } = useJam()
+  const { friends } = useSocial()
+  // Friends invited from here during this Jam.
+  const [invited, setInvited] = useState<Set<string>>(new Set())
   const { current, upNext, playing, contextName } = usePlayer()
   const { currentTime } = useProgress()
   const [busy, setBusy] = useState(false)
@@ -112,6 +116,36 @@ export function JamSection() {
           Inviter
         </button>
       </div>
+      {friends.some((f) => !jam.participants.some((p) => p.id === f.id)) && (
+        <div className="jam-friends">
+          <h4>Inviter des amis</h4>
+          <ul className="jam-people">
+            {friends
+              .filter((f) => !jam.participants.some((p) => p.id === f.id))
+              .map((f) => (
+                <li key={f.id}>
+                  <Avatar person={f} />
+                  <span className="jam-person-name">{f.displayName}</span>
+                  <button
+                    className="pill-button small outline"
+                    disabled={invited.has(f.id)}
+                    onClick={() =>
+                      void social
+                        .inviteToJam(jam.id, [f.id])
+                        .then(() => {
+                          setInvited((s) => new Set(s).add(f.id))
+                          notify(`Invitation envoyée à ${f.displayName}`)
+                        })
+                        .catch((err: Error) => notify(err.message))
+                    }
+                  >
+                    {invited.has(f.id) ? 'Invité' : 'Inviter'}
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
       <button className="pill-button small outline" onClick={() => void leave()}>
         {isHost ? 'Mettre fin à la Jam' : 'Quitter la Jam'}
       </button>

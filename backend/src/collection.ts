@@ -1,9 +1,8 @@
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { prisma } from './db.js'
-import { albumSelect, artistSelect, toAlbum, toArtist, toTrack, trackSelect } from './library.js'
+import { albumSelect, artistSelect, mosaic, mosaicEntries, toAlbum, toArtist, toTrack, trackSelect } from './library.js'
 
-const MOSAIC_SIZE = 4
 // Positions are floats; when neighbours get this close, renumber the playlist.
 const MIN_POSITION_GAP = 1e-6
 
@@ -16,26 +15,6 @@ const playlistBody = z.object({
   description: z.string().trim().max(300).optional(),
   public: z.boolean().optional(),
 })
-
-/** Up to 4 covers from distinct albums for the playlist mosaic, like Spotify. */
-function mosaic(entries: { track: { id: string; albumId: string | null; album: { coverUrl: string | null } | null } }[]) {
-  const seen = new Set<string>()
-  const covers: { trackId: string; coverUrl: string | null }[] = []
-  for (const { track } of entries) {
-    const key = track.albumId ?? track.id
-    if (seen.has(key)) continue
-    seen.add(key)
-    covers.push({ trackId: track.id, coverUrl: track.album?.coverUrl ?? null })
-    if (covers.length === MOSAIC_SIZE) break
-  }
-  return covers
-}
-
-const mosaicEntries = {
-  orderBy: { position: 'asc' as const },
-  take: 30,
-  select: { track: { select: { id: true, albumId: true, album: { select: { coverUrl: true } } } } },
-}
 
 export async function collectionRoutes(app: FastifyInstance) {
   // Only the owner edits a playlist: someone else's is reported as missing, not forbidden.

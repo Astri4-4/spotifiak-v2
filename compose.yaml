@@ -28,11 +28,14 @@ services:
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
       SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-}
       PODCAST_DIR: /podcasts
+      TRANSCODE_DIR: /transcode
     volumes:
       # Writable so duplicates can be deleted from the scan page.
       - ${MUSIC_DIR}:/music
       # Audio of the YouTube videos added to created podcasts
       - podcasts:/podcasts
+      # Audio converted for iOS (a cache)
+      - transcode:/transcode
     # No published port: the web container proxies /api to it.
     depends_on:
       db:
@@ -48,3 +51,4 @@ services:
 volumes:
   db-data:
   podcasts:
+  transcode:

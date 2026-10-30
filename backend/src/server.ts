@@ -10,6 +10,7 @@ import { duplicateRoutes } from './duplicates.js'
 import { jamRoutes } from './jam.js'
 import { podcastRoutes, startPodcastRefresh } from './podcasts.js'
 import { resumeDownloads, youtubeRoutes } from './youtube.js'
+import { socialRoutes } from './social.js'
 import { spotifyRoutes } from './spotify/routes.js'
 import { config } from './config.js'
 import { prisma } from './db.js'
@@ -17,7 +18,7 @@ import * as deemix from './deemix.js'
 import { enrichStatus } from './enrich.js'
 import { libraryRoutes } from './library.js'
 import { scanLibrary, scanStatus, scheduleScan, startPeriodicScan } from './scanner.js'
-import { resolveMusicPath, streamFile } from './stream.js'
+import { audioQuery, resolveMusicPath, streamAudio } from './stream.js'
 
 // Wait for deemix to finish downloading before rescanning.
 const RESCAN_AFTER_DOWNLOAD_MS = 30_000
@@ -51,6 +52,7 @@ await app.register(duplicateRoutes)
 await app.register(jamRoutes)
 await app.register(podcastRoutes)
 await app.register(youtubeRoutes)
+await app.register(socialRoutes)
 
 app.get('/deezer/search', async (req, reply) => {
   const { q } = z.object({ q: z.string().min(1) }).parse(req.query)
@@ -71,10 +73,11 @@ app.post('/downloads', async (req, reply) => {
 
 app.get('/tracks/:id/stream', async (req, reply) => {
   const { id } = z.object({ id: z.string() }).parse(req.params)
+  const { compat } = audioQuery.parse(req.query)
   const track = await prisma.track.findUnique({ where: { id } })
   const file = track && resolveMusicPath(track.path)
   if (!file) return reply.code(404).send({ error: 'Track not found' })
-  return streamFile(req, reply, file)
+  return streamAudio(req, reply, file, id, compat)
 })
 
 app.get('/tracks/:id/cover', async (req, reply) => {

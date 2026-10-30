@@ -16,6 +16,15 @@ import { usePlayContext } from '../player/usePlayContext'
 
 const SEARCH_DEBOUNCE_MS = 250
 
+/** Lowercase without accents, so "ete" finds "Été". */
+const fold = (text: string) => text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+
+/** The track's title, artist or album contains every word of the query. */
+function matchesFilter(track: Track, query: string) {
+  const haystack = fold([track.title, track.artistName, track.album?.title ?? ''].join(' '))
+  return fold(query).split(/\s+/).every((word) => haystack.includes(word))
+}
+
 // Keyed by id so per-playlist state (colour, dialogs, search) starts fresh on navigation.
 export function PlaylistPage() {
   const { id = '' } = useParams()
@@ -123,6 +132,7 @@ function PlaylistView({ id }: { id: string }) {
   const { isPlaying, playTracks, playShuffled } = usePlayContext()
   const { contextId, shuffle } = usePlayer()
   const [editing, setEditing] = useState(false)
+  const [filter, setFilter] = useState('')
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
 
   if (error) return <div className="page page-inner error">Playlist introuvable.</div>
@@ -131,6 +141,11 @@ function PlaylistView({ id }: { id: string }) {
   const owned = playlist.owned
   const entries = optimistic ?? playlist.entries
   const tracks = entries.map((e) => e.track)
+  // Indices into entries of the rows the filter keeps (all of them without a filter).
+  const shown = filter.trim()
+    ? entries.flatMap((e, i) => (matchesFilter(e.track, filter.trim()) ? [i] : []))
+    : entries.map((_, i) => i)
+  const filtering = shown.length !== entries.length || !!filter.trim()
   const total = tracks.reduce((sum, t) => sum + (t.durationSec ?? 0), 0)
 
   const move = async (from: number, before: number) => {
@@ -235,6 +250,19 @@ function PlaylistView({ id }: { id: string }) {
             </button>
           </>
         )}
+        {tracks.length > 0 && (
+          <label className="add-tracks-search playlist-filter">
+            <SearchIcon size={20} />
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && setFilter('')}
+              placeholder="Rechercher dans la playlist"
+              aria-label={`Rechercher dans ${playlist.name}`}
+              type="search"
+            />
+          </label>
+        )}
         {owned && (
           <>
             <button
@@ -270,17 +298,19 @@ function PlaylistView({ id }: { id: string }) {
       </div>
 
       <div className="page-inner">
-        {tracks.length > 0 && (
+        {tracks.length > 0 && shown.length > 0 && (
           <TrackList
-            tracks={tracks}
+            tracks={shown.map((i) => tracks[i])}
             contextId={id}
             contextName={playlist.name}
             variant="full"
-            rowKeys={entries.map((e) => e.id)}
-            onRemove={owned ? (i) => void remove(i) : undefined}
-            onMove={owned ? (from, before) => void move(from, before) : undefined}
+            rowKeys={shown.map((i) => entries[i].id)}
+            onRemove={owned ? (i) => void remove(shown[i]) : undefined}
+            // Dragging within a filtered list would hide where the track lands.
+            onMove={owned && !filtering ? (from, before) => void move(from, before) : undefined}
           />
         )}
+        {filtering && shown.length === 0 && <p className="muted">Aucun titre pour « {filter.trim()} » dans cette playlist.</p>}
         {owned && <AddTracks onAdd={(t) => void add(t)} />}
       </div>
 

@@ -5,6 +5,7 @@ import { useDominantColor } from '../hooks'
 import { ChevronLeftIcon, HomeFilledIcon, HomeIcon, JamIcon, LibraryIcon, PauseIcon, PlayIcon, QueueIcon, SearchIcon } from '../icons'
 import { useJam } from '../jam/context'
 import { usePlayer, useProgress } from '../player/context'
+import { useSocial } from '../social/context'
 import { artistLink } from '../podcasts'
 import { Cover } from './Cover'
 import { HeartButton } from './HeartButton'
@@ -47,6 +48,8 @@ export function MobileBackButton() {
 
 export function BottomNav() {
   const { pathname } = useLocation()
+  const { unread, friendRequests } = useSocial()
+  const pending = unread + friendRequests
   const tab = (to: string, label: string, icon: ReactNode, activeIcon: ReactNode, active: boolean) => (
     <NavLink to={to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>
       {active ? activeIcon : icon}
@@ -58,6 +61,19 @@ export function BottomNav() {
       {tab('/', 'Accueil', <HomeIcon size={24} />, <HomeFilledIcon size={24} />, pathname === '/')}
       {tab('/search', 'Rechercher', <SearchIcon size={24} />, <SearchIcon size={24} />, pathname.startsWith('/search'))}
       {tab('/library', 'Bibliothèque', <LibraryIcon size={24} />, <LibraryIcon size={24} />, pathname === '/library')}
+      {tab(
+        '/friends',
+        'Amis',
+        <span className="nav-icon">
+          <JamIcon size={24} />
+          {pending > 0 && <span className="badge">{pending}</span>}
+        </span>,
+        <span className="nav-icon">
+          <JamIcon size={24} />
+          {pending > 0 && <span className="badge">{pending}</span>}
+        </span>,
+        ['/friends', '/inbox', '/user/'].some((p) => pathname.startsWith(p)),
+      )}
     </nav>
   )
 }

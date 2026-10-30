@@ -2394,6 +2394,12 @@ a.now-playing-title:hover,
   color: var(--text-subdued);
 }
 
+/* "Rechercher dans la playlist", at the end of the action bar. */
+.playlist-filter {
+  margin-left: auto;
+  width: 240px;
+}
+
 .add-tracks-search input {
   flex: 1;
   min-width: 0;
@@ -3141,6 +3147,18 @@ a.now-playing-title:hover,
     margin-left: auto;
   }
 
+  /* The playlist filter takes its own row under the buttons. */
+  .action-bar:has(.playlist-filter) {
+    flex-wrap: wrap;
+  }
+
+  .playlist-filter {
+    order: 2;
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+  }
+
   /* Track rows: title, artist and the "…" menu */
   .tracklist.tracklist-full,
   .tracklist.tracklist-album,
@@ -3455,4 +3473,202 @@ a.now-playing-title:hover,
 
 .episode-title a:hover {
   text-decoration: underline;
+}
+
+/* Social: friends, activity, notifications --------------------------------- */
+
+.topbar-right {
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-icon,
+.nav-icon {
+  position: relative;
+}
+
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--green);
+  color: var(--black);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.inbox-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+}
+
+.inbox-link .badge {
+  position: static;
+}
+
+.person-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.person-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.person-row:hover {
+  background: var(--highlight);
+}
+
+.person-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-row .person-link {
+  flex: 0;
+}
+
+.person-row > .title-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.person-avatar {
+  flex-shrink: 0;
+  background: #ff9a66;
+}
+
+.friend-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.activity-track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 0;
+  color: var(--text-subdued);
+  font: inherit;
+  font-size: 0.875rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.activity-track:hover {
+  color: var(--text);
+}
+
+.listening-now {
+  color: var(--green);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.listening-now::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.inbox-row {
+  align-items: flex-start;
+}
+
+.inbox-row.unread {
+  background: rgba(30, 215, 96, 0.08);
+}
+
+.inbox-message {
+  color: var(--text);
+  font-style: italic;
+}
+
+.inbox-track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--elevated);
+}
+
+.inbox-track .title-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.settings-toggle input {
+  margin-top: 4px;
+  accent-color: var(--green);
+}
+
+.settings-toggle > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-subtitle {
+  margin: 20px 0 0;
+  font-size: 1rem;
+}
+
+.menu-input {
+  width: calc(100% - 16px);
+  margin: 4px 8px 8px;
+  padding: 8px;
+  border: 1px solid var(--highlight-strong);
+  border-radius: 4px;
+  background: var(--elevated);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.menu-empty {
+  margin: 4px 12px 8px;
+  font-size: 0.875rem;
+}
+
+.jam-friends h4 {
+  margin: 12px 0 4px;
+  font-size: 0.875rem;
 }

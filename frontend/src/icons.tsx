@@ -172,3 +172,8 @@ export const SkipForwardIcon = icon(
   </>,
   '0 0 24 24',
 )
+
+// A bell: notifications (shared tracks, Jam invitations).
+export const BellIcon = icon(
+  <path d="M8 0a.75.75 0 0 1 .75.75v.8A5 5 0 0 1 13 6.5v3.3l1.78 2.38A.75.75 0 0 1 14.18 13.4H1.82a.75.75 0 0 1-.6-1.2L3 9.8V6.5a5 5 0 0 1 4.25-4.95v-.8A.75.75 0 0 1 8 0Zm0 3a3.5 3.5 0 0 0-3.5 3.5v3.55a.75.75 0 0 1-.15.45L3.32 11.9h9.36l-1.03-1.4a.75.75 0 0 1-.15-.45V6.5A3.5 3.5 0 0 0 8 3Zm-2 11.5h4a2 2 0 0 1-4 0Z" />,
+)
