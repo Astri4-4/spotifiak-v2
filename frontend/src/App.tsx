@@ -5,6 +5,7 @@ import { useAuth } from './auth/context'
 import { LoginScreen } from './auth/LoginScreen'
 import { CollectionProvider } from './collection/CollectionProvider'
 import { JamProvider } from './jam/JamProvider'
+import { SocialProvider } from './social/SocialProvider'
 import { JamPage } from './components/Jam'
 import { BottomNav, MobileBackButton, MobilePlayer } from './components/Mobile'
 import { PlayerBar } from './components/PlayerBar'
@@ -15,6 +16,9 @@ import { TopBar } from './components/TopBar'
 import { useIsMobile } from './hooks'
 import { AccountPage } from './pages/AccountPage'
 import { AlbumPage } from './pages/AlbumPage'
+import { FriendsPage } from './pages/FriendsPage'
+import { InboxPage } from './pages/InboxPage'
+import { ProfilePage } from './pages/ProfilePage'
 import { ArtistPage } from './pages/ArtistPage'
 import { HomePage } from './pages/HomePage'
 import { LikedPage } from './pages/LikedPage'
@@ -33,6 +37,7 @@ function MainApp() {
   return (
     // Order matters: the Jam shows toasts (collection) and drives the player.
     <CollectionProvider>
+      <SocialProvider>
       <JamProvider>
         <PlayerProvider>
           <div className={`app${isMobile ? ' mobile' : queueOpen ? ' with-queue' : ''}`}>
@@ -58,6 +63,9 @@ function MainApp() {
                 <Route path="/account" element={<AccountPage />} />
                 <Route path="/admin/users" element={<UsersPage />} />
                 <Route path="/jam/:id" element={<JamPage />} />
+                <Route path="/friends" element={<FriendsPage />} />
+                <Route path="/inbox" element={<InboxPage />} />
+                <Route path="/user/:id" element={<ProfilePage />} />
               </Routes>
             </main>
             {isMobile ? (
@@ -74,6 +82,7 @@ function MainApp() {
           </div>
         </PlayerProvider>
       </JamProvider>
+      </SocialProvider>
     </CollectionProvider>
   )
 }

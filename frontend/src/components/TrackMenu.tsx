@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import type { Track } from '../api'
 import { useCollection } from '../collection/context'
 import { usePlayer } from '../player/context'
+import { social } from '../api'
+import { useSocial } from '../social/context'
 import { ChevronRightIcon, MoreIcon, PlusIcon } from '../icons'
 import { PopoverMenu } from './PopoverMenu'
 
@@ -17,11 +19,14 @@ export function TrackMenu({ track, onRemoveFromPlaylist }: TrackMenuProps) {
   const { likedIds, toggleLike, playlists, createPlaylist, addToPlaylist, notify } = useCollection()
   const { addToQueue, inJam } = usePlayer()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
-  const [submenu, setSubmenu] = useState(false)
+  const [submenu, setSubmenu] = useState<'playlist' | 'share' | null>(null)
+  const [message, setMessage] = useState('')
+  const { friends } = useSocial()
 
   const close = () => {
     setAnchor(null)
-    setSubmenu(false)
+    setSubmenu(null)
+    setMessage('')
   }
   const run = (action: () => void) => () => {
     close()
@@ -46,9 +51,42 @@ export function TrackMenu({ track, onRemoveFromPlaylist }: TrackMenuProps) {
 
       {anchor && (
         <PopoverMenu anchor={anchor} onClose={close} label={`Options pour ${track.title}`}>
-          {submenu ? (
+          {submenu === 'share' ? (
             <>
-              <button role="menuitem" className="menu-item menu-back" onClick={() => setSubmenu(false)}>
+              <button role="menuitem" className="menu-item menu-back" onClick={() => setSubmenu(null)}>
+                ‹ Partager avec un ami
+              </button>
+              <hr className="menu-separator" />
+              <input
+                className="menu-input"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Message (facultatif)"
+                maxLength={300}
+                aria-label="Message"
+              />
+              {friends.length === 0 && <p className="menu-empty muted">Ajoutez des amis depuis la page Amis.</p>}
+              <div className="menu-scroll">
+                {friends.map((f) => (
+                  <button
+                    key={f.id}
+                    role="menuitem"
+                    className="menu-item"
+                    onClick={run(() =>
+                      void social
+                        .share(track.id, [f.id], message.trim() || undefined)
+                        .then(() => notify(`Envoyé à ${f.displayName}`))
+                        .catch((err: Error) => notify(err.message)),
+                    )}
+                  >
+                    {f.displayName}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : submenu === 'playlist' ? (
+            <>
+              <button role="menuitem" className="menu-item menu-back" onClick={() => setSubmenu(null)}>
                 ‹ Ajouter à la playlist
               </button>
               <hr className="menu-separator" />
@@ -87,9 +125,14 @@ export function TrackMenu({ track, onRemoveFromPlaylist }: TrackMenuProps) {
               >
                 Ajouter à la file d'attente
               </button>
-              <button role="menuitem" className="menu-item with-chevron" onClick={() => setSubmenu(true)}>
+              <button role="menuitem" className="menu-item with-chevron" onClick={() => setSubmenu('playlist')}>
                 Ajouter à la playlist <ChevronRightIcon />
               </button>
+              {!track.episode && (
+                <button role="menuitem" className="menu-item with-chevron" onClick={() => setSubmenu('share')}>
+                  Partager avec un ami <ChevronRightIcon />
+                </button>
+              )}
               {onRemoveFromPlaylist && (
                 <button role="menuitem" className="menu-item" onClick={run(onRemoveFromPlaylist)}>
                   Retirer de cette playlist

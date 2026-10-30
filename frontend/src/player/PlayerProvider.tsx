@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { api, images, type Track } from '../api'
+import { api, images, social, type Track } from '../api'
 import { useJam } from '../jam/context'
 import { saveProgress } from '../podcasts'
 import { storage } from '../storage'
@@ -40,6 +40,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState({ currentTime: 0, duration: 0 })
   const [rate, setRateState] = useState(() => Number(storage.get('podcastRate') ?? 1))
   const lastSavedAt = useRef(0)
+  // The source last reported to the server as a listen (friend activity): once per track started.
+  const recordedSource = useRef<string | null>(null)
 
   // In a Jam the server's queue replaces the local one (see JamProvider).
   const { jam, receivedAt, command } = useJam()
@@ -366,6 +368,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         <audio
           ref={audio}
           onPlay={() => setPlaying(true)}
+          onPlaying={() => {
+            if (!current || current.episode || recordedSource.current === source) return
+            recordedSource.current = source
+            void social.recordPlay(current.id).catch(() => {})
+          }}
           onPause={() => {
             setPlaying(false)
             saveEpisode()

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, images, podcasts, type DeezerTrack, type PodcastSearchResult } from '../api'
 import { Card } from '../components/Card'
+import { PlaylistCover } from '../components/CollectionCovers'
 import { Cover } from '../components/Cover'
 import { PlayButton } from '../components/PlayButton'
 import { Shelf } from '../components/Shelf'
@@ -13,13 +14,14 @@ import { useFetch, useIsMobile } from '../hooks'
 import { CheckIcon, DownloadIcon } from '../icons'
 import { usePlayContext } from '../player/usePlayContext'
 
-type Tab = 'all' | 'tracks' | 'albums' | 'artists' | 'podcasts' | 'deezer'
+type Tab = 'all' | 'tracks' | 'albums' | 'artists' | 'playlists' | 'podcasts' | 'deezer'
 
 const TABS: [Tab, string][] = [
   ['all', 'Tout'],
   ['tracks', 'Titres'],
   ['albums', 'Albums'],
   ['artists', 'Artistes'],
+  ['playlists', 'Playlists'],
   ['podcasts', 'Podcasts'],
   ['deezer', 'Deezer'],
 ]
@@ -150,9 +152,9 @@ function PodcastResults({ query, shelf = false }: { query: string; shelf?: boole
 function Results({ query }: { query: string }) {
   const [tab, setTab] = useState<Tab>('all')
   const { data } = useFetch(() => api.search(query), [query])
-  const { isPlaying, playAlbum, playArtist } = usePlayContext()
+  const { isPlaying, playAlbum, playArtist, playPlaylist } = usePlayContext()
 
-  const hasLocal = data && (data.tracks.length || data.albums.length || data.artists.length)
+  const hasLocal = data && (data.tracks.length || data.albums.length || data.artists.length || data.playlists.length)
   const top = data?.artists[0]
     ? { kind: 'artist' as const, item: data.artists[0] }
     : data?.albums[0]
@@ -181,6 +183,19 @@ function Results({ query }: { query: string }) {
       round
       playing={isPlaying(artist.id)}
       onPlay={() => void playArtist(artist.id)}
+    />
+  ))
+
+  const playlistCards = data?.playlists.map((p) => (
+    <Card
+      key={p.id}
+      to={`/playlist/${p.id}`}
+      title={p.name}
+      subtitle={`De ${p.owner.displayName}`}
+      image={null}
+      cover={<PlaylistCover covers={p.covers} quality="md" />}
+      playing={isPlaying(p.id)}
+      onPlay={() => void playPlaylist(p.id, p.name)}
     />
   ))
 
@@ -244,6 +259,7 @@ function Results({ query }: { query: string }) {
 
             {!!data?.artists.length && <Shelf title="Artistes">{artistCards}</Shelf>}
             {!!data?.albums.length && <Shelf title="Albums">{albumCards}</Shelf>}
+            {!!data?.playlists.length && <Shelf title="Playlists">{playlistCards}</Shelf>}
             <PodcastResults query={query} shelf />
 
             <section>
@@ -256,6 +272,13 @@ function Results({ query }: { query: string }) {
         {tab === 'tracks' && data && <TrackList tracks={data.tracks} contextId={`search:${query}`} variant="full" />}
         {tab === 'albums' && <div className="card-grid">{albumCards}</div>}
         {tab === 'artists' && <div className="card-grid">{artistCards}</div>}
+        {tab === 'playlists' &&
+          data &&
+          (data.playlists.length ? (
+            <div className="card-grid">{playlistCards}</div>
+          ) : (
+            <p className="muted">Aucune playlist pour « {query} ».</p>
+          ))}
         {tab === 'podcasts' && <PodcastResults query={query} />}
         {tab === 'deezer' && <DeezerResults query={query} />}
       </div>

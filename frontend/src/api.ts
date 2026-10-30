@@ -9,6 +9,8 @@ export interface User {
   username: string
   displayName: string
   role: Role
+  /** Friends see what this user listens to. */
+  shareActivity: boolean
 }
 
 export interface ManagedUser extends User {
@@ -132,6 +134,8 @@ export interface SearchResults {
   tracks: Track[]
   albums: Album[]
   artists: Artist[]
+  /** The user's own playlists and everyone's public ones. */
+  playlists: PublicPlaylist[]
 }
 
 export interface DeezerTrack {
@@ -316,7 +320,7 @@ export const auth = {
   register: (username: string, password: string, displayName?: string) =>
     send<{ user: User }>('POST', '/auth/register', { username, password, displayName }),
   logout: () => send<{ ok: true }>('POST', '/auth/logout'),
-  updateProfile: (displayName: string) => send<{ user: User }>('PATCH', '/me', { displayName }),
+  updateProfile: (data: { displayName?: string; shareActivity?: boolean }) => send<{ user: User }>('PATCH', '/me', data),
   changePassword: (currentPassword: string, newPassword: string) =>
     send<{ ok: true }>('POST', '/me/password', { currentPassword, newPassword }),
 }
@@ -434,6 +438,75 @@ export const podcasts = {
     send<{ added: number; skipped: number }>('POST', `/podcasts/${id}/episodes`, { url }),
   retry: (id: string, episodeId: string) => send<void>('POST', `/podcasts/${id}/episodes/${episodeId}/retry`),
   removeEpisode: (id: string, episodeId: string) => send<void>('DELETE', `/podcasts/${id}/episodes/${episodeId}`),
+}
+
+/** Where the current user stands with someone. */
+export type Relation = 'friend' | 'sent' | 'received' | null
+
+export interface Person {
+  id: string
+  username: string
+  displayName: string
+}
+
+export interface FriendPlay {
+  track: Track
+  playedAt: string
+  /** Still within the track's length since it started. */
+  listening: boolean
+}
+
+export interface FriendActivity extends FriendPlay {
+  user: Person
+}
+
+export interface Friends {
+  friends: (Person & { since: string | null })[]
+  /** Requests waiting for this user's answer. */
+  incoming: (Person & { sentAt: string })[]
+  outgoing: (Person & { sentAt: string })[]
+}
+
+export interface Profile {
+  user: Person
+  relation: Relation
+  /** A friend who doesn't share their activity. */
+  activityHidden: boolean
+  recentPlays: FriendPlay[]
+  playlists: PublicPlaylist[]
+}
+
+/** A track a friend shared, or an invitation to their Jam (jamActive while it runs). */
+export interface Notification {
+  id: string
+  type: 'share' | 'jam'
+  from: Person
+  track: Track | null
+  jamId: string | null
+  jamActive: boolean
+  message: string | null
+  createdAt: string
+  read: boolean
+}
+
+export const social = {
+  people: (q: string) => request<(Person & { relation: Relation })[]>(`/people?${query({ q })}`),
+  profile: (userId: string) => request<Profile>(`/people/${userId}`),
+  friends: () => request<Friends>('/friends'),
+  /** Sends a request, or accepts theirs when they asked first. */
+  addFriend: (userId: string) => send<{ relation: Relation }>('POST', `/friends/${userId}`),
+  acceptFriend: (userId: string) => send<{ relation: Relation }>('POST', `/friends/${userId}/accept`),
+  /** Declines or cancels a request, or ends a friendship. */
+  removeFriend: (userId: string) => send<void>('DELETE', `/friends/${userId}`),
+  activity: () => request<FriendActivity[]>('/friends/activity'),
+  recordPlay: (trackId: string) => send<void>('POST', '/me/plays', { trackId }),
+  share: (trackId: string, userIds: string[], message?: string) =>
+    send<{ sent: number }>('POST', '/shares', { trackId, userIds, message }),
+  inviteToJam: (jamId: string, userIds: string[]) => send<{ sent: number }>('POST', `/jam/${jamId}/invite`, { userIds }),
+  notifications: () => request<Notification[]>('/me/notifications'),
+  counts: () => request<{ unread: number; friendRequests: number }>('/me/notifications/count'),
+  markRead: () => send<void>('POST', '/me/notifications/read'),
+  removeNotification: (id: string) => send<void>('DELETE', `/me/notifications/${id}`),
 }
 
 export const users = {
