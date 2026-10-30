@@ -517,6 +517,54 @@ export const social = {
   removeAvatar: () => send<void>('DELETE', '/me/avatar'),
 }
 
+/** The followed artist a calendar entry is about. */
+export interface CalendarArtist {
+  id: string
+  name: string
+  pictureUrl: string | null
+}
+
+/** A Deezer release of a followed artist (the last six months, and announced ones). */
+export interface CalendarRelease {
+  /** Deezer album id. */
+  id: number
+  title: string
+  /** album, single, ep or compile. */
+  type: string
+  /** YYYY-MM-DD */
+  date: string
+  coverUrl: string | null
+  /** The Deezer page, which deemix downloads. */
+  link: string
+  /** The album in the library, when it's there already. */
+  albumId: string | null
+  artist: CalendarArtist
+}
+
+/** An upcoming show of a followed artist, from Ticketmaster. */
+export interface CalendarConcert {
+  id: string
+  name: string
+  /** YYYY-MM-DD and HH:MM, local to the venue. */
+  date: string
+  time: string | null
+  venue: string | null
+  city: string | null
+  country: string | null
+  url: string | null
+  cancelled: boolean
+  artist: CalendarArtist
+}
+
+export interface Calendar {
+  /** Off without a Ticketmaster key on the server. */
+  concertsEnabled: boolean
+  /** Artists whose releases or shows are still loading: ask again until 0. */
+  loading: number
+  releases: CalendarRelease[]
+  concerts: CalendarConcert[]
+}
+
 export const users = {
   list: () => request<ManagedUser[]>('/users'),
   create: (data: { username: string; password: string; displayName?: string; role: Role }) =>
@@ -535,6 +583,7 @@ export const api = {
   artists: () => request<{ items: Artist[] }>('/artists?limit=200'),
   artist: (id: string) => request<ArtistDetail>(`/artists/${id}`),
   search: (q: string) => request<SearchResults>(`/search?${query({ q })}`),
+  calendar: () => request<Calendar>('/me/calendar'),
   deezerSearch: (q: string) => request<DeezerTrack[]>(`/deezer/search?${query({ q })}`),
   download: (url: string) => send<{ queued: boolean }>('POST', '/downloads', { url }),
   scanStatus: () => request<ScanStatus>('/library/scan'),

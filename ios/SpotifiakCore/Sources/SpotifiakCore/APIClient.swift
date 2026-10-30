@@ -217,6 +217,13 @@ public final class APIClient: Sendable {
         try await data("DELETE", "/users/\(id)", body: nil as [String: String]?)
     }
 
+    // MARK: - Calendar
+
+    /// New releases and upcoming shows of the followed artists.
+    public func calendar() async throws -> ArtistCalendar {
+        try await get("/me/calendar")
+    }
+
     // MARK: - Profile pictures
 
     /// Someone's profile picture, nil without one; the date in the URL makes a new one bypass caches.
