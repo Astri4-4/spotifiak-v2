@@ -122,7 +122,7 @@ struct JamSheet: View {
                 Section("Inviter des amis") {
                     ForEach(invitable) { friend in
                         HStack(spacing: 12) {
-                            Avatar(name: friend.displayName, size: 32)
+                            Avatar(person: friend, size: 32)
                             Text(friend.displayName)
                             Spacer()
                             Button(invited.contains(friend.id) ? "Invité" : "Inviter") { invite(friend, to: jam) }

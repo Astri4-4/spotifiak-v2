@@ -23,3 +23,12 @@ test('isListening lasts as long as the track', () => {
   assert.equal(isListening(ago(200), null, now), true)
   assert.equal(isListening(ago(300), null, now), false)
 })
+
+test('imageType trusts the bytes, not the name', async () => {
+  const { imageType } = await import('../src/social.js')
+  assert.equal(imageType(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0])), 'image/jpeg')
+  assert.equal(imageType(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0])), 'image/png')
+  assert.equal(imageType(Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBP')])), 'image/webp')
+  assert.equal(imageType(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>')), null)
+  assert.equal(imageType(Buffer.alloc(0)), null)
+})

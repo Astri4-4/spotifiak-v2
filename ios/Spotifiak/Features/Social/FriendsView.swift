@@ -120,7 +120,7 @@ private struct ActivityRow: View {
     var body: some View {
         HStack(spacing: 12) {
             // Buttons, not NavigationLinks: in a List row a link gets a chevron and stretches.
-            Button { navigate(.person(item.user.id)) } label: { Avatar(name: item.user.displayName, size: 40) }
+            Button { navigate(.person(item.user.id)) } label: { Avatar(person: item.user, size: 40) }
                 .buttonStyle(.borderless)
                 .accessibilityLabel("Profil de \(item.user.displayName)")
             VStack(alignment: .leading, spacing: 4) {
@@ -163,7 +163,7 @@ struct PersonRow<Trailing: View>: View {
         HStack(spacing: 12) {
             Button { navigate(.person(person.id)) } label: {
                 HStack(spacing: 12) {
-                    Avatar(name: person.displayName, size: 40)
+                    Avatar(person: person, size: 40)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(person.displayName)
                         Text("@\(person.username)").font(.caption).foregroundStyle(Theme.subdued)
@@ -229,18 +229,33 @@ struct RelationButtons: View {
     }
 }
 
-/// A person's initial in a colored circle (accounts have no pictures).
-struct Avatar: View {
-    let name: String
+/// A person's profile picture, or their initial in a colored circle (shown while it loads,
+/// and when there's none).
+struct Avatar<Someone: HasAvatar>: View {
+    let person: Someone
     var size: CGFloat = 32
+    @Environment(Session.self) private var session
+    @State private var image: UIImage?
 
     var body: some View {
-        Text(name.trimmingCharacters(in: .whitespaces).prefix(1).uppercased())
-            .font(.system(size: size * 0.42, weight: .bold))
-            .foregroundStyle(.black)
-            .frame(width: size, height: size)
-            .background(Color(red: 1, green: 0.6, blue: 0.4), in: Circle())
-            .accessibilityHidden(true)
+        let url = session.api?.avatarURL(for: person)
+        ZStack {
+            Color(red: 1, green: 0.6, blue: 0.4)
+            if let image, url != nil {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
+                Text(person.displayName.trimmingCharacters(in: .whitespaces).prefix(1).uppercased())
+                    .font(.system(size: size * 0.42, weight: .bold))
+                    .foregroundStyle(.black)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .accessibilityHidden(true)
+        .task(id: url) {
+            image = nil
+            if let url { image = await ImageCache.shared.image(for: url) }
+        }
     }
 }
 

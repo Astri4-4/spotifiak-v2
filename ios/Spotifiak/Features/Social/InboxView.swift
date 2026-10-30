@@ -37,7 +37,7 @@ struct InboxView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
                 // A button, not a NavigationLink: in a List row a link gets a chevron and stretches.
-                Button { navigate(.person(n.from.id)) } label: { Avatar(name: n.from.displayName, size: 36) }
+                Button { navigate(.person(n.from.id)) } label: { Avatar(person: n.from, size: 36) }
                     .buttonStyle(.borderless)
                     .accessibilityLabel("Profil de \(n.from.displayName)")
                 VStack(alignment: .leading, spacing: 2) {
@@ -154,7 +154,7 @@ struct ProfileView: View {
     private func page(_ profile: Profile) -> some View {
         ScrollView {
             VStack(spacing: 12) {
-                Avatar(name: profile.user.displayName, size: 140).padding(.top, 16)
+                Avatar(person: profile.user, size: 140).padding(.top, 16)
                 Text(profile.user.displayName).font(.largeTitle.bold())
                 Text("@\(profile.user.username)").foregroundStyle(Theme.subdued)
                 if !isMe {
@@ -260,7 +260,7 @@ struct ShareSheet: View {
                             if selected.contains(friend.id) { selected.remove(friend.id) } else { selected.insert(friend.id) }
                         } label: {
                             HStack(spacing: 12) {
-                                Avatar(name: friend.displayName, size: 32)
+                                Avatar(person: friend, size: 32)
                                 Text(friend.displayName).foregroundStyle(.white)
                                 Spacer()
                                 Image(systemName: selected.contains(friend.id) ? "checkmark.circle.fill" : "circle")

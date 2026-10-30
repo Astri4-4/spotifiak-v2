@@ -31,6 +31,11 @@ model User {
   podcasts               PodcastSubscription[]
   ownPodcasts            Podcast[]
   episodes               EpisodeProgress[]
+  /// Profile picture, resized by the clients (a small JPEG/PNG/WebP), and when it changed:
+  /// clients put that date in the picture's URL so a new one isn't served from their cache.
+  avatar                 Bytes?
+  avatarType             String?
+  avatarUpdatedAt        DateTime?
   /// Friends see what this user listens to (Play rows) when true.
   shareActivity          Boolean               @default(true)
   friendRequestsSent     Friendship[]          @relation("requester")

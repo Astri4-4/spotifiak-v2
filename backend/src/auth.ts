@@ -12,6 +12,8 @@ export interface AuthUser {
   role: 'admin' | 'user'
   /** Friends see what this user listens to. */
   shareActivity: boolean
+  /** When the profile picture last changed; null without one. */
+  avatarUpdatedAt: Date | null
 }
 
 declare module 'fastify' {
@@ -86,7 +88,7 @@ async function createSession(reply: FastifyReply, userId: string, userAgent?: st
   })
 }
 
-const userSelect = { id: true, username: true, displayName: true, role: true, shareActivity: true } as const
+const userSelect = { id: true, username: true, displayName: true, role: true, shareActivity: true, avatarUpdatedAt: true } as const
 
 async function userFromSession(req: FastifyRequest): Promise<AuthUser | null> {
   const token = req.cookies[COOKIE_NAME]

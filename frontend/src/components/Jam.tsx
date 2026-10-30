@@ -8,13 +8,10 @@ import { JamIcon, PlusIcon } from '../icons'
 import { useJam } from '../jam/context'
 import { usePlayer, useProgress } from '../player/context'
 import { useSocial } from '../social/context'
+import { PersonAvatar } from './PersonAvatar'
 
 function Avatar({ person }: { person: JamPerson }) {
-  return (
-    <span className="avatar-initial" title={person.displayName}>
-      {person.displayName.trim().charAt(0).toUpperCase() || '?'}
-    </span>
-  )
+  return <PersonAvatar person={person} size={32} />
 }
 
 const inviteUrl = (id: string) => `${window.location.origin}/jam/${id}`

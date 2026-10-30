@@ -1,3 +1,4 @@
+import PhotosUI
 import SpotifiakCore
 import SwiftUI
 
@@ -10,6 +11,7 @@ struct AccountView: View {
     @State private var confirmation = ""
     @State private var busy = false
     @State private var message: (ok: Bool, text: String)?
+    @State private var photo: PhotosPickerItem?
 
     private var user: User? {
         if case .loggedIn(let user) = session.state { return user }
@@ -19,6 +21,21 @@ struct AccountView: View {
     var body: some View {
         Form {
             if let user {
+                Section("Photo de profil") {
+                    HStack(spacing: 20) {
+                        Avatar(person: user, size: 80)
+                        VStack(alignment: .leading, spacing: 12) {
+                            PhotosPicker(user.avatarUpdatedAt == nil ? "Choisir une photo" : "Changer la photo",
+                                         selection: $photo, matching: .images)
+                            if user.avatarUpdatedAt != nil {
+                                Button("Supprimer la photo", role: .destructive) { run(removePhoto) }
+                            }
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(busy)
+                    }
+                    .padding(.vertical, 4)
+                }
                 Section("Profil") {
                     LabeledContent("Nom d'utilisateur", value: user.username)
                     TextField("Nom affiché", text: $displayName)
@@ -54,12 +71,39 @@ struct AccountView: View {
         .scrollContentBackground(.hidden)
         .navigationTitle("Compte")
         .onAppear { displayName = user?.displayName ?? "" }
+        .onChange(of: photo) { _, item in
+            guard let item else { return }
+            photo = nil
+            run { try await upload(item) }
+        }
     }
 
     private func saveProfile() async throws {
         let updated = try await session.requireAPI().updateProfile(displayName: displayName.trimmingCharacters(in: .whitespaces))
         session.state = .loggedIn(updated)
         message = (true, "Profil enregistré")
+    }
+
+    /// Resizes the picked photo (see `avatarJPEG`), uploads it, then reloads the account.
+    private func upload(_ item: PhotosPickerItem) async throws {
+        guard let data = try await item.loadTransferable(type: Data.self), let image = UIImage(data: data),
+              let jpeg = avatarJPEG(image) else {
+            message = (false, "Image illisible")
+            return
+        }
+        let api = try session.requireAPI()
+        _ = try await api.uploadAvatar(jpeg: jpeg)
+        try await reloadUser(api)
+    }
+
+    private func removePhoto() async throws {
+        let api = try session.requireAPI()
+        try await api.removeAvatar()
+        try await reloadUser(api)
+    }
+
+    private func reloadUser(_ api: APIClient) async throws {
+        if let user = try await api.authStatus().user { session.state = .loggedIn(user) }
     }
 
     private func setSharing(_ on: Bool) async throws {
@@ -203,4 +247,22 @@ struct UsersView: View {
             await load()
         }
     }
+}
+
+// The server stores what it gets (1 MB at most): pictures are made small here.
+private let avatarSide: CGFloat = 256
+
+/// The picture's centered square, 256 px, as a JPEG.
+func avatarJPEG(_ image: UIImage) -> Data? {
+    let side = min(image.size.width, image.size.height)
+    guard side > 0 else { return nil }
+    let scale = avatarSide / side
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 1
+    let rendered = UIGraphicsImageRenderer(size: CGSize(width: avatarSide, height: avatarSide), format: format).image { _ in
+        // Drawn scaled so the shorter side fills the square, centered on the longer one.
+        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        image.draw(in: CGRect(x: (avatarSide - size.width) / 2, y: (avatarSide - size.height) / 2, width: size.width, height: size.height))
+    }
+    return rendered.jpegData(compressionQuality: 0.85)
 }

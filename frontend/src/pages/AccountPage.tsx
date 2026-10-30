@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import { auth } from '../api'
+import { auth, social } from '../api'
+import { resizeAvatar } from '../avatar'
+import { PersonAvatar } from '../components/PersonAvatar'
 import { useAuth, useCurrentUser } from '../auth/context'
 
 function useForm() {
@@ -22,6 +24,57 @@ function useForm() {
 function FormMessage({ message }: { message: { ok: boolean; text: string } | null }) {
   if (!message) return null
   return <p className={message.ok ? 'form-success' : 'error'}>{message.text}</p>
+}
+
+/** The profile picture: chosen from the device, resized here, or removed. */
+function AvatarSection() {
+  const user = useCurrentUser()
+  const { setUser } = useAuth()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const run = async (action: () => Promise<string | null>) => {
+    setBusy(true)
+    setError(null)
+    try {
+      setUser({ ...user, avatarUpdatedAt: await action() })
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="scan-card">
+      <h2 className="settings-title">Photo de profil</h2>
+      <div className="avatar-editor">
+        <PersonAvatar person={user} size={96} />
+        <div className="avatar-editor-actions">
+          <label className={`pill-button small${busy ? ' disabled' : ''}`}>
+            {user.avatarUpdatedAt ? 'Changer la photo' : 'Choisir une photo'}
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              disabled={busy}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (file) void run(async () => (await social.uploadAvatar(await resizeAvatar(file))).avatarUpdatedAt)
+              }}
+            />
+          </label>
+          {user.avatarUpdatedAt && (
+            <button className="pill-button small outline" disabled={busy} onClick={() => void run(async () => (await social.removeAvatar(), null))}>
+              Supprimer
+            </button>
+          )}
+        </div>
+      </div>
+      {error && <p className="error">{error}</p>}
+    </section>
+  )
 }
 
 export function AccountPage() {
@@ -60,6 +113,8 @@ export function AccountPage() {
       <div className="page-gradient" />
       <div className="page-inner settings-page">
         <h1 className="greeting">Compte</h1>
+
+        <AvatarSection />
 
         <section className="scan-card">
           <h2 className="settings-title">Profil</h2>

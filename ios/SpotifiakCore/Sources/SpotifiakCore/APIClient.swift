@@ -217,6 +217,30 @@ public final class APIClient: Sendable {
         try await data("DELETE", "/users/\(id)", body: nil as [String: String]?)
     }
 
+    // MARK: - Profile pictures
+
+    /// Someone's profile picture, nil without one; the date in the URL makes a new one bypass caches.
+    public func avatarURL(for person: some HasAvatar) -> URL? {
+        guard let updatedAt = person.avatarUpdatedAt else { return nil }
+        return url("/people/\(person.id)/avatar", query: ["v": String(Int(updatedAt.timeIntervalSince1970 * 1000))])
+    }
+
+    private struct AvatarUpdated: Decodable { let avatarUpdatedAt: Date }
+
+    /// A small JPEG (the app resizes it first); returns when it changed.
+    public func uploadAvatar(jpeg: Data) async throws -> Date {
+        var request = URLRequest(url: url("/me/avatar"))
+        request.httpMethod = "PUT"
+        request.setValue("image/jpeg", forHTTPHeaderField: "content-type")
+        request.httpBody = jpeg
+        let updated = try JSONDecoder.spotifiak.decode(AvatarUpdated.self, from: await perform(request, path: "/me/avatar"))
+        return updated.avatarUpdatedAt
+    }
+
+    public func removeAvatar() async throws {
+        try await data("DELETE", "/me/avatar", body: nil as [String: String]?)
+    }
+
     // MARK: - Friends
 
     public func people(_ query: String) async throws -> [PersonResult] {
@@ -577,6 +601,11 @@ public final class APIClient: Sendable {
             request.setValue("application/json", forHTTPHeaderField: "content-type")
             request.httpBody = try JSONEncoder.spotifiak.encode(body)
         }
+        return try await perform(request, path: path)
+    }
+
+    /// Sends a request; a non-2xx answer throws its message (and a 401 expires the session).
+    private func perform(_ request: URLRequest, path: String) async throws -> Data {
         let (data, response) = try await transport.send(request)
         guard (200..<300).contains(response.statusCode) else {
             if response.statusCode == 401 && !path.hasPrefix("/auth/") { onUnauthorized() }

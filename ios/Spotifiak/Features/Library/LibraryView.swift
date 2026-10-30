@@ -103,11 +103,7 @@ struct LibraryView: View {
                     Task { await session.logout() }
                 }
             } label: {
-                Text(user.displayName.prefix(1).uppercased())
-                    .font(.headline)
-                    .foregroundStyle(.black)
-                    .frame(width: 32, height: 32)
-                    .background(Color(red: 1, green: 0.6, blue: 0.4), in: Circle())
+                Avatar(person: user, size: 32)
             }
             .accessibilityLabel("Compte et réglages")
             Text("Bibliothèque").font(.title2.bold())
