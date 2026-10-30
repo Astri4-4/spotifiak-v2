@@ -8,6 +8,7 @@ struct InboxView: View {
     @Environment(SocialStore.self) private var social
     @Environment(PlayerEngine.self) private var player
     @Environment(JamSession.self) private var jamSession
+    @Environment(\.navigate) private var navigate
     @State private var notifications: [AppNotification]?
     @State private var error: String?
 
@@ -35,8 +36,10 @@ struct InboxView: View {
     private func row(_ n: AppNotification) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                NavigationLink(value: Route.person(n.from.id)) { Avatar(name: n.from.displayName, size: 36) }
-                    .buttonStyle(.plain)
+                // A button, not a NavigationLink: in a List row a link gets a chevron and stretches.
+                Button { navigate(.person(n.from.id)) } label: { Avatar(name: n.from.displayName, size: 36) }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Profil de \(n.from.displayName)")
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(Text(n.from.displayName).bold()) \(n.type == "share" ? "vous a partagé un titre" : "vous invite à sa Jam")")
                         .font(.subheadline)

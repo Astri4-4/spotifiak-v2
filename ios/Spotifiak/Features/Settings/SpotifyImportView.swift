@@ -8,6 +8,7 @@ import SwiftUI
 struct SpotifyImportView: View {
     @Environment(Session.self) private var session
     @Environment(LibraryStore.self) private var library
+    @Environment(\.navigate) private var navigate
     @State private var status: SpotifyStatus?
     @State private var playlists: SpotifyPlaylists?
     @State private var imports: [SpotifyImport] = []
@@ -79,7 +80,10 @@ struct SpotifyImportView: View {
                         subtitle: playlist.importable ? "\(playlist.owner) • \(titles(playlist.total))"
                                                       : "\(playlist.owner) • Spotify ne donne accès qu'à vos propres playlists") {
                         if let imported = playlist.importedPlaylistId {
-                            NavigationLink(value: Route.playlist(imported)) { Text("Voir").font(.footnote.bold()) }
+                            // A button, not a NavigationLink: in a List row a link gets a chevron and stretches.
+                            Button("Voir") { navigate(.playlist(imported)) }
+                                .font(.footnote.bold())
+                                .buttonStyle(.borderless)
                                 .fixedSize()
                         }
                         if playlist.importable {
@@ -240,6 +244,7 @@ struct SpotifyImportView: View {
 private struct ImportRow: View {
     let item: SpotifyImport
     @Environment(Session.self) private var session
+    @Environment(\.navigate) private var navigate
     @State private var missing: [MissingTrack]?
     @State private var open = false
 
@@ -248,7 +253,9 @@ private struct ImportRow: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     if let target = item.liked ? Route.liked : item.playlistId.map(Route.playlist) {
-                        NavigationLink(value: target) { Text(item.name).font(.headline) }
+                        Button { navigate(target) } label: { Text(item.name).font(.headline) }
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(.white)
                     } else {
                         Text(item.name + (item.liked ? "" : " (playlist supprimée)")).font(.headline)
                     }
