@@ -87,6 +87,10 @@ public final class APIClient: Sendable {
         return page.items
     }
 
+    public func track(_ id: String) async throws -> Track {
+        try await get("/tracks/\(id)")
+    }
+
     public func album(_ id: String) async throws -> AlbumDetail {
         try await get("/albums/\(id)")
     }

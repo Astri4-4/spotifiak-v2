@@ -5,7 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "SpotifiakCore",
-    platforms: [.iOS(.v17), .macOS(.v14)],
+    platforms: [.iOS(.v17), .watchOS(.v10), .macOS(.v14)],
     products: [.library(name: "SpotifiakCore", targets: ["SpotifiakCore"])],
     targets: [
         .target(name: "SpotifiakCore"),

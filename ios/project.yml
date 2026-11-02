@@ -4,12 +4,16 @@ options:
   bundleIdPrefix: dev.spotifiak
   deploymentTarget:
     iOS: "17.0"
+    watchOS: "10.0"
 settings:
   base:
     SWIFT_VERSION: "6.0"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     # Set your own team locally (Xcode > Signing & Capabilities); left empty in the repo.
     DEVELOPMENT_TEAM: ""
+    # The iOS app's bundle id; the watch app's derives from it. A free Apple account needs
+    # a unique one: build with SPOTIFIAK_BUNDLE_ID=dev.spotifiak.ios.<something>.
+    SPOTIFIAK_BUNDLE_ID: dev.spotifiak.ios
 packages:
   SpotifiakCore:
     path: SpotifiakCore
@@ -20,6 +24,8 @@ targets:
     sources: [Spotifiak]
     dependencies:
       - package: SpotifiakCore
+      # Embeds the Apple Watch app, installed on the paired watch with this one.
+      - target: SpotifiakWatch
     info:
       path: Spotifiak/Info.plist
       properties:
@@ -34,8 +40,26 @@ targets:
           NSAllowsArbitraryLoads: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.spotifiak.ios
+        PRODUCT_BUNDLE_IDENTIFIER: $(SPOTIFIAK_BUNDLE_ID)
         TARGETED_DEVICE_FAMILY: "1"
+  # The Apple Watch app: a remote for the iPhone app (see SpotifiakWatch/WatchStore.swift).
+  SpotifiakWatch:
+    type: application
+    platform: watchOS
+    sources: [SpotifiakWatch]
+    dependencies:
+      - package: SpotifiakCore
+    info:
+      path: SpotifiakWatch/Info.plist
+      properties:
+        CFBundleDisplayName: Spotifiak
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: $(SPOTIFIAK_BUNDLE_ID)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(SPOTIFIAK_BUNDLE_ID).watchkitapp
   SpotifiakTests:
     type: bundle.unit-test
     platform: iOS
