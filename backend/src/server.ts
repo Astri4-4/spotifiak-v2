@@ -68,7 +68,12 @@ app.get('/deezer/search', async (req, reply) => {
 
 app.post('/downloads', async (req, reply) => {
   const { url } = z.object({ url: z.string().url() }).parse(req.body)
-  await deemix.addToQueue(url)
+  try {
+    await deemix.addToQueue(url)
+  } catch (err) {
+    req.log.warn({ err, url }, 'deemix download failed')
+    return reply.code(502).send({ error: (err as Error).message })
+  }
   scheduleScan(app.log, RESCAN_AFTER_DOWNLOAD_MS)
   return reply.code(202).send({ queued: true })
 })

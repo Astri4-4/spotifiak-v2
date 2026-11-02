@@ -35,7 +35,10 @@ async function post(path: string, body: unknown): Promise<Response> {
 
 export async function login(): Promise<void> {
   if (!config.DEEMIX_ARL) return
-  await post('/api/loginArl', { arl: config.DEEMIX_ARL })
+  const res = await post('/api/loginArl', { arl: config.DEEMIX_ARL })
+  const { status } = (await res.json()) as { status?: number }
+  // deemix LoginStatus: 1 success, 2 already logged in, 3 forced; 0 failed (bad or expired ARL), -1 Deezer unavailable
+  if (status !== 1 && status !== 2 && status !== 3) throw new Error(`deemix login failed (status ${status}), check DEEMIX_ARL`)
 }
 
 export async function searchTracks(term: string, limit = 30): Promise<DeezerTrack[]> {
@@ -45,6 +48,17 @@ export async function searchTracks(term: string, limit = 30): Promise<DeezerTrac
   return json.data ?? []
 }
 
+async function queue(url: string, bitrate?: number): Promise<{ result?: boolean; errid?: string }> {
+  return (await post('/api/addToQueue', { url, bitrate })).json() as Promise<{ result?: boolean; errid?: string }>
+}
+
+// deemix answers 200 even when it refuses, so the body says whether the download was queued.
 export async function addToQueue(deezerUrl: string, bitrate?: number): Promise<void> {
-  await post('/api/addToQueue', { url: deezerUrl, bitrate })
+  let res = await queue(deezerUrl, bitrate)
+  // deemix forgets its login when it restarts: log in again and retry once.
+  if (res.errid === 'NotLoggedIn') {
+    await login()
+    res = await queue(deezerUrl, bitrate)
+  }
+  if (!res.result) throw new Error(`deemix refused ${deezerUrl}: ${res.errid ?? 'unknown error'}`)
 }
