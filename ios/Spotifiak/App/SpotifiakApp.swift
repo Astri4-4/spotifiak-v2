@@ -8,6 +8,7 @@ struct SpotifiakApp: App {
     @State private var jam: JamSession
     @State private var social: SocialStore
     private let nowPlaying: NowPlaying
+    private let watch: WatchBridge
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -15,10 +16,12 @@ struct SpotifiakApp: App {
         let player = PlayerEngine(output: AVQueuePlayerOutput(), api: { session.api }, defaults: .standard)
         _session = State(initialValue: session)
         _player = State(initialValue: player)
-        _library = State(initialValue: LibraryStore(api: { session.api }, toast: { player.showToast($0) }))
+        let library = LibraryStore(api: { session.api }, toast: { player.showToast($0) })
+        _library = State(initialValue: library)
         _jam = State(initialValue: JamSession(player: player, api: { session.api }))
         _social = State(initialValue: SocialStore(api: { session.api }))
         nowPlaying = NowPlaying(engine: player, api: { session.api })
+        watch = WatchBridge(player: player, library: library, api: { session.api })
     }
 
     var body: some Scene {
