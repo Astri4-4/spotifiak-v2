@@ -3,8 +3,8 @@ import Observation
 import SpotifiakCore
 
 /// Friends and what's waiting for the user (notifications, friend requests): the "Amis" tab's
-/// badge, and the friends that the share and Jam invitation menus list. No push notifications
-/// (a free Apple account can't send them): the counts are checked every 30 s while in front.
+/// badge, and the friends that the share and Jam invitation menus list. The counts are checked
+/// every 30 s while in front, and when a push notification arrives (see PushNotifications).
 @MainActor @Observable
 final class SocialStore {
     private(set) var counts = NotificationCounts(unread: 0, friendRequests: 0)

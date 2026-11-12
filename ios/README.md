@@ -14,7 +14,8 @@ cd ios && xcodegen && open Spotifiak.xcodeproj
 ```
 
 In Xcode, select the `Spotifiak` target, then *Signing & Capabilities* → *Team*: pick your
-own team (a free Apple ID works for your own device). Re-running `xcodegen` resets it; to keep
+own team. Push notifications need a paid Apple Developer team; with a free Apple ID, remove the
+`CODE_SIGN_ENTITLEMENTS` line from `project.yml` locally. Re-running `xcodegen` resets it; to keep
 it, set `DEVELOPMENT_TEAM` in `project.yml` locally without committing it.
 
 At first launch, type your server's address (`music.example.com`, `192.168.1.10:8080`…):
@@ -30,3 +31,17 @@ add this source (Sources → +) to install and get updates:
 
 Or install `Spotifiak.ipa` from the latest release directly. SideStore cannot install an
 embedded Apple Watch app, so this IPA leaves it out: install from Xcode to get the watch app.
+
+## Push notifications
+
+Friend requests, shares, Jam invitations and new episodes of subscribed podcasts arrive as push
+notifications when SideStore signs the app with a **paid** Apple Developer account (a free one
+drops the Push capability). The server then needs an APNs key of that same account:
+
+1. developer.apple.com → Certificates, Identifiers & Profiles → Keys → +, check *Apple Push
+   Notifications service (APNs)*, environment *Sandbox & Production*; download the `.p8`.
+2. Give the API `APNS_KEY` (the `.p8` content), `APNS_KEY_ID` (the key's ID) and `APNS_TEAM_ID`
+   (the account's Team ID, shown top right of the developer site).
+
+SideStore signs for development, so the app's tokens are APNs sandbox ones; the app tells the
+server, along with its bundle id as installed (`dev.spotifiak.ios.<team ID>`).

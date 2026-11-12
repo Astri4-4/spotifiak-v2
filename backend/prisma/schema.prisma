@@ -42,16 +42,34 @@ model User {
   friendRequestsReceived Friendship[]          @relation("addressee")
   notifications          Notification[]        @relation("recipient")
   notificationsSent      Notification[]        @relation("sender")
+  pushDevices            PushDevice[]
 }
 
 model Session {
-  id         String   @id // SHA-256 of the cookie token; the token itself is never stored
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
-  lastUsedAt DateTime @default(now())
-  expiresAt  DateTime
-  userAgent  String?
+  id          String       @id // SHA-256 of the cookie token; the token itself is never stored
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  lastUsedAt  DateTime     @default(now())
+  expiresAt   DateTime
+  userAgent   String?
+  pushDevices PushDevice[]
+
+  @@index([userId])
+}
+
+/// An iPhone receiving push notifications, registered by the app. It hangs on the session that
+/// registered it: logging out, or the session expiring, stops its notifications.
+model PushDevice {
+  token     String   @id // APNs device token, lowercase hex
+  userId    String
+  sessionId String
+  topic     String // the app's bundle id as installed (SideStore appends the team ID)
+  sandbox   Boolean // development-signed builds (SideStore) get tokens from APNs' sandbox
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

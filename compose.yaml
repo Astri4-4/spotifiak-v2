@@ -27,6 +27,10 @@ services:
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
       SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-}
+      # Push notifications to the iOS app (optional, see backend/src/config.ts)
+      APNS_KEY: ${APNS_KEY:-}
+      APNS_KEY_ID: ${APNS_KEY_ID:-}
+      APNS_TEAM_ID: ${APNS_TEAM_ID:-}
       PODCAST_DIR: /podcasts
       TRANSCODE_DIR: /transcode
     volumes:

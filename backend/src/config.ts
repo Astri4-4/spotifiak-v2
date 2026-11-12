@@ -66,6 +66,12 @@ const schema = z.object({
   // and ogg/opus/webm); a cache, so it may be wiped.
   TRANSCODE_DIR: z.string().default(path.join(os.tmpdir(), 'spotifiak-transcode')),
   FFMPEG_PATH: z.string().default('ffmpeg'),
+  // Push notifications to the iOS app (optional): an APNs key from the Apple Developer account
+  // that signs the app (Certificates, Identifiers & Profiles > Keys, "Apple Push Notifications
+  // service"). APNS_KEY is the .p8 file's content; on one line, write its line breaks as \n.
+  APNS_KEY: unsetIfEmpty(z.string().optional()),
+  APNS_KEY_ID: unsetIfEmpty(z.string().optional()),
+  APNS_TEAM_ID: unsetIfEmpty(z.string().optional()),
 })
 
 export const config = schema.parse(process.env)

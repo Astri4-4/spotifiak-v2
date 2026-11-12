@@ -9,6 +9,7 @@ import { collectionRoutes } from './collection.js'
 import { duplicateRoutes } from './duplicates.js'
 import { jamRoutes } from './jam.js'
 import { podcastRoutes, startPodcastRefresh } from './podcasts.js'
+import { pushRoutes } from './push.js'
 import { resumeDownloads, youtubeRoutes } from './youtube.js'
 import { socialRoutes } from './social.js'
 import { calendarRoutes } from './calendar.js'
@@ -55,6 +56,7 @@ await app.register(podcastRoutes)
 await app.register(youtubeRoutes)
 await app.register(socialRoutes)
 await app.register(calendarRoutes)
+await app.register(pushRoutes)
 
 app.get('/deezer/search', async (req, reply) => {
   const { q } = z.object({ q: z.string().min(1) }).parse(req.query)

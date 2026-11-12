@@ -2,11 +2,13 @@ import SwiftUI
 
 @main
 struct SpotifiakApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var session: Session
     @State private var player: PlayerEngine
     @State private var library: LibraryStore
     @State private var jam: JamSession
     @State private var social: SocialStore
+    @State private var push = PushNotifications.shared
     private let nowPlaying: NowPlaying
     private let watch: WatchBridge
     @Environment(\.scenePhase) private var scenePhase
@@ -20,6 +22,7 @@ struct SpotifiakApp: App {
         _library = State(initialValue: library)
         _jam = State(initialValue: JamSession(player: player, api: { session.api }))
         _social = State(initialValue: SocialStore(api: { session.api }))
+        PushNotifications.shared.api = { session.api }
         nowPlaying = NowPlaying(engine: player, api: { session.api })
         watch = WatchBridge(player: player, library: library, api: { session.api })
     }
@@ -32,6 +35,7 @@ struct SpotifiakApp: App {
                 .environment(library)
                 .environment(jam)
                 .environment(social)
+                .environment(push)
                 .preferredColorScheme(.dark)
                 .tint(Theme.green)
                 .task { await session.restore() }

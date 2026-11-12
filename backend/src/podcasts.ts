@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { config } from './config.js'
 import { prisma } from './db.js'
 import type { Prisma } from './generated/prisma/client.js'
+import { notify, type PushMessage } from './push.js'
 
 // Podcasts come from their RSS feeds: the server reads the feeds and keeps the episode
 // list, the browser streams the audio straight from the publisher. Search goes through
@@ -18,6 +19,8 @@ const STALE_AFTER_MS = 60 * 60 * 1000
 const MAX_EPISODES_LISTED = 300
 const DESCRIPTION_PREVIEW = 600
 const USER_AGENT = 'Spotifiak/1.0 (podcast client)'
+// Only episodes published this recently are announced: a feed can add old ones at any time.
+const ANNOUNCE_WITHIN_MS = 3 * 24 * 3600 * 1000
 
 const idParams = z.object({ id: z.string() })
 
@@ -136,8 +139,29 @@ async function download(url: string, maxBytes: number) {
   return { body, type: res.headers.get('content-type') ?? '' }
 }
 
-/** Reads a feed and stores the podcast and its new episodes; returns the podcast id. */
-export async function refreshFeed(feedUrl: string) {
+/**
+ * The push notification for the episodes a refresh found: none on a podcast's first read (its
+ * whole back catalogue is new) nor for episodes published long ago.
+ */
+export function newEpisodesMessage(
+  podcast: { id: string; title: string },
+  created: { title: string; publishedAt: Date }[],
+  firstRead: boolean,
+  now = Date.now(),
+): PushMessage | null {
+  if (firstRead) return null
+  const recent = created.filter((e) => now - e.publishedAt.getTime() < ANNOUNCE_WITHIN_MS)
+  if (!recent.length) return null
+  return {
+    title: podcast.title,
+    body: recent.length === 1 ? `Nouvel épisode : ${recent[0].title}` : `${recent.length} nouveaux épisodes`,
+    thread: `podcast-${podcast.id}`,
+    link: `podcast/${podcast.id}`,
+  }
+}
+
+/** Reads a feed and stores the podcast and its new episodes, telling subscribers; returns the podcast id. */
+export async function refreshFeed(feedUrl: string, log: FastifyBaseLogger) {
   const feed = parseFeed((await download(feedUrl, MAX_FEED_BYTES)).body.toString('utf8'))
   const info = { title: feed.title, author: feed.author, description: feed.description, imageUrl: feed.imageUrl, link: feed.link }
   const podcast = await prisma.podcast.upsert({
@@ -168,7 +192,15 @@ export async function refreshFeed(feedUrl: string) {
       changed.push({ id: old.id, data: e })
     }
   }
-  if (created.length) await prisma.podcastEpisode.createMany({ data: created, skipDuplicates: true })
+  if (created.length) {
+    const { count } = await prisma.podcastEpisode.createMany({ data: created, skipDuplicates: true })
+    // count: a concurrent refresh may have stored (and announced) them first.
+    const message = count ? newEpisodesMessage(podcast, created as { title: string; publishedAt: Date }[], known.size === 0) : null
+    if (message) {
+      const subscribers = await prisma.podcastSubscription.findMany({ where: { podcastId: podcast.id }, select: { userId: true } })
+      notify(subscribers.map((s) => s.userId), message, log)
+    }
+  }
   for (const { id, data } of changed) await prisma.podcastEpisode.update({ where: { id }, data })
   return podcast.id
 }
@@ -180,7 +212,7 @@ async function refreshSubscribed(log: FastifyBaseLogger) {
     select: { feedUrl: true },
   })
   for (const { feedUrl } of podcasts) {
-    await refreshFeed(feedUrl).catch((err: Error) => log.warn({ feedUrl, err: err.message }, 'podcast refresh failed'))
+    await refreshFeed(feedUrl, log).catch((err: Error) => log.warn({ feedUrl, err: err.message }, 'podcast refresh failed'))
   }
 }
 
@@ -378,7 +410,7 @@ export async function podcastRoutes(app: FastifyInstance) {
     const existing = await prisma.podcast.findUnique({ where: { feedUrl }, select: { id: true } })
     if (existing) return { id: existing.id }
     try {
-      return { id: await refreshFeed(feedUrl) }
+      return { id: await refreshFeed(feedUrl, req.log) }
     } catch (err) {
       // Opened twice at once: the other request stored it.
       const stored = await prisma.podcast.findUnique({ where: { feedUrl }, select: { id: true } })
@@ -397,7 +429,7 @@ export async function podcastRoutes(app: FastifyInstance) {
     const owned = podcast.ownerId === userId
     if (!podcast.ownerId && (!podcast.fetchedAt || Date.now() - podcast.fetchedAt.getTime() > STALE_AFTER_MS)) {
       // Shows what is stored when the publisher is unreachable.
-      await refreshFeed(podcast.feedUrl).catch((err: Error) =>
+      await refreshFeed(podcast.feedUrl, req.log).catch((err: Error) =>
         req.log.warn({ feedUrl: podcast!.feedUrl, err: err.message }, 'podcast refresh failed'),
       )
       podcast = (await prisma.podcast.findUnique({ where: { id } }))!

@@ -321,6 +321,16 @@ public final class APIClient: Sendable {
         try await data("DELETE", "/me/notifications/\(id)", body: nil as [String: String]?)
     }
 
+    private struct PushDevice: Encodable {
+        let token: String, topic: String, sandbox: Bool
+    }
+
+    /// Gives the server this iPhone's APNs token, for the current session. `topic` is the app's
+    /// bundle id as installed; `sandbox` for development-signed builds (SideStore).
+    public func registerPushDevice(token: String, topic: String, sandbox: Bool) async throws {
+        try await data("PUT", "/me/push-device", body: PushDevice(token: token, topic: topic, sandbox: sandbox))
+    }
+
     // MARK: - Collection
 
     /// Liked tracks, latest first; addedAt is when each was liked.

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from './db.js'
 import { isInJam, jamRuns } from './jam.js'
 import { mosaic, mosaicEntries, toTrack, trackSelect } from './library.js'
+import { notify, unreadCounts } from './push.js'
 
 // The same track reported again within this delay is the same listen (a seek, a reload).
 const SAME_PLAY_SEC = 30
@@ -67,6 +68,12 @@ async function requireFriends(me: string, userIds: string[], reply: FastifyReply
   reply.code(403).send({ error: 'Vous ne pouvez envoyer qu’à vos amis' })
   return false
 }
+
+const friendAccepted = (me: string, name: string) => ({
+  title: 'Nouvel ami',
+  body: `${name} a accepté votre demande d’ami`,
+  link: `person/${me}`,
+})
 
 const playSelect = { playedAt: true, track: { select: trackSelect } } as const
 
@@ -177,11 +184,16 @@ export async function socialRoutes(app: FastifyInstance) {
     }
     const existing = await friendshipBetween(me, userId)
     if (existing?.status === 'accepted') return { relation: 'friend' }
+    const name = req.user!.displayName
     if (existing?.requesterId === userId) {
       await prisma.friendship.update({ where: { id: existing.id }, data: { status: 'accepted', acceptedAt: new Date() } })
+      notify([userId], friendAccepted(me, name), req.log)
       return { relation: 'friend' }
     }
-    if (!existing) await prisma.friendship.create({ data: { requesterId: me, addresseeId: userId } })
+    if (!existing) {
+      await prisma.friendship.create({ data: { requesterId: me, addresseeId: userId } })
+      notify([userId], { title: 'Demande d’ami', body: `${name} veut vous ajouter en ami`, link: 'friends' }, req.log)
+    }
     return { relation: 'sent' }
   })
 
@@ -192,6 +204,7 @@ export async function socialRoutes(app: FastifyInstance) {
       data: { status: 'accepted', acceptedAt: new Date() },
     })
     if (!count) return reply.code(404).send({ error: 'Demande introuvable' })
+    notify([userId], friendAccepted(req.user!.id, req.user!.displayName), req.log)
     return { relation: 'friend' }
   })
 
@@ -284,9 +297,8 @@ export async function socialRoutes(app: FastifyInstance) {
       .parse(req.body)
     const me = req.user!.id
     if (!(await requireFriends(me, body.userIds, reply))) return
-    if (!(await prisma.track.findUnique({ where: { id: body.trackId }, select: { id: true } }))) {
-      return reply.code(404).send({ error: 'Titre introuvable' })
-    }
+    const track = await prisma.track.findUnique({ where: { id: body.trackId }, select: { title: true, artistName: true } })
+    if (!track) return reply.code(404).send({ error: 'Titre introuvable' })
     await prisma.notification.createMany({
       data: [...new Set(body.userIds)].map((userId) => ({
         userId,
@@ -296,6 +308,15 @@ export async function socialRoutes(app: FastifyInstance) {
         message: body.message || null,
       })),
     })
+    notify(
+      body.userIds,
+      {
+        title: `${req.user!.displayName} vous a partagé un titre`,
+        body: `${track.title} — ${track.artistName}${body.message ? `\n« ${body.message} »` : ''}`,
+        link: 'inbox',
+      },
+      req.log,
+    )
     return reply.code(201).send({ sent: new Set(body.userIds).size })
   })
 
@@ -308,6 +329,7 @@ export async function socialRoutes(app: FastifyInstance) {
     await prisma.notification.createMany({
       data: [...new Set(userIds)].map((userId) => ({ userId, fromId: me, type: 'jam' as const, jamId: id })),
     })
+    notify(userIds, { title: 'Invitation à une Jam', body: `${req.user!.displayName} vous invite à écouter ensemble`, link: 'inbox' }, req.log)
     return reply.code(201).send({ sent: new Set(userIds).size })
   })
 
@@ -341,12 +363,7 @@ export async function socialRoutes(app: FastifyInstance) {
 
   // What the badge shows: unread notifications and friend requests waiting for an answer.
   app.get('/me/notifications/count', async (req) => {
-    const me = req.user!.id
-    const [unread, friendRequests] = await Promise.all([
-      prisma.notification.count({ where: { userId: me, readAt: null } }),
-      prisma.friendship.count({ where: { addresseeId: me, status: 'pending' } }),
-    ])
-    return { unread, friendRequests }
+    return unreadCounts(req.user!.id)
   })
 
   app.post('/me/notifications/read', async (req, reply) => {

@@ -1,6 +1,8 @@
-# Builds an unsigned Spotifiak.ipa and publishes it as a GitHub release, with a SideStore
-# source so the app installs and updates from SideStore. SideStore signs the IPA itself with
-# the user's Apple ID, so no certificate or provisioning profile is needed here.
+# Builds Spotifiak.ipa and publishes it as a GitHub release, with a SideStore source so the app
+# installs and updates from SideStore. SideStore signs the IPA itself with the user's Apple ID,
+# so no certificate or provisioning profile is needed here. The IPA is only ad-hoc signed, to
+# declare its entitlements: SideStore keeps those the Apple account allows, and enables push
+# notifications on the App ID for a paid account.
 #
 # Add this source in SideStore (Sources → +):
 #   https://github.com/Astri4-4/spotifiak-v2/releases/latest/download/source.json
@@ -56,6 +58,11 @@ jobs:
           # SideStore re-signs and renames the app and its extensions but not an embedded Watch
           # app, which iOS then rejects (WatchKitAppBundleIDNotPrefixed), so leave it out.
           rm -rf pkg/Payload/Spotifiak.app/Watch
+          # Ad-hoc signature carrying the entitlements (aps-environment), embedded frameworks first.
+          find pkg/Payload/Spotifiak.app -depth -name '*.framework' -exec codesign --force --sign - {} \;
+          codesign --force --sign - --generate-entitlement-der \
+            --entitlements ios/Spotifiak/Spotifiak.entitlements pkg/Payload/Spotifiak.app
+          codesign --display --entitlements - pkg/Payload/Spotifiak.app
           (cd pkg && zip -qry ../dist/Spotifiak.ipa Payload)
           ls -l dist
 
@@ -95,7 +102,7 @@ jobs:
                 versionDate: $date,
                 downloadURL: $url,
                 size: $size,
-                appPermissions: { entitlements: [], privacy: {} }
+                appPermissions: { entitlements: ["aps-environment"], privacy: {} }
               }],
               news: []
             }' > dist/source.json

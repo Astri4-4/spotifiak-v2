@@ -45,6 +45,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(SPOTIFIAK_BUNDLE_ID)
         TARGETED_DEVICE_FAMILY: "1"
+        # Push notifications (aps-environment): a free Apple account can't sign them, remove
+        # this line locally to build with one.
+        CODE_SIGN_ENTITLEMENTS: Spotifiak/Spotifiak.entitlements
   # The Apple Watch app: a remote for the iPhone app (see SpotifiakWatch/WatchStore.swift).
   SpotifiakWatch:
     type: application

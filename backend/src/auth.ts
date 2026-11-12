@@ -112,6 +112,12 @@ async function userFromSession(req: FastifyRequest): Promise<AuthUser | null> {
   return session.user
 }
 
+/** The id of the request's session (what push devices hang on); null without a cookie. */
+export function sessionIdOf(req: FastifyRequest) {
+  const token = req.cookies[COOKIE_NAME]
+  return token ? tokenId(token) : null
+}
+
 // --- Brute-force protection --------------------------------------------------
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000
