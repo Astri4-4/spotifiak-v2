@@ -11,7 +11,9 @@ final class Session {
         case loggedIn(User)
     }
 
-    var state: State
+    var state: State {
+        didSet { rememberUser() }
+    }
     private(set) var api: APIClient?
     /// True until `restore` has run at launch.
     private(set) var isRestoring = true
@@ -33,8 +35,27 @@ final class Session {
         guard let base = defaults.string(forKey: "apiBase").flatMap(URL.init(string:)) else { return }
         let api = makeClient(base)
         self.api = api
-        let status = try? await api.authStatus()
-        state = status?.user.map(State.loggedIn) ?? .loggedOut(serverInput: serverInput, status: status)
+        do {
+            let status = try await api.authStatus()
+            state = status.user.map(State.loggedIn) ?? .loggedOut(serverInput: serverInput, status: status)
+        } catch {
+            // No server (no network, not at home): stay logged in as before, for the downloads.
+            if let data = defaults.data(forKey: Self.userKey), let user = try? JSONDecoder.spotifiak.decode(User.self, from: data) {
+                state = .loggedIn(user)
+            } else {
+                state = .loggedOut(serverInput: serverInput, status: nil)
+            }
+        }
+    }
+
+    private static let userKey = "lastUser"
+
+    private func rememberUser() {
+        if case .loggedIn(let user) = state {
+            defaults.set(try? JSONEncoder.spotifiak.encode(user), forKey: Self.userKey)
+        } else {
+            defaults.removeObject(forKey: Self.userKey)
+        }
     }
 
     /// Finds the API behind what the user typed and loads its auth status.

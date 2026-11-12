@@ -35,6 +35,7 @@ struct AlbumView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(saved ? "Retirer de la bibliothèque" : "Ajouter à la bibliothèque")
+                OfflineToggle(collection: .album(album.id))
             }
         }
     }

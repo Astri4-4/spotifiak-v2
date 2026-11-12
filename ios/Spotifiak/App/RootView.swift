@@ -6,6 +6,7 @@ struct RootView: View {
     @Environment(Session.self) private var session
     @Environment(PlayerEngine.self) private var player
     @Environment(LibraryStore.self) private var library
+    @Environment(OfflineStore.self) private var offline
     @Environment(JamSession.self) private var jam
     @Environment(SocialStore.self) private var social
     @Environment(PushNotifications.self) private var push
@@ -45,6 +46,8 @@ struct RootView: View {
             .onChange(of: social.badge, initial: true) { _, badge in push.setBadge(badge) }
             // The badge, while the app is in front.
             .task(id: "\(user.id)-\(scenePhase == .active)") {
+                // Downloads follow their collections' changes each time the app comes back.
+                if scenePhase == .active { offline.sync() }
                 if scenePhase == .active { await social.poll() }
             }
         } else {

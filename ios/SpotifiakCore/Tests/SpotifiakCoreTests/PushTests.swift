@@ -65,3 +65,18 @@ import Testing
     #expect(!downloads[0].isSettled)
     #expect(downloads[1].statusText == "Terminé" && downloads[1].isSettled && downloads[1].albumId == "a1")
 }
+
+@Test func offlinePlansDownloadsAndDeletions() throws {
+    let json = { (id: String, format: String?) in
+        #"{"id":"\#(id)","title":"T","artistName":"A","artistId":"a","album":null,"durationSec":200,"trackNumber":1,"discNumber":1,"addedAt":"2026-01-01T00:00:00.000Z","format":\#(format.map { "\"\($0)\"" } ?? "null")}"#
+    }
+    let tracks = try ["t1": "flac", "t2": "ogg", "t3": nil].sorted { $0.key < $1.key }.map {
+        try JSONDecoder.spotifiak.decode(Track.self, from: Data(json($0.key, $0.value).utf8))
+    }
+    #expect(Offline.fileName(for: tracks[0]) == "t1.flac")
+    #expect(Offline.fileName(for: tracks[1]) == "t2.m4a")
+    #expect(Offline.fileName(for: tracks[2]) == nil)
+    let plan = Offline.plan(wanted: tracks, have: ["t1", "old"])
+    #expect(plan.download.map(\.id) == ["t2"])
+    #expect(plan.delete == ["old"])
+}

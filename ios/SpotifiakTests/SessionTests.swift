@@ -66,3 +66,30 @@ private func makeSession() -> (Session, FakeTransport, UserDefaults) {
     }
     #expect(session.state == .loggedOut(serverInput: "h", status: nil))
 }
+
+@MainActor @Test func withoutTheServerTheLastUserStaysLoggedInForDownloads() async throws {
+    let (session, transport, defaults) = makeSession()
+    transport.respond("https://h/api/health", #"{ "ok": true }"#)
+    transport.respond("https://h/api/auth/status", #"{ "user": null, "needsSetup": false, "signupOpen": false }"#)
+    transport.respond("https://h/api/auth/login", #"{ "user": \#(user) }"#)
+    try await session.connect(serverInput: "h")
+    try await session.login(username: "astria", password: "secret")
+
+    // Next launch, away from home: the server doesn't answer.
+    let offline = Session(defaults: defaults, transport: FakeTransport())
+    await offline.restore()
+    guard case .loggedIn(let restored) = offline.state else {
+        Issue.record("expected loggedIn, got \(offline.state)")
+        return
+    }
+    #expect(restored.username == "astria")
+
+    // Logging out forgets the user.
+    await offline.logout()
+    let after = Session(defaults: defaults, transport: FakeTransport())
+    await after.restore()
+    guard case .loggedOut = after.state else {
+        Issue.record("expected loggedOut, got \(after.state)")
+        return
+    }
+}

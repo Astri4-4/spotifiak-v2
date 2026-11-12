@@ -42,6 +42,8 @@ final class PlayerEngine {
 
     private let output: AudioOutput
     private let api: () -> APIClient?
+    /// A downloaded file to play instead of streaming (OfflineStore).
+    private let localURL: (Track) -> URL?
     private let defaults: UserDefaults
     /// The restored current track isn't loaded until the user presses play.
     private var needsLoad = false
@@ -61,9 +63,10 @@ final class PlayerEngine {
     private static let queueKey = "playerQueue"
     private static let rateKey = "episodeRate"
 
-    init(output: AudioOutput, api: @escaping () -> APIClient?, defaults: UserDefaults) {
+    init(output: AudioOutput, api: @escaping () -> APIClient?, defaults: UserDefaults, localURL: @escaping (Track) -> URL? = { _ in nil }) {
         self.output = output
         self.api = api
+        self.localURL = localURL
         self.defaults = defaults
         let savedRate = defaults.float(forKey: Self.rateKey)
         episodeRate = Self.episodeRates.contains(savedRate) ? savedRate : 1
@@ -213,7 +216,7 @@ final class PlayerEngine {
                 output.pause()
                 isPlaying = false
                 loadCount += 1
-                output.load(api.streamURL(for: entry.track), preload: state.upNext.first.map { api.streamURL(for: $0.track) })
+                output.load(url(entry.track, api), preload: state.upNext.first.map { url($0.track, api) })
                 output.setRate(1)
                 position = 0
                 duration = entry.track.durationSec
@@ -307,11 +310,16 @@ final class PlayerEngine {
         queueChanged()
     }
 
+    /// The downloaded file when there is one, else the stream.
+    private func url(_ track: Track, _ api: APIClient) -> URL {
+        localURL(track) ?? api.streamURL(for: track)
+    }
+
     private func loadCurrent() {
         guard let track = queue.current, let api = api() else { return }
         needsLoad = false
         loadCount += 1
-        output.load(api.streamURL(for: track), preload: queue.upNext.first.map(api.streamURL))
+        output.load(url(track, api), preload: queue.upNext.first.map { url($0, api) })
         output.setRate(track.episode == nil ? 1 : episodeRate)
         position = 0
         duration = track.durationSec

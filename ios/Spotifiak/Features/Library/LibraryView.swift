@@ -6,6 +6,7 @@ struct LibraryView: View {
     let user: User
     @Environment(Session.self) private var session
     @Environment(LibraryStore.self) private var library
+    @Environment(OfflineStore.self) private var offline
     @Environment(\.navigate) private var navigate
     @State private var filter: Filter?
     @State private var naming = false
@@ -24,6 +25,20 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 12) {
             header
             chips
+            // Outside the loaded list: downloads play when the server can't be reached.
+            if !offline.tracks.isEmpty || offline.remaining > 0 {
+                NavigationLink(value: Route.offline) {
+                    LibraryRow(title: "Téléchargés", subtitle: OfflineView.status(offline)) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.title)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(Theme.green.opacity(0.6))
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal)
+            }
             Loadable(load: load) { collection in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 4) {
@@ -102,6 +117,7 @@ struct LibraryView: View {
                     Button("Jam", systemImage: "person.2.wave.2") { showsJam = true }
                 }
                 Button("Se déconnecter", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
+                    offline.reset()
                     Task { await session.logout() }
                 }
             } label: {

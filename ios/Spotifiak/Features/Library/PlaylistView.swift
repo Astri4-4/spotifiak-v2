@@ -56,6 +56,7 @@ struct PlaylistView: View {
                     }
                 }
             } actions: {
+                OfflineToggle(collection: .playlist(playlist.id))
                 if playlist.owned {
                     Menu {
                         Button("Modifier", systemImage: "pencil") { editing = playlist }
@@ -180,6 +181,8 @@ struct LikedView: View {
             } info: {
                 Text("Titres likés").font(.title2.bold())
                 Text(trackCount(tracks.count)).font(.caption).foregroundStyle(Theme.subdued)
+            } actions: {
+                OfflineToggle(collection: .liked)
             }
         }
         // Reloads once a like or unlike anywhere has reached the server.
