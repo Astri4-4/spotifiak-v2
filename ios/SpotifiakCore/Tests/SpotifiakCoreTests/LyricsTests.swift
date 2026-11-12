@@ -1,0 +1,44 @@
+import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+import Testing
+@testable import SpotifiakCore
+
+private let synced = Lyrics(synced: true, lines: [
+    .init(time: 1, text: "Un"),
+    .init(time: 5, text: "Deux"),
+    .init(time: 5, text: "Deux bis"),
+    .init(time: 9.5, text: "Trois"),
+])
+
+@Test func currentLineIsTheLastOneStarted() {
+    #expect(synced.currentLine(at: 0) == nil)
+    #expect(synced.currentLine(at: 1) == 0)
+    #expect(synced.currentLine(at: 4.9) == 0)
+    // Two lines at the same time: the later one.
+    #expect(synced.currentLine(at: 5) == 2)
+    #expect(synced.currentLine(at: 300) == 3)
+}
+
+@Test func plainLyricsHaveNoCurrentLine() {
+    let plain = Lyrics(synced: false, lines: [.init(time: nil, text: "Un")])
+    #expect(plain.currentLine(at: 10) == nil)
+    #expect(!plain.isEmpty)
+    #expect(Lyrics(synced: false, lines: [.init(time: nil, text: "")]).isEmpty)
+}
+
+@Test func lyricsDecodeFromTheAPI() async throws {
+    let transport = FakeTransport()
+    transport.respond(
+        "https://h/api/tracks/t1/lyrics",
+        #"{"synced":true,"lines":[{"time":1.5,"text":"Un"},{"time":3,"text":""}],"instrumental":false,"source":"lrclib"}"#
+    )
+    let client = APIClient(base: URL(string: "https://h/api")!, transport: transport, onUnauthorized: {})
+    let lyrics = try await client.lyrics("t1")
+    #expect(lyrics == Lyrics(synced: true, lines: [.init(time: 1.5, text: "Un"), .init(time: 3, text: "")], source: "lrclib"))
+
+    transport.respond("https://h/api/tracks/t2/lyrics", #"{"synced":false,"lines":[],"instrumental":true,"source":"lrclib"}"#)
+    let none = try await client.lyrics("t2")
+    #expect(none.isEmpty && none.instrumental)
+}

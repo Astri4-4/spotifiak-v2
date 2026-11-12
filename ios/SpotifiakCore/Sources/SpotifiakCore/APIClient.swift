@@ -91,6 +91,10 @@ public final class APIClient: Sendable {
         try await get("/tracks/\(id)")
     }
 
+    public func lyrics(_ trackId: String) async throws -> Lyrics {
+        try await get("/tracks/\(trackId)/lyrics")
+    }
+
     public func album(_ id: String) async throws -> AlbumDetail {
         try await get("/albums/\(id)")
     }

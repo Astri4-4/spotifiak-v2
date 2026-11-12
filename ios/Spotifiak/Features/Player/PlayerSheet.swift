@@ -1,8 +1,8 @@
 import SpotifiakCore
 import SwiftUI
 
-/// The full-screen player: large cover, like, scrubber, transport, shuffle and repeat (±15 s
-/// for episodes; neither in a Jam, whose queue is the server's), and the Jam.
+/// The full-screen player: large cover (or the lyrics), like, scrubber, transport, shuffle and
+/// repeat (±15 s for episodes; neither in a Jam, whose queue is the server's), and the Jam.
 struct PlayerSheet: View {
     @Environment(PlayerEngine.self) private var player
     @Environment(Session.self) private var session
@@ -13,6 +13,10 @@ struct PlayerSheet: View {
     @State private var color = Theme.headerGray
     @State private var showsJam = false
     @State private var showsQueue = false
+    @State private var showsLyrics = false
+    /// The current track's lyrics, nil while loading.
+    @State private var lyrics: Lyrics?
+    @State private var lyricsFailed = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -41,12 +45,16 @@ struct PlayerSheet: View {
             }
 
             if let track = player.current {
-                Spacer(minLength: 0)
-                RemoteImage(url: session.api?.coverURL(track: track))
-                    .aspectRatio(1, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .shadow(color: .black.opacity(0.5), radius: 20, y: 10)
-                Spacer(minLength: 0)
+                if showsLyrics && track.episode == nil {
+                    lyricsPanel.frame(maxHeight: .infinity)
+                } else {
+                    Spacer(minLength: 0)
+                    RemoteImage(url: session.api?.coverURL(track: track))
+                        .aspectRatio(1, contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .shadow(color: .black.opacity(0.5), radius: 20, y: 10)
+                    Spacer(minLength: 0)
+                }
 
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -122,6 +130,15 @@ struct PlayerSheet: View {
                         .accessibilityLabel("Vitesse de lecture \(player.episodeRate.formatted())×")
                     }
                     Spacer()
+                    if track.episode == nil {
+                        Button { withAnimation(.easeInOut(duration: 0.25)) { showsLyrics.toggle() } } label: {
+                            Image(systemName: showsLyrics ? "quote.bubble.fill" : "quote.bubble")
+                                .font(.title3)
+                                .foregroundStyle(showsLyrics ? Theme.green : .white)
+                                .frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel(showsLyrics ? "Masquer les paroles" : "Paroles")
+                    }
                     Button { showsQueue = true } label: {
                         Image(systemName: "list.bullet").font(.title3).frame(width: 44, height: 44)
                     }
@@ -139,8 +156,37 @@ struct PlayerSheet: View {
         .sheet(isPresented: $showsJam) { JamSheet() }
         .sheet(isPresented: $showsQueue) { QueueSheet() }
         .coverColor(player.current.flatMap { session.api?.coverURL(track: $0) }, into: $color)
+        .task(id: player.current?.id) { await loadLyrics() }
         // The current track can end while the player is open: close it once the queue is empty.
         .onChange(of: player.current == nil) { _, empty in if empty { dismiss() } }
+    }
+
+    @ViewBuilder
+    private var lyricsPanel: some View {
+        if let lyrics {
+            LyricsView(lyrics: lyrics)
+        } else if lyricsFailed {
+            ContentUnavailableView {
+                Label("Paroles indisponibles", systemImage: "wifi.exclamationmark")
+            } actions: {
+                Button("Réessayer") { Task { await loadLyrics() } }
+            }
+        } else {
+            ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func loadLyrics() async {
+        lyrics = nil
+        lyricsFailed = false
+        guard let track = player.current, track.episode == nil, let api = session.api else { return }
+        // A late answer for the previous track must not replace this one's.
+        do {
+            let loaded = try await api.lyrics(track.id)
+            if player.current?.id == track.id { lyrics = loaded }
+        } catch {
+            if !Task.isCancelled && player.current?.id == track.id { lyricsFailed = true }
+        }
     }
 
     private var scrubber: some View {

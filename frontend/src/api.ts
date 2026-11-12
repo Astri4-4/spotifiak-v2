@@ -576,6 +576,14 @@ export const users = {
 
 const query = (params: Record<string, string>) => new URLSearchParams(params).toString()
 
+/** A track's lyrics: synced ones have a time (seconds) per line. */
+export interface Lyrics {
+  synced: boolean
+  lines: { time: number | null; text: string }[]
+  instrumental: boolean
+  source: 'file' | 'tags' | 'lrclib' | null
+}
+
 export const api = {
   tracks: () => request<{ items: Track[]; total: number }>('/tracks?limit=200'),
   albums: () => request<{ items: Album[] }>('/albums?limit=200'),
@@ -592,6 +600,7 @@ export const api = {
   removeDuplicates: (groups: { keepId: string; removeIds: string[] }[]) =>
     send<{ removed: number; failed: { path: string; error: string }[] }>('POST', '/library/duplicates/resolve', { groups }),
   streamUrl: (trackId: string) => `${API_URL}/tracks/${trackId}/stream`,
+  lyrics: (trackId: string) => request<Lyrics>(`/tracks/${trackId}/lyrics`),
 }
 
 const fileCover = (trackId: string | null) => (trackId ? `${API_URL}/tracks/${trackId}/cover` : null)

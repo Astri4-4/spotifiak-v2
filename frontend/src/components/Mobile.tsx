@@ -2,13 +2,14 @@ import { useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { images } from '../api'
 import { useDominantColor } from '../hooks'
-import { ChevronLeftIcon, HomeFilledIcon, HomeIcon, JamIcon, LibraryIcon, PauseIcon, PlayIcon, QueueIcon, SearchIcon } from '../icons'
+import { ChevronLeftIcon, HomeFilledIcon, HomeIcon, JamIcon, LibraryIcon, LyricsIcon, PauseIcon, PlayIcon, QueueIcon, SearchIcon } from '../icons'
 import { useJam } from '../jam/context'
 import { usePlayer, useProgress } from '../player/context'
 import { useSocial } from '../social/context'
 import { artistLink } from '../podcasts'
 import { Cover } from './Cover'
 import { HeartButton } from './HeartButton'
+import { LyricsView } from './Lyrics'
 import { ControlButtons, Progress } from './PlayerBar'
 import { QueuePanel } from './QueuePanel'
 import { UserMenu } from './UserMenu'
@@ -133,7 +134,10 @@ export function MobilePlayer() {
 function FullPlayer({ color, onClose }: { color: string; onClose: () => void }) {
   const { current } = usePlayer()
   const { jam } = useJam()
-  const [queueOpen, setQueueOpen] = useState(false)
+  // What replaces the cover: the queue (and Jam) or the lyrics.
+  const [panel, setPanel] = useState<'cover' | 'queue' | 'lyrics'>('cover')
+  const queueOpen = panel === 'queue'
+  const lyricsOpen = panel === 'lyrics' && !current?.episode
 
   if (!current) return null
 
@@ -146,7 +150,7 @@ function FullPlayer({ color, onClose }: { color: string; onClose: () => void }) 
         <span>{queueOpen ? "File d'attente" : jam ? `Jam de ${jam.host.displayName}` : 'En cours de lecture'}</span>
         <button
           className={`icon-button${queueOpen ? ' active' : ''}`}
-          onClick={() => setQueueOpen(!queueOpen)}
+          onClick={() => setPanel(queueOpen ? 'cover' : 'queue')}
           aria-label="File d'attente"
           aria-pressed={queueOpen}
         >
@@ -156,6 +160,10 @@ function FullPlayer({ color, onClose }: { color: string; onClose: () => void }) 
 
       {queueOpen ? (
         <QueuePanel />
+      ) : lyricsOpen ? (
+        <div className="full-player-lyrics">
+          <LyricsView track={current} />
+        </div>
       ) : (
         <div className="full-player-art">
           <Cover src={images.track(current)} quality="lg" className="full-player-cover" />
@@ -186,12 +194,22 @@ function FullPlayer({ color, onClose }: { color: string; onClose: () => void }) 
       <div className="full-player-footer">
         <button
           className={`icon-button${jam ? ' active' : ''}`}
-          onClick={() => setQueueOpen(true)}
+          onClick={() => setPanel('queue')}
           aria-label={jam ? 'Voir la Jam' : 'Démarrer une Jam'}
         >
           <JamIcon size={20} />
           {jam && <span>{jam.participants.length}</span>}
         </button>
+        {!current.episode && (
+          <button
+            className={`icon-button full-player-lyrics-button${lyricsOpen ? ' active' : ''}`}
+            onClick={() => setPanel(lyricsOpen ? 'cover' : 'lyrics')}
+            aria-label="Paroles"
+            aria-pressed={lyricsOpen}
+          >
+            <LyricsIcon size={20} />
+          </button>
+        )}
       </div>
     </div>
   )

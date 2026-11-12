@@ -29,6 +29,7 @@ import { ScanPage } from './pages/ScanPage'
 import { SearchPage } from './pages/SearchPage'
 import { SpotifyImportPage } from './pages/SpotifyImportPage'
 import { UsersPage } from './pages/UsersPage'
+import { LyricsPage } from './pages/LyricsPage'
 import { PlayerProvider } from './player/PlayerProvider'
 
 function MainApp() {
@@ -68,6 +69,7 @@ function MainApp() {
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/inbox" element={<InboxPage />} />
                 <Route path="/user/:id" element={<ProfilePage />} />
+                <Route path="/lyrics" element={<LyricsPage />} />
               </Routes>
             </main>
             {isMobile ? (

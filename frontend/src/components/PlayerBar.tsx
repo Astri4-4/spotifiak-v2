@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { images } from '../api'
 import { formatDuration } from '../format'
 import {
   JamIcon,
+  LyricsIcon,
   NextIcon,
   PauseIcon,
   PlayIcon,
@@ -118,6 +119,12 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
   const p = usePlayer()
   const { current } = p
   const { jam } = useJam()
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const onLyrics = pathname === '/lyrics'
+  // Back to the page the lyrics were opened from, or home when they were opened directly.
+  const toggleLyrics = () =>
+    onLyrics ? ((window.history.state as { idx?: number } | null)?.idx ? navigate(-1) : navigate('/')) : navigate('/lyrics')
 
   return (
     <footer className="player-bar">
@@ -152,6 +159,16 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
       </div>
 
       <div className="extra-controls">
+        <button
+          className={`control${onLyrics ? ' active' : ''}`}
+          onClick={toggleLyrics}
+          disabled={!current || !!current.episode}
+          aria-label="Paroles"
+          aria-pressed={onLyrics}
+          title="Paroles"
+        >
+          <LyricsIcon />
+        </button>
         {/* The Jam lives at the top of the queue panel. */}
         <button
           className={`control${jam ? ' active' : ''}`}

@@ -3857,3 +3857,97 @@ img.person-avatar {
   font-weight: 700;
   text-transform: uppercase;
 }
+
+/* --- Lyrics (player bar button → /lyrics; phone player panel) --- */
+
+.lyrics-page {
+  min-height: 100%;
+  padding: 32px clamp(16px, 5vw, 64px) 96px;
+  background: linear-gradient(rgba(var(--header-color), 0.6), var(--base) 420px);
+}
+
+.lyrics-header {
+  margin-bottom: 32px;
+}
+
+.lyrics-header h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.lyrics-header p {
+  color: var(--text-subdued);
+}
+
+.lyrics {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 760px;
+}
+
+.lyrics-line {
+  font-size: clamp(1.25rem, 2.6vw, 2rem);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+/* Synced: what's to come is dim, what was sung half-lit, the current line white. */
+.lyrics.synced .lyrics-line {
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.lyrics.synced .lyrics-line.past {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.lyrics.synced .lyrics-line.current,
+.lyrics.synced .lyrics-line:hover {
+  color: var(--text);
+}
+
+.lyrics.synced .lyrics-line:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.lyrics-credit {
+  margin-top: 24px;
+  font-size: 0.75rem;
+  color: var(--text-subdued);
+}
+
+.lyrics-message {
+  padding: 48px 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-subdued);
+}
+
+.full-player-lyrics {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 0;
+  scrollbar-width: none;
+  mask-image: linear-gradient(transparent, #000 8%, #000 92%, transparent);
+}
+
+.full-player-lyrics .lyrics-line {
+  font-size: 1.375rem;
+}
+
+.full-player-lyrics-button {
+  margin-left: auto;
+}

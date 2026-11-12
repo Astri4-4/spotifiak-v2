@@ -131,6 +131,7 @@ model Track {
   likes         Like[]
   plays         Play[]
   notifications Notification[]
+  lyrics        TrackLyrics?
 
   @@index([albumId])
   @@index([artistId])
@@ -154,6 +155,16 @@ model Playlist {
 }
 
 // An entry, not a track: the same track can appear twice in a playlist.
+/// What LRCLIB answered for a track (see lyrics.ts), misses included; lyrics in the files aren't cached.
+model TrackLyrics {
+  trackId      String   @id
+  track        Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  synced       String? // LRC
+  plain        String?
+  instrumental Boolean  @default(false)
+  fetchedAt    DateTime @default(now())
+}
+
 model PlaylistTrack {
   id         String   @id @default(cuid())
   playlistId String
