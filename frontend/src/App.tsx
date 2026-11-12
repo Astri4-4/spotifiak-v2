@@ -30,6 +30,7 @@ import { SearchPage } from './pages/SearchPage'
 import { SpotifyImportPage } from './pages/SpotifyImportPage'
 import { UsersPage } from './pages/UsersPage'
 import { LyricsPage } from './pages/LyricsPage'
+import { MixPage } from './pages/MixPage'
 import { PlayerProvider } from './player/PlayerProvider'
 
 function MainApp() {
@@ -70,6 +71,7 @@ function MainApp() {
                 <Route path="/inbox" element={<InboxPage />} />
                 <Route path="/user/:id" element={<ProfilePage />} />
                 <Route path="/lyrics" element={<LyricsPage />} />
+                <Route path="/mix/:id" element={<MixPage />} />
               </Routes>
             </main>
             {isMobile ? (

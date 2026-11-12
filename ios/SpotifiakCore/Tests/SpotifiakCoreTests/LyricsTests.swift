@@ -42,3 +42,16 @@ private let synced = Lyrics(synced: true, lines: [
     let none = try await client.lyrics("t2")
     #expect(none.isEmpty && none.instrumental)
 }
+
+@Test func mixesDecodeFromTheAPI() async throws {
+    let transport = FakeTransport()
+    transport.respond(
+        "https://h/api/me/mixes",
+        #"[{"id":"daily-1","kind":"daily","title":"Daily Mix 1","description":"Avec A, B et C","friend":null,"trackCount":50,"covers":[{"trackId":"t1","coverUrl":null}]},{"id":"blend-u2","kind":"blend","title":"Toi et Léa","description":"Vos goûts réunis","friend":{"id":"u2","username":"lea","displayName":"Léa","avatarUpdatedAt":null},"trackCount":30,"covers":[]}]"#
+    )
+    let client = APIClient(base: URL(string: "https://h/api")!, transport: transport, onUnauthorized: {})
+    let mixes = try await client.mixes()
+    #expect(mixes.map(\.id) == ["daily-1", "blend-u2"])
+    #expect(mixes[0].kind == .daily && mixes[0].friend == nil)
+    #expect(mixes[1].kind == .blend && mixes[1].friend?.displayName == "Léa")
+}

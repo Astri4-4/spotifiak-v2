@@ -64,6 +64,7 @@ enum Route: Hashable {
     case inbox
     case person(String)
     case calendar
+    case mix(String)
 }
 
 extension EnvironmentValues {
@@ -91,6 +92,7 @@ struct RouteView: View {
             case .inbox: InboxView()
             case .person(let id): ProfileView(id: id)
             case .calendar: CalendarView()
+            case .mix(let id): MixView(id: id)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

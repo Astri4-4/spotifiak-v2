@@ -28,6 +28,7 @@ export function usePlayContext() {
     playPlaylist: (id: string, name?: string) =>
       play(id, async () => (await collection.playlist(id)).entries.map((e) => e.track), name),
     playLiked: () => play(LIKED_CONTEXT, collection.liked, 'Titres likés'),
+    playMix: (id: string, name?: string) => play(`mix:${id}`, async () => (await api.mix(id)).tracks, name),
     playTracks: (id: string, tracks: Track[], name?: string) => play(id, async () => tracks, name),
     /** The shuffle button next to the play button: always starts over, in a random order. */
     playShuffled: (id: string, tracks: Track[], name?: string) => playShuffled(tracks, id, name),

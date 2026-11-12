@@ -576,6 +576,23 @@ export const users = {
 
 const query = (params: Record<string, string>) => new URLSearchParams(params).toString()
 
+/** A mix made from what people listen to: Daily Mix N, or "Entre amis" with a friend. */
+export interface MixSummary {
+  id: string
+  kind: 'daily' | 'blend'
+  title: string
+  description: string
+  /** The friend of an "Entre amis" mix. */
+  friend: Person | null
+  trackCount: number
+  covers: MosaicCover[]
+}
+
+export interface MixDetail extends MixSummary {
+  /** In "Entre amis": whose taste each track comes from. */
+  tracks: (Track & { from?: 'both' | 'me' | 'friend' | null })[]
+}
+
 /** A track's lyrics: synced ones have a time (seconds) per line. */
 export interface Lyrics {
   synced: boolean
@@ -601,6 +618,8 @@ export const api = {
     send<{ removed: number; failed: { path: string; error: string }[] }>('POST', '/library/duplicates/resolve', { groups }),
   streamUrl: (trackId: string) => `${API_URL}/tracks/${trackId}/stream`,
   lyrics: (trackId: string) => request<Lyrics>(`/tracks/${trackId}/lyrics`),
+  mixes: () => request<MixSummary[]>('/me/mixes'),
+  mix: (id: string) => request<MixDetail>(`/me/mixes/${id}`),
 }
 
 const fileCover = (trackId: string | null) => (trackId ? `${API_URL}/tracks/${trackId}/cover` : null)

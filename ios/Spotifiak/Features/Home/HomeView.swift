@@ -1,8 +1,8 @@
 import SpotifiakCore
 import SwiftUI
 
-/// Greeting, a grid of shortcuts (liked tracks, playlists, first albums), then the playlists,
-/// other accounts' public playlists, new episodes of the subscribed podcasts, albums and artists.
+/// Greeting, a grid of shortcuts (liked tracks, playlists, first albums), then today's mixes, the
+/// playlists, other accounts' public playlists, new episodes of the subscribed podcasts, albums and artists.
 struct HomeView: View {
     @Environment(Session.self) private var session
 
@@ -28,6 +28,23 @@ struct HomeView: View {
                             }
                         }
                         .padding(.horizontal)
+                        if !library.mixes.isEmpty {
+                            Shelf(title: "Tes mixes") {
+                                ForEach(library.mixes) { mix in
+                                    NavigationLink(value: Route.mix(mix.id)) {
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            MixArt(mix: mix)
+                                                .frame(width: 150, height: 150)
+                                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                                            Text(mix.title).font(.footnote.weight(.semibold)).lineLimit(1)
+                                            Text(mix.description).font(.caption).foregroundStyle(Theme.subdued).lineLimit(2)
+                                        }
+                                        .frame(width: 150)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
                         if !library.playlists.isEmpty {
                             Shelf(title: "Vos playlists") {
                                 ForEach(library.playlists) { playlist in
@@ -85,7 +102,7 @@ struct HomeView: View {
     }
 
     private func load() async throws -> (albums: [Album], artists: [Artist], playlists: [PlaylistSummary], episodes: [Episode],
-                                         publicPlaylists: [PublicPlaylist]) {
+                                         publicPlaylists: [PublicPlaylist], mixes: [MixSummary]) {
         let api = try session.requireAPI()
         async let albums = api.albums()
         async let artists = api.artists()
@@ -93,7 +110,9 @@ struct HomeView: View {
         // Publishers' feeds can be down: the home page shows without them.
         async let episodes = try? api.newEpisodes()
         async let publicPlaylists = try? api.publicPlaylists()
-        return try await (albums, artists, playlists, await episodes ?? [], await publicPlaylists ?? [])
+        // The mixes are a bonus too: the home page shows without them.
+        async let mixes = try? api.mixes()
+        return try await (albums, artists, playlists, await episodes ?? [], await publicPlaylists ?? [], await mixes ?? [])
     }
 }
 

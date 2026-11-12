@@ -20,6 +20,7 @@ import * as deemix from './deemix.js'
 import { enrichStatus } from './enrich.js'
 import { libraryRoutes } from './library.js'
 import { lyricsRoutes } from './lyrics.js'
+import { mixRoutes } from './mixes.js'
 import { scanLibrary, scanStatus, scheduleScan, startPeriodicScan } from './scanner.js'
 import { audioQuery, resolveMusicPath, streamAudio } from './stream.js'
 
@@ -59,6 +60,7 @@ await app.register(socialRoutes)
 await app.register(calendarRoutes)
 await app.register(pushRoutes)
 await app.register(lyricsRoutes)
+await app.register(mixRoutes)
 
 app.get('/deezer/search', async (req, reply) => {
   const { q } = z.object({ q: z.string().min(1) }).parse(req.query)

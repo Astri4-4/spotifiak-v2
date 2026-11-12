@@ -6,6 +6,7 @@ import { PlayButton } from '../components/PlayButton'
 import { Shelf } from '../components/Shelf'
 import { useCollection } from '../collection/context'
 import { LikedCover, PlaylistCover } from '../components/CollectionCovers'
+import { MixCover } from '../components/MixCover'
 import { MobileHeader } from '../components/Mobile'
 import { useFetch, useIsMobile } from '../hooks'
 import { LIKED_CONTEXT, usePlayContext } from '../player/usePlayContext'
@@ -22,7 +23,8 @@ export function HomePage() {
   const { data: albums } = useFetch(() => api.albums().then((r) => r.items), [])
   const { data: artists } = useFetch(() => api.artists().then((r) => r.items), [])
   const { data: publicPlaylists } = useFetch(() => collection.publicPlaylists(), [])
-  const { isPlaying, playAlbum, playArtist, playPlaylist, playLiked } = usePlayContext()
+  const { data: mixes } = useFetch(() => api.mixes(), [])
+  const { isPlaying, playAlbum, playArtist, playPlaylist, playLiked, playMix } = usePlayContext()
   const { likedIds, playlists, podcasts: subscriptions } = useCollection()
   // Reloaded when subscriptions change, so a new subscription shows up here.
   const { data: episodes } = useFetch(() => podcasts.newEpisodes(), [subscriptions.length])
@@ -86,6 +88,23 @@ export function HomePage() {
                 </Link>
               ))}
           </div>
+        )}
+
+        {mixes && mixes.length > 0 && (
+          <Shelf title="Tes mixes">
+            {mixes.map((mix) => (
+              <Card
+                key={mix.id}
+                to={`/mix/${mix.id}`}
+                title={mix.title}
+                subtitle={mix.description}
+                image={null}
+                cover={<MixCover mix={mix} />}
+                playing={isPlaying(`mix:${mix.id}`)}
+                onPlay={() => void playMix(mix.id, mix.title)}
+              />
+            ))}
+          </Shelf>
         )}
 
         {albums && albums.length > 0 && (

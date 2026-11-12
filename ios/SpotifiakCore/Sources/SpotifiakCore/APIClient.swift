@@ -95,6 +95,15 @@ public final class APIClient: Sendable {
         try await get("/tracks/\(trackId)/lyrics")
     }
 
+    /// Today's mixes (they change every day).
+    public func mixes() async throws -> [MixSummary] {
+        try await get("/me/mixes")
+    }
+
+    public func mix(_ id: String) async throws -> MixDetail {
+        try await get("/me/mixes/\(id)")
+    }
+
     public func album(_ id: String) async throws -> AlbumDetail {
         try await get("/albums/\(id)")
     }
