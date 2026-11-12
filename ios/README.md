@@ -28,5 +28,7 @@ add this source (Sources → +) to install and get updates:
 
     https://github.com/Astri4-4/spotifiak-v2/releases/latest/download/source.json
 
-Or install the IPA directly from the latest release. `Spotifiak-NoWatch.ipa` leaves out the
-Apple Watch app, which costs one more of the 10 app IDs a free Apple ID gets per week.
+Or install the IPA directly from the latest release. SideStore renames the app to
+`dev.spotifiak.ios.<team ID>` but not the watch app's link to it, so `Spotifiak.ipa` (with the
+Apple Watch app) is built for the team in `SIDESTORE_TEAM_ID` in the workflow and fails to
+install for any other team: use `Spotifiak-NoWatch.ipa` then, or change that team ID.
