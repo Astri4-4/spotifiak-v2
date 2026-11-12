@@ -80,3 +80,21 @@ import Testing
     #expect(plan.download.map(\.id) == ["t2"])
     #expect(plan.delete == ["old"])
 }
+
+@Test func placeCellsAreRoundedToAboutHalfAKilometre() {
+    #expect(PlaceCell.cell(latitude: 48.85566, longitude: 2.35222) == "48.855_2.350")
+    #expect(PlaceCell.cell(latitude: -33.8688, longitude: 151.2093) == "-33.870_151.210")
+    #expect(PushLink("wrapped") == .wrapped)
+}
+
+@Test func suggestionsDecodeFriendsTracksWithTheirFans() async throws {
+    let transport = FakeTransport()
+    transport.respond(
+        "https://h/api/me/suggestions",
+        #"{"albums":[],"tracks":[{"id":3,"title":"T","duration":200,"link":"https://www.deezer.com/track/3","artist":{"id":1,"name":"A"},"album":{"id":2,"title":"B","cover_medium":null},"libraryTrack":null,"download":null,"fans":["Léa"]}]}"#
+    )
+    let client = APIClient(base: URL(string: "https://h/api")!, transport: transport, onUnauthorized: {})
+    let suggestions = try await client.suggestions()
+    #expect(suggestions.tracks.first?.track.title == "T")
+    #expect(suggestions.tracks.first?.fans == ["Léa"])
+}

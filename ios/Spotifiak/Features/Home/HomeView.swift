@@ -5,6 +5,7 @@ import SwiftUI
 /// playlists, other accounts' public playlists, new episodes of the subscribed podcasts, albums and artists.
 struct HomeView: View {
     @Environment(Session.self) private var session
+    @Environment(PlaceTracker.self) private var places
 
     var body: some View {
         Loadable(load: load) { library in
@@ -116,7 +117,7 @@ struct HomeView: View {
         async let episodes = try? api.newEpisodes()
         async let publicPlaylists = try? api.publicPlaylists()
         // The mixes are a bonus too: the home page shows without them.
-        async let mixes = try? api.mixes()
+        async let mixes = try? api.mixes(place: places.cell)
         async let recent = try? api.recentAlbums()
         return try await (albums, artists, playlists, await episodes ?? [], await publicPlaylists ?? [], await mixes ?? [], await recent ?? [])
     }

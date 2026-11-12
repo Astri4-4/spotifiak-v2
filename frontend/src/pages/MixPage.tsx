@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { api, type MixDetail, type Person } from '../api'
+import { api, social, type MixDetail, type Person } from '../api'
 import { useCurrentUser } from '../auth/context'
 import { MixCover } from '../components/MixCover'
 import { PersonAvatar } from '../components/PersonAvatar'
@@ -17,6 +18,9 @@ const TYPES: Record<MixDetail['kind'], string> = {
   radio: 'Radio',
   genre: 'Genre',
   history: 'Historique',
+  moment: 'Mix',
+  place: 'Mix',
+  skipped: 'Écartés',
 }
 
 const UPDATES: Partial<Record<MixDetail['kind'], string>> = {
@@ -24,6 +28,7 @@ const UPDATES: Partial<Record<MixDetail['kind'], string>> = {
   blend: 'Mis à jour chaque jour',
   weekly: 'Mis à jour chaque lundi',
   radar: 'Mis à jour chaque lundi',
+  moment: 'Mis à jour chaque heure',
 }
 
 /** A mix made by the server from what people listen to: Daily Mix, "Entre amis", radio, genre, history… */
@@ -33,6 +38,8 @@ export function MixPage() {
   const { isPlaying, playTracks } = usePlayContext()
   const me = useCurrentUser()
   const contextId = `mix:${id}`
+  // Skipped tracks taken back on this page.
+  const [restored, setRestored] = useState<Set<string>>(new Set())
 
   if (error) {
     return (
@@ -47,6 +54,9 @@ export function MixPage() {
     )
   }
   if (!mix) return <div className="page" aria-busy="true" />
+  const tracks = mix.tracks.filter((t) => !restored.has(t.id))
+  const restore = (trackId: string) =>
+    void social.unskip(trackId).then(() => setRestored((prev) => new Set(prev).add(trackId)), () => {})
 
   return (
     <div className="page">
@@ -60,22 +70,32 @@ export function MixPage() {
           </p>
           <div className="entity-meta">
             {mix.friend && <PersonAvatar person={mix.friend} size={24} />}
-            <span>{[UPDATES[mix.kind], pluralize(mix.tracks.length, 'titre')].filter(Boolean).join(' • ')}</span>
+            <span>{[UPDATES[mix.kind], pluralize(tracks.length, 'titre')].filter(Boolean).join(' • ')}</span>
           </div>
         </div>
       </header>
 
       <div className="action-bar">
-        <PlayButton size="lg" playing={isPlaying(contextId)} onClick={() => void playTracks(contextId, mix.tracks, mix.title)} />
+        <PlayButton size="lg" playing={isPlaying(contextId)} onClick={() => void playTracks(contextId, tracks, mix.title)} />
       </div>
 
       <div className="page-inner">
         <TrackList
-          tracks={mix.tracks}
+          tracks={tracks}
           contextId={contextId}
           contextName={mix.title}
           variant="full"
-          badges={mix.friend ? mix.tracks.map((t) => t.from && <FromBadge key={t.id} from={t.from} me={me} friend={mix.friend!} />) : undefined}
+          badges={
+            mix.friend
+              ? tracks.map((t) => t.from && <FromBadge key={t.id} from={t.from} me={me} friend={mix.friend!} />)
+              : mix.kind === 'skipped'
+                ? tracks.map((t) => (
+                    <button key={t.id} className="pill-button small outline" onClick={() => restore(t.id)} aria-label={`Réentendre ${t.title} dans les mixes`}>
+                      Réentendre
+                    </button>
+                  ))
+                : undefined
+          }
         />
       </div>
     </div>

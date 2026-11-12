@@ -44,6 +44,8 @@ final class PlayerEngine {
     private let api: () -> APIClient?
     /// A downloaded file to play instead of streaming (OfflineStore).
     private let localURL: (Track) -> URL?
+    /// Where the iPhone is (PlaceTracker), sent with each play.
+    private let place: () -> String?
     private let defaults: UserDefaults
     /// The restored current track isn't loaded until the user presses play.
     private var needsLoad = false
@@ -63,10 +65,12 @@ final class PlayerEngine {
     private static let queueKey = "playerQueue"
     private static let rateKey = "episodeRate"
 
-    init(output: AudioOutput, api: @escaping () -> APIClient?, defaults: UserDefaults, localURL: @escaping (Track) -> URL? = { _ in nil }) {
+    init(output: AudioOutput, api: @escaping () -> APIClient?, defaults: UserDefaults,
+         localURL: @escaping (Track) -> URL? = { _ in nil }, place: @escaping () -> String? = { nil }) {
         self.output = output
         self.api = api
         self.localURL = localURL
+        self.place = place
         self.defaults = defaults
         let savedRate = defaults.float(forKey: Self.rateKey)
         episodeRate = Self.episodeRates.contains(savedRate) ? savedRate : 1
@@ -152,7 +156,13 @@ final class PlayerEngine {
         isPlaying ? pause() : play()
     }
 
+    /// "Next" before this many seconds tells the server the track was skipped (mixes leave it out after two).
+    static let skipWindow: Double = 10
+
     func next() {
+        if let track = current, track.episode == nil, output.position < Self.skipWindow, let api = api() {
+            Task { try? await api.skip(track.id) }
+        }
         if jam != nil { jamCommand?(.next); return }
         saveEpisodeProgress()
         failures = 0
@@ -335,7 +345,8 @@ final class PlayerEngine {
     private func recordListen() {
         guard recordedLoad != loadCount, let track = current, track.episode == nil, let api = api() else { return }
         recordedLoad = loadCount
-        Task { try? await api.recordPlay(track.id) }
+        let place = place()
+        Task { try? await api.recordPlay(track.id, place: place) }
     }
 
     // Within this many seconds of the end an episode counts as heard (outros, ads), like the web app.

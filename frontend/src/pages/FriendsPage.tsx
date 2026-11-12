@@ -5,6 +5,8 @@ import { useCollection } from '../collection/context'
 import { Cover } from '../components/Cover'
 import { MobileHeader } from '../components/Mobile'
 import { PersonAvatar } from '../components/PersonAvatar'
+import { TasteDuels } from '../components/TasteDuel'
+import { TasteMap } from '../components/TasteMap'
 import { formatAgo } from '../format'
 import { useFetch, useIsMobile } from '../hooks'
 import { BellIcon, SearchIcon } from '../icons'
@@ -183,6 +185,8 @@ export function FriendsPage() {
         )}
 
         <Activity />
+        <TasteDuels />
+        <TasteMap />
         <PeopleSearch onChange={reload} />
 
         <section className="scan-card">

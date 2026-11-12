@@ -44,6 +44,10 @@ model User {
   notificationsSent      Notification[]        @relation("sender")
   pushDevices            PushDevice[]
   downloads              Download[]
+  skips                  Skip[]
+  duelVotes              DuelVote[]
+  /// The last weekly recap pushed (Sunday evening).
+  weeklyRecapAt          DateTime?
 }
 
 model Session {
@@ -132,6 +136,8 @@ model Track {
   playlists     PlaylistTrack[]
   likes         Like[]
   plays         Play[]
+  skips         Skip[]
+  duelVotes     DuelVote[]
   notifications Notification[]
   lyrics        TrackLyrics?
 
@@ -298,10 +304,12 @@ enum NotificationType {
 }
 
 model Play {
-  id       String   @id @default(cuid())
-  userId   String
-  trackId  String
-  playedAt DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  trackId   String
+  playedAt  DateTime @default(now())
+  /// Where it played, rounded to a ~500 m cell ("48.855,2.350"); never shown to anyone else.
+  placeCell String?
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
@@ -446,4 +454,31 @@ model SpotifyImportTrack {
 
   @@index([importId, position])
   @@index([status])
+}
+
+/// A track the user skipped in its first seconds: mixes and radios leave it out.
+model Skip {
+  userId    String
+  trackId   String
+  count     Int      @default(1)
+  skippedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@id([userId, trackId])
+}
+
+/// A vote in the weekly taste duel: what the voter thought of the track their friend picked for them.
+model DuelVote {
+  userId   String
+  friendId String
+  week     String // the Monday, "2026-11-09"
+  trackId  String
+  liked    Boolean
+  votedAt  DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@id([userId, friendId, week])
+  @@index([friendId])
 }

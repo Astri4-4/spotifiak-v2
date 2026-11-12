@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from './db.js'
+import { placeCell, SKIP_LIMIT, skippedIds } from './habits.js'
 import { mosaic, toTrack, trackSelect } from './library.js'
 
 // Mixes made from what people listen to in Spotifiak (plays and likes), nothing else:
@@ -49,6 +50,13 @@ const RADAR_SIZE = 50
 const MIN_RADAR_TRACKS = 3
 const HISTORY_SIZE = 100
 const GENRE_SIZE = 50
+// "Ce moment" weighs plays by how close their time of day is to now, up to this many hours apart.
+const MOMENT_WINDOW_HOURS = 3
+const MOMENT_SIZE = 50
+const MIN_MOMENT_TRACKS = 10
+const PLACE_SIZE = 50
+// Below this, "Ici" isn't listed: too few plays there to say what plays there.
+const MIN_PLACE_TRACKS = 5
 
 export interface PlayEvent {
   trackId: string
@@ -301,6 +309,31 @@ export function buildDiscovery(
   return spreadArtists(shuffle(candidates, random).slice(0, DISCOVER_SIZE))
 }
 
+/** How close a play's time of day is to `hour` (0–24): 1 at the same time, 0 from MOMENT_WINDOW_HOURS apart. */
+export function hourWeight(playedAt: Date, hour: number) {
+  const d = Math.abs(playedAt.getHours() + playedAt.getMinutes() / 60 - hour)
+  return Math.max(0, 1 - Math.min(d, 24 - d) / MOMENT_WINDOW_HOURS)
+}
+
+/** What the user plays at this time of day: plays near the hour, fading with age like trackScores. */
+export function momentScores(plays: PlayEvent[], hour: number, now = Date.now()) {
+  const scores = new Map<string, number>()
+  for (const p of plays) {
+    const w = hourWeight(p.playedAt, hour)
+    if (!w) continue
+    const ageDays = Math.max(0, now - p.playedAt.getTime()) / DAY_MS
+    scores.set(p.trackId, (scores.get(p.trackId) ?? 0) + w * 0.5 ** (ageDays / HALF_LIFE_DAYS))
+  }
+  return scores
+}
+
+export function momentTitle(hour: number) {
+  if (hour < 5 || hour >= 22) return 'Ta nuit'
+  if (hour < 12) return 'Ton matin'
+  if (hour < 18) return 'Ton après-midi'
+  return 'Ta soirée'
+}
+
 /** A genre's id in URLs: "Hip-Hop/Rap" → "hip-hop-rap". */
 export function genreSlug(name: string) {
   return name
@@ -318,15 +351,19 @@ export function listNames(names: string[]) {
 
 // --- Data -------------------------------------------------------------------------
 
-const personSelect = { id: true, username: true, displayName: true, avatarUpdatedAt: true } as const
+export const personSelect = { id: true, username: true, displayName: true, avatarUpdatedAt: true } as const
 
-async function tasteOf(userId: string, now: number) {
+/** The user's taste as of `now` (a past date gives the same answer all week: the taste duel). */
+export async function tasteOf(userId: string, now: number) {
   const [plays, likes] = await Promise.all([
     prisma.play.findMany({
-      where: { userId, playedAt: { gte: new Date(now - HISTORY_DAYS * DAY_MS) } },
+      where: { userId, playedAt: { gte: new Date(now - HISTORY_DAYS * DAY_MS), lte: new Date(now) } },
       select: { trackId: true, playedAt: true, track: { select: { artistId: true } } },
     }),
-    prisma.like.findMany({ where: { userId }, select: { trackId: true, track: { select: { artistId: true } } } }),
+    prisma.like.findMany({
+      where: { userId, likedAt: { lte: new Date(now) } },
+      select: { trackId: true, track: { select: { artistId: true } } },
+    }),
   ])
   const events = plays.map((p) => ({ trackId: p.trackId, playedAt: p.playedAt, artistId: p.track.artistId }))
   const artistOf = new Map([...events, ...likes.map((l) => ({ trackId: l.trackId, artistId: l.track.artistId }))].map((t) => [t.trackId, t.artistId]))
@@ -335,7 +372,7 @@ async function tasteOf(userId: string, now: number) {
 
 const mixTrackSelect = { ...trackSelect, albumId: true } as const
 
-async function loadTracks(ids: string[]) {
+export async function loadTracks(ids: string[]) {
   const rows = await prisma.track.findMany({ where: { id: { in: ids } }, select: mixTrackSelect })
   const byId = new Map(rows.map((r) => [r.id, r]))
   return ids.flatMap((id) => byId.get(id) ?? [])
@@ -345,7 +382,7 @@ type MixTrackRow = Awaited<ReturnType<typeof loadTracks>>[number]
 
 interface Mix {
   id: string
-  kind: 'daily' | 'blend' | 'weekly' | 'radar' | 'radio' | 'genre' | 'history'
+  kind: 'daily' | 'blend' | 'weekly' | 'radar' | 'radio' | 'genre' | 'history' | 'moment' | 'place' | 'skipped'
   title: string
   description: string
   friend: { id: string; username: string; displayName: string; avatarUpdatedAt: Date | null } | null
@@ -591,6 +628,71 @@ async function historyMix(userId: string): Promise<Mix> {
   }
 }
 
+/** "Ce moment": what the user plays around this time of day, new each hour. */
+async function momentMix(userId: string, now: number): Promise<Mix | null> {
+  const { events } = await tasteOf(userId, now)
+  const date = new Date(now)
+  const hour = date.getHours() + date.getMinutes() / 60
+  const scores = momentScores(events, hour, now)
+  const artistOf = new Map(events.map((e) => [e.trackId, e.artistId]))
+  const random = seededRandom(`${userId}:${today(now)}:moment:${date.getHours()}`)
+  const best = [...scores]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, MOMENT_SIZE * 2)
+    .map(([id]) => ({ id, artistId: artistOf.get(id)! }))
+  const ids = spreadArtists(shuffle(best, random).slice(0, MOMENT_SIZE)).map((t) => t.id)
+  if (ids.length < MIN_MOMENT_TRACKS) return null
+  return {
+    id: 'moment',
+    kind: 'moment',
+    title: momentTitle(date.getHours()),
+    description: 'Ce que tu écoutes à cette heure-ci',
+    friend: null,
+    rows: await loadTracks(ids),
+  }
+}
+
+/** "Ici": what the user plays at this place (a ~500 m cell the iPhone sends). */
+async function placeMix(userId: string, cell: string, day: string): Promise<Mix | null> {
+  if (!placeCell.safeParse(cell).success) return null
+  const plays = await prisma.play.groupBy({
+    by: ['trackId'],
+    where: { userId, placeCell: cell },
+    _count: { trackId: true },
+    orderBy: { _count: { trackId: 'desc' } },
+    take: PLACE_SIZE * 2,
+  })
+  const ids = shuffle(
+    plays.map((p) => p.trackId),
+    seededRandom(`${userId}:${day}:place:${cell}`),
+  ).slice(0, PLACE_SIZE)
+  return {
+    id: `place-${cell}`,
+    kind: 'place',
+    title: 'Ici',
+    description: 'Ce que tu écoutes à cet endroit',
+    friend: null,
+    rows: await loadTracks(ids),
+  }
+}
+
+/** The tracks the user skipped often enough: they stay out of mixes until taken back. */
+async function skippedMix(userId: string): Promise<Mix> {
+  const skips = await prisma.skip.findMany({
+    where: { userId, count: { gte: SKIP_LIMIT } },
+    orderBy: { skippedAt: 'desc' },
+    select: { trackId: true },
+  })
+  return {
+    id: 'skipped',
+    kind: 'skipped',
+    title: 'Titres écartés',
+    description: 'Passés plusieurs fois dès le début : ils ne reviennent plus dans tes mixes et radios.',
+    friend: null,
+    rows: await loadTracks(skips.map((s) => s.trackId)),
+  }
+}
+
 // --- Caches -------------------------------------------------------------------------
 
 // Each user's mixes for the day (or week), computed on first request.
@@ -631,17 +733,27 @@ async function mixesOf(userId: string) {
     cached(weeklyCache, userId, week, () => weeklyMixes(userId, week, now)),
     cached(dailyCache, userId, day, () => Promise.all([dailyMixes(userId, day, now), blends(userId, day, now)]).then(([d, b]) => [...d, ...b])),
   ])
-  return [...weekly, ...daily]
+  const moment = await momentMix(userId, now)
+  return [...weekly, ...(moment ? [moment] : []), ...daily]
 }
 
 /** Any mix by id: the listed ones, or a radio, genre or the history, made when opened. */
 async function openMix(userId: string, id: string) {
   const now = Date.now()
   if (id === 'history') return historyMix(userId)
+  if (id === 'skipped') return skippedMix(userId)
+  if (id === 'moment') return momentMix(userId, now)
+  if (id.startsWith('place-')) return placeMix(userId, id.slice('place-'.length), today(now))
   const radio = /^radio-(artist|track)-(.+)$/.exec(id)
   if (radio) return radioMix(userId, radio[1] as 'artist' | 'track', radio[2], today(now), now)
   if (id.startsWith('genre-')) return genreMix(id.slice('genre-'.length), today(now))
   return (await mixesOf(userId)).find((m) => m.id === id) ?? null
+}
+
+/** Leaves out the tracks the user keeps skipping; their history and the skipped list keep them. */
+function withoutSkipped(mix: Mix, skipped: Set<string>): Mix {
+  if (mix.kind === 'history' || mix.kind === 'skipped' || !skipped.size) return mix
+  return { ...mix, rows: mix.rows.filter((r) => !skipped.has(r.id)) }
 }
 
 function summary(mix: Mix) {
@@ -657,12 +769,24 @@ function summary(mix: Mix) {
 }
 
 export async function mixRoutes(app: FastifyInstance) {
-  app.get('/me/mixes', async (req) => (await mixesOf(req.user!.id)).map(summary))
+  // place: where the iPhone is now, which adds its "Ici" mix first when there's enough played there.
+  app.get('/me/mixes', async (req) => {
+    const { place } = z.object({ place: placeCell.optional() }).parse(req.query)
+    const userId = req.user!.id
+    const [mixes, skipped, here] = await Promise.all([
+      mixesOf(userId),
+      skippedIds(userId),
+      place ? placeMix(userId, place, today(Date.now())) : null,
+    ])
+    const list = here && here.rows.length >= MIN_PLACE_TRACKS ? [here, ...mixes] : mixes
+    return list.map((mix) => summary(withoutSkipped(mix, skipped)))
+  })
 
   app.get('/me/mixes/:id', async (req, reply) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
-    const mix = await openMix(req.user!.id, id)
-    if (!mix) return reply.code(404).send({ error: 'Mix introuvable' })
+    const [found, skipped] = await Promise.all([openMix(req.user!.id, id), skippedIds(req.user!.id)])
+    if (!found) return reply.code(404).send({ error: 'Mix introuvable' })
+    const mix = withoutSkipped(found, skipped)
     return {
       ...summary(mix),
       tracks: mix.rows.map(({ albumId: _, ...row }) => ({

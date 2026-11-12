@@ -7,6 +7,8 @@ import { PlayerContext, ProgressContext, type PlayerState, type RepeatMode } fro
 
 // Like Spotify: "previous" restarts the track unless we're in its first seconds.
 const RESTART_THRESHOLD_SEC = 3
+// "Next" before this many seconds tells the server the track was skipped (mixes leave it out after two).
+const SKIP_WINDOW_SEC = 10
 // In a Jam, seek to the shared position when this far off (network delays, slow
 // loads); checked on every update and while playing.
 const JAM_DRIFT_SEC = 1
@@ -218,7 +220,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [order.length, pos, repeat],
   )
 
-  const next = useCallback(() => (inJam ? command({ type: 'next' }) : advance(false)), [inJam, command, advance])
+  const next = useCallback(() => {
+    const el = audio.current
+    if (current && !current.episode && el && el.currentTime < SKIP_WINDOW_SEC) void social.skip(current.id).catch(() => {})
+    if (inJam) command({ type: 'next' })
+    else advance(false)
+  }, [current, inJam, command, advance])
 
   const onEnded = useCallback(() => {
     if (current?.episode) {

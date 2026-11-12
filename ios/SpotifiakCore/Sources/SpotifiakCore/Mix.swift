@@ -5,16 +5,17 @@ import Foundation
 /// or the history.
 public struct MixSummary: Codable, Sendable, Hashable, Identifiable {
     public enum Kind: String, Codable, Sendable {
-        case daily, blend, weekly, radar, radio, genre, history
+        case daily, blend, weekly, radar, radio, genre, history, moment, place, skipped
 
         /// What the page calls it, above the title.
         public var label: String {
             switch self {
-            case .daily, .weekly, .radar: "Mix"
+            case .daily, .weekly, .radar, .moment, .place: "Mix"
             case .blend: "Entre amis"
             case .radio: "Radio"
             case .genre: "Genre"
             case .history: "Historique"
+            case .skipped: "Écartés"
             }
         }
 
@@ -23,6 +24,7 @@ public struct MixSummary: Codable, Sendable, Hashable, Identifiable {
             switch self {
             case .daily, .blend: "Mis à jour chaque jour"
             case .weekly, .radar: "Mis à jour chaque lundi"
+            case .moment: "Mis à jour chaque heure"
             default: nil
             }
         }
@@ -31,6 +33,7 @@ public struct MixSummary: Codable, Sendable, Hashable, Identifiable {
     public static func artistRadio(_ artistId: String) -> String { "radio-artist-\(artistId)" }
     public static func trackRadio(_ trackId: String) -> String { "radio-track-\(trackId)" }
     public static let history = "history"
+    public static let skipped = "skipped"
 
     public let id: String
     public let kind: Kind

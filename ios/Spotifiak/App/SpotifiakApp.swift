@@ -7,6 +7,7 @@ struct SpotifiakApp: App {
     @State private var player: PlayerEngine
     @State private var library: LibraryStore
     @State private var offline: OfflineStore
+    @State private var places: PlaceTracker
     @State private var jam: JamSession
     @State private var social: SocialStore
     @State private var push = PushNotifications.shared
@@ -18,8 +19,10 @@ struct SpotifiakApp: App {
         let session = Session()
         let offline = OfflineStore(api: { session.api })
         _offline = State(initialValue: offline)
+        let places = PlaceTracker()
+        _places = State(initialValue: places)
         let player = PlayerEngine(output: AVQueuePlayerOutput(), api: { session.api }, defaults: .standard,
-                                  localURL: { offline.localURL(for: $0) })
+                                  localURL: { offline.localURL(for: $0) }, place: { places.current })
         _session = State(initialValue: session)
         _player = State(initialValue: player)
         let library = LibraryStore(api: { session.api }, toast: { player.showToast($0) })
@@ -38,6 +41,7 @@ struct SpotifiakApp: App {
                 .environment(player)
                 .environment(library)
                 .environment(offline)
+                .environment(places)
                 .environment(jam)
                 .environment(social)
                 .environment(push)

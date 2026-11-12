@@ -13,20 +13,19 @@ struct DownloadsView: View {
     var body: some View {
         Group {
             if let downloads {
-                if downloads.isEmpty {
-                    ContentUnavailableView(
-                        "Aucun téléchargement",
-                        systemImage: "arrow.down.circle",
-                        description: Text("Cherchez un titre, un album ou un artiste et téléchargez-le depuis Deezer.")
-                    )
-                } else {
-                    List {
-                        ForEach(downloads) { row($0) }
+                List {
+                    if downloads.isEmpty {
+                        Text("Aucun téléchargement. Cherchez un titre, un album ou un artiste et téléchargez-le depuis Deezer.")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.subdued)
                             .listRowBackground(Color.clear)
                     }
-                    .listStyle(.plain)
-                    .refreshable { await load() }
+                    ForEach(downloads) { row($0) }
+                        .listRowBackground(Color.clear)
+                    SuggestionsSection { await load() }
                 }
+                .listStyle(.plain)
+                .refreshable { await load() }
             } else if let error {
                 ContentUnavailableView {
                     Label(error, systemImage: "wifi.exclamationmark")
@@ -118,6 +117,86 @@ struct DownloadsView: View {
                 player.showToast((error as? APIError)?.message ?? "Action impossible")
             }
             await load()
+        }
+    }
+}
+
+/// What to download next: albums to finish, and friends' artists' top tracks the library lacks.
+private struct SuggestionsSection: View {
+    /// Reloads the downloads above once some start.
+    let onStart: @MainActor () async -> Void
+    @Environment(Session.self) private var session
+    @State private var suggestions: Suggestions?
+    /// Started from here: hidden from the suggestions (the list above shows them now).
+    @State private var started: Set<String> = []
+
+    var body: some View {
+        Group {
+            if let suggestions {
+                let albums = suggestions.albums.filter { !started.contains($0.link) }
+                let tracks = suggestions.tracks.filter { !started.contains($0.track.link) && $0.track.download == nil }
+                if !albums.isEmpty {
+                    Section("Albums à compléter") {
+                        ForEach(albums) { item in
+                            suggestion(
+                                image: session.api?.coverURL(album: item.album),
+                                title: item.album.title,
+                                subtitle: "\(item.album.artist.name) • \(item.have) titres sur \(item.total)",
+                                action: "Compléter",
+                                links: [item.link]
+                            )
+                        }
+                    }
+                    .listRowBackground(Color.clear)
+                }
+                if !tracks.isEmpty {
+                    Section {
+                        ForEach(tracks) { item in
+                            suggestion(
+                                image: item.track.album.cover_medium,
+                                title: item.track.title,
+                                subtitle: item.fans.isEmpty ? item.track.artist.name : "\(item.track.artist.name) • aimé par \(item.fans.joined(separator: " et "))",
+                                action: "Télécharger",
+                                links: [item.track.link]
+                            )
+                        }
+                    } header: {
+                        HStack {
+                            Text("Les artistes de tes amis")
+                            Spacer()
+                            Button("Tout télécharger") { download(tracks.map(\.track.link)) }
+                                .font(.caption.bold())
+                        }
+                    }
+                    .listRowBackground(Color.clear)
+                }
+            }
+        }
+        .task { suggestions = try? await session.api?.suggestions() }
+    }
+
+    private func suggestion(image: URL?, title: String, subtitle: String, action: String, links: [String]) -> some View {
+        HStack(spacing: 12) {
+            RemoteImage(url: image)
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.body.weight(.semibold)).lineLimit(1)
+                Text(subtitle).font(.subheadline).foregroundStyle(Theme.subdued).lineLimit(2)
+            }
+            Spacer(minLength: 0)
+            Button(action) { download(links) }
+                .font(.caption.bold())
+                .buttonStyle(.bordered)
+                .accessibilityLabel("\(action) \(title)")
+        }
+    }
+
+    private func download(_ links: [String]) {
+        started.formUnion(links)
+        Task {
+            for link in links { _ = try? await session.api?.download(link) }
+            await onStart()
         }
     }
 }

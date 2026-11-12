@@ -5,10 +5,13 @@ import SwiftUI
 struct MixView: View {
     let id: String
     @Environment(Session.self) private var session
+    /// Skipped tracks taken back on this page.
+    @State private var restored: Set<String> = []
 
     var body: some View {
         Loadable(load: { try await session.requireAPI().mix(id) }) { mix in
-            DetailPage(colorURL: mix.covers.first.flatMap { session.api?.coverURL(mosaic: $0) }, tracks: mix.tracks) {
+            let tracks = mix.tracks.filter { !restored.contains($0.id) }
+            DetailPage(colorURL: mix.covers.first.flatMap { session.api?.coverURL(mosaic: $0) }, tracks: tracks) {
                 MixArt(kind: mix.kind, title: mix.title, covers: mix.covers, labelFont: .title2.weight(.heavy))
             } info: {
                 Text(mix.kind.label.uppercased()).font(.caption.bold()).foregroundStyle(Theme.subdued)
@@ -18,7 +21,7 @@ struct MixView: View {
                     .foregroundStyle(Theme.subdued)
                 HStack(spacing: 6) {
                     if let friend = mix.friend { Avatar(person: friend, size: 20) }
-                    Text([mix.kind.updates, trackCount(mix.tracks.count)].compactMap { $0 }.joined(separator: " • "))
+                    Text([mix.kind.updates, trackCount(tracks.count)].compactMap { $0 }.joined(separator: " • "))
                 }
                 .font(.caption)
                 .foregroundStyle(Theme.subdued)
@@ -26,8 +29,8 @@ struct MixView: View {
                 EmptyView()
             } content: {
                 LazyVStack(spacing: 0) {
-                    ForEach(mix.tracks.indices, id: \.self) { index in
-                        TrackRow(tracks: mix.tracks, index: index, badge: badge(mix, index))
+                    ForEach(tracks.indices, id: \.self) { index in
+                        TrackRow(tracks: tracks, index: index, badge: mix.kind == .skipped ? restoreButton(tracks[index]) : badge(mix, index))
                             .padding(.leading)
                             .padding(.trailing, 8)
                             .padding(.vertical, 6)
@@ -36,6 +39,21 @@ struct MixView: View {
                 .padding(.bottom)
             }
         }
+    }
+
+    /// In the skipped tracks: takes one back into mixes and radios.
+    private func restoreButton(_ track: Track) -> AnyView {
+        AnyView(
+            Button("Réentendre") {
+                Task {
+                    try? await session.requireAPI().unskip(track.id)
+                    restored.insert(track.id)
+                }
+            }
+            .font(.caption.bold())
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Réentendre \(track.title) dans les mixes")
+        )
     }
 
     /// In "Entre amis": whose taste the track comes from, as their pictures.

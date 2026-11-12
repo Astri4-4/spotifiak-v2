@@ -7,6 +7,7 @@ struct RootView: View {
     @Environment(PlayerEngine.self) private var player
     @Environment(LibraryStore.self) private var library
     @Environment(OfflineStore.self) private var offline
+    @Environment(PlaceTracker.self) private var places
     @Environment(JamSession.self) private var jam
     @Environment(SocialStore.self) private var social
     @Environment(PushNotifications.self) private var push
@@ -47,7 +48,10 @@ struct RootView: View {
             // The badge, while the app is in front.
             .task(id: "\(user.id)-\(scenePhase == .active)") {
                 // Downloads follow their collections' changes each time the app comes back.
-                if scenePhase == .active { offline.sync() }
+                if scenePhase == .active {
+                    offline.sync()
+                    places.refresh()
+                }
                 if scenePhase == .active { await social.poll() }
             }
         } else {
@@ -100,6 +104,9 @@ struct PendingRoute: Equatable {
         case .album(let id):
             tab = .library
             route = .album(id)
+        case .wrapped:
+            tab = .library
+            route = .wrapped
         }
     }
 }

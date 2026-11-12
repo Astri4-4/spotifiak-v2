@@ -108,6 +108,7 @@ struct LibraryView: View {
                 Section(user.displayName) {
                     Button("Compte", systemImage: "person.crop.circle") { navigate(.account) }
                     Button("Ton année", systemImage: "chart.bar") { navigate(.wrapped) }
+                    Button("Titres écartés", systemImage: "hand.thumbsdown") { navigate(.mix(MixSummary.skipped)) }
                     Button("Calendrier", systemImage: "calendar") { navigate(.calendar) }
                     Button("Importer depuis Spotify", systemImage: "square.and.arrow.down") { navigate(.spotifyImport) }
                     Button("Analyse de la bibliothèque", systemImage: "arrow.triangle.2.circlepath") { navigate(.scan) }

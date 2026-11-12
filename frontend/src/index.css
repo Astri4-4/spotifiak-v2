@@ -4197,3 +4197,116 @@ img.person-avatar {
   font-size: 0.875rem;
   white-space: nowrap;
 }
+
+/* Taste duel */
+.duel-list {
+  display: grid;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.duel {
+  display: grid;
+  gap: 12px;
+}
+
+.duel-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.duel-track {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--highlight);
+}
+
+.duel-label {
+  color: var(--text-subdued);
+  font-size: 0.8125rem;
+}
+
+.duel-play {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-align: left;
+}
+
+.duel-votes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Taste map */
+.taste-map {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
+}
+
+.taste-map svg {
+  width: 100%;
+  height: auto;
+}
+
+.taste-link {
+  stroke: var(--green);
+  stroke-linecap: round;
+}
+
+.taste-node circle {
+  fill: var(--elevated-hover);
+  stroke: var(--text-subdued);
+}
+
+.taste-node.me circle {
+  fill: var(--green);
+  stroke: none;
+}
+
+.taste-node text {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.taste-node.me text:not(.taste-name) {
+  fill: var(--black);
+}
+
+.taste-node .taste-name {
+  fill: var(--text-subdued);
+  font-weight: 400;
+}
+
+.taste-list {
+  display: grid;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .taste-map {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Download suggestions */
+.suggestion-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.suggestion-row .download-text {
+  flex: 1;
+  min-width: 0;
+}

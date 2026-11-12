@@ -52,6 +52,9 @@ export function UserMenu() {
           <Link to="/wrapped" role="menuitem" className="menu-item" onClick={close}>
             Ton année
           </Link>
+          <Link to="/mix/skipped" role="menuitem" className="menu-item" onClick={close}>
+            Titres écartés
+          </Link>
           <Link to="/downloads" role="menuitem" className="menu-item" onClick={close}>
             Téléchargements
           </Link>

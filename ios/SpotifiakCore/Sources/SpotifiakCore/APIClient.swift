@@ -96,8 +96,9 @@ public final class APIClient: Sendable {
     }
 
     /// Today's mixes (they change every day).
-    public func mixes() async throws -> [MixSummary] {
-        try await get("/me/mixes")
+    /// `place`: the iPhone's cell (PlaceCell), which adds its "Ici" mix when enough played there.
+    public func mixes(place: String? = nil) async throws -> [MixSummary] {
+        try await get("/me/mixes", query: place.map { ["place": $0] } ?? [:])
     }
 
     public func mix(_ id: String) async throws -> MixDetail {
@@ -347,8 +348,14 @@ public final class APIClient: Sendable {
     }
 
     /// A track started playing here (friend activity).
-    public func recordPlay(_ trackId: String) async throws {
-        try await data("POST", "/me/plays", body: ["trackId": trackId])
+    private struct Play: Encodable {
+        let trackId: String
+        let place: String?
+    }
+
+    /// `place`: the ~500 m cell where it plays (PlaceCell), when the user allowed location.
+    public func recordPlay(_ trackId: String, place: String? = nil) async throws {
+        try await data("POST", "/me/plays", body: Play(trackId: trackId, place: place))
     }
 
     private struct Share: Encodable {

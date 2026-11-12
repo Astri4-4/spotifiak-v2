@@ -291,7 +291,11 @@ async function userDownloads(userId: string, type: string, deezerIds: string[]) 
 }
 
 async function searchTracks(userId: string, q: string) {
-  const results = await deemix.search<deemix.DeezerTrack>(q, 'track', SEARCH_LIMIT)
+  return annotateTracks(userId, await deemix.search<deemix.DeezerTrack>(q, 'track', SEARCH_LIMIT))
+}
+
+/** Deezer tracks with the same track in the library, if any, and the user's latest download of each. */
+export async function annotateTracks(userId: string, results: deemix.DeezerTrack[]) {
   const stems = [...new Set(results.map((r) => titleStem(r.title)).filter(Boolean))]
   const candidates = stems.length
     ? await prisma.track.findMany({

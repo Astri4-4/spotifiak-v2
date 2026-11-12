@@ -560,6 +560,12 @@ export const social = {
   removeFriend: (userId: string) => send<void>('DELETE', `/friends/${userId}`),
   activity: () => request<FriendActivity[]>('/friends/activity'),
   recordPlay: (trackId: string) => send<void>('POST', '/me/plays', { trackId }),
+  skip: (trackId: string) => send<void>('POST', '/me/skips', { trackId }),
+  /** Takes a skipped track back into mixes and radios. */
+  unskip: (trackId: string) => send<void>('DELETE', `/me/skips/${trackId}`),
+  duels: () => request<Duel[]>('/me/duels'),
+  voteDuel: (friendId: string, liked: boolean) => send<void>('PUT', `/me/duels/${friendId}`, { liked }),
+  tasteMap: () => request<TasteMap>('/me/taste-map'),
   share: (trackId: string, userIds: string[], message?: string) =>
     send<{ sent: number }>('POST', '/shares', { trackId, userIds, message }),
   inviteToJam: (jamId: string, userIds: string[]) => send<{ sent: number }>('POST', `/jam/${jamId}/invite`, { userIds }),
@@ -638,7 +644,7 @@ const query = (params: Record<string, string>) => new URLSearchParams(params).to
  */
 export interface MixSummary {
   id: string
-  kind: 'daily' | 'blend' | 'weekly' | 'radar' | 'radio' | 'genre' | 'history'
+  kind: 'daily' | 'blend' | 'weekly' | 'radar' | 'radio' | 'genre' | 'history' | 'moment' | 'place' | 'skipped'
   title: string
   description: string
   /** The friend of an "Entre amis" mix. */
@@ -650,6 +656,27 @@ export interface MixSummary {
 export interface MixDetail extends MixSummary {
   /** In "Entre amis": whose taste each track comes from. */
   tracks: (Track & { from?: 'both' | 'me' | 'friend' | null })[]
+}
+
+/** This week's taste duel with a friend: their pick for me, mine for them, and the score (all weeks). */
+export interface Duel {
+  friend: Person
+  week: string
+  forMe: { track: Track; myVote: boolean | null } | null
+  fromMe: { track: Track; theirVote: boolean | null } | null
+  score: { me: number; friend: number }
+}
+
+/** Me and my friends, and how close each pair's tastes are (0–1). */
+export interface TasteMap {
+  people: Person[]
+  links: { a: string; b: string; similarity: number; artists: string[] }[]
+}
+
+/** What to download next: albums the library only has part of, friends' artists' top tracks. */
+export interface Suggestions {
+  albums: { album: Album; have: number; total: number; link: string }[]
+  tracks: (DeezerTrack & { fans: string[] })[]
 }
 
 export interface Genre {
@@ -707,6 +734,7 @@ export const api = {
   mix: (id: string) => request<MixDetail>(`/me/mixes/${id}`),
   recentAlbums: () => request<Album[]>('/me/recent'),
   genres: () => request<Genre[]>('/genres'),
+  suggestions: () => request<Suggestions>('/me/suggestions'),
   wrapped: (year?: number) => request<Wrapped>(`/me/wrapped${year ? `?year=${year}` : ''}`),
 }
 

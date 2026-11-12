@@ -263,3 +263,20 @@ private func jamState(index: Int, playing: Bool, position: Double = 0, count: In
     for _ in 0..<100 where plays() < 2 { await Task.yield() }
     #expect(plays() == 2)
 }
+
+@MainActor @Test func nextInTheFirstSecondsReportsASkipAndPlaysCarryThePlace() async throws {
+    let ownTransport = FakeTransport()
+    let ownAPI = APIClient(base: URL(string: "https://h/api")!, transport: ownTransport) {}
+    let engine = PlayerEngine(output: FakeAudioOutput(), api: { ownAPI },
+                              defaults: UserDefaults(suiteName: "PlayerEngineTests-\(UUID().uuidString)")!,
+                              place: { "48.855_2.350" })
+    let requests = { (path: String) in ownTransport.requests.filter { $0.url?.path == path } }
+
+    engine.play(tracks, startAt: 0)
+    engine.next()
+    for _ in 0..<100 where requests("/api/me/skips").isEmpty || requests("/api/me/plays").isEmpty { await Task.yield() }
+    #expect(requests("/api/me/skips").count == 1)
+    let play = try #require(requests("/api/me/plays").first)
+    let body = try JSONSerialization.jsonObject(with: try #require(play.httpBody)) as? [String: Any]
+    #expect(body?["place"] as? String == "48.855_2.350")
+}

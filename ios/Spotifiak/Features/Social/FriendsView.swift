@@ -45,6 +45,9 @@ struct FriendsView: View {
                 ForEach(activity) { item in ActivityRow(item: item) }
             }
 
+            DuelSection()
+            TasteMapSection()
+
             Section("Ajouter des amis") {
                 HStack {
                     Image(systemName: "magnifyingglass").foregroundStyle(Theme.subdued)

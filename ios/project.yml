@@ -37,6 +37,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UIBackgroundModes: [audio]
+        NSLocationWhenInUseUsageDescription: "Spotifiak retient la zone (à 500 m près) où tu écoutes pour te proposer le mix « Ici ». Ta position exacte n'est jamais envoyée."
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSAppTransportSecurity:
           # Self-hosted servers on a LAN are plain HTTP.

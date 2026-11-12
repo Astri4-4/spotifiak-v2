@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from './db.js'
 import { isInJam, jamRuns } from './jam.js'
 import { mosaic, mosaicEntries, toTrack, trackSelect } from './library.js'
+import { checkMilestones, placeCell } from './habits.js'
 import { notify, unreadCounts } from './push.js'
 
 // The same track reported again within this delay is the same listen (a seek, a reload).
@@ -227,7 +228,8 @@ export async function socialRoutes(app: FastifyInstance) {
 
   // Clients report each track they start playing (not podcast episodes).
   app.post('/me/plays', async (req, reply) => {
-    const { trackId } = z.object({ trackId: z.string() }).parse(req.body)
+    // place: where it plays (the iPhone, when the user allowed it), for the "Ici" mix.
+    const { trackId, place } = z.object({ trackId: z.string(), place: placeCell.optional() }).parse(req.body)
     const me = req.user!.id
     if (!(await prisma.track.findUnique({ where: { id: trackId }, select: { id: true } }))) {
       return reply.code(404).send({ error: 'Titre introuvable' })
@@ -236,7 +238,8 @@ export async function socialRoutes(app: FastifyInstance) {
     if (last?.trackId === trackId && Date.now() - last.playedAt.getTime() < SAME_PLAY_SEC * 1000) {
       return reply.code(204).send()
     }
-    await prisma.play.create({ data: { userId: me, trackId } })
+    await prisma.play.create({ data: { userId: me, trackId, placeCell: place } })
+    void checkMilestones(me, trackId, req.log).catch((err) => req.log.warn({ err }, 'milestones failed'))
     return reply.code(204).send()
   })
 

@@ -23,6 +23,9 @@ import { libraryRoutes } from './library.js'
 import { lyricsRoutes } from './lyrics.js'
 import { mixRoutes } from './mixes.js'
 import { discoverRoutes } from './discover.js'
+import { habitRoutes, startWeeklyRecap } from './habits.js'
+import { tasteRoutes } from './taste.js'
+import { suggestionRoutes } from './suggestions.js'
 import { scanLibrary, scanStatus, startPeriodicScan } from './scanner.js'
 import { audioQuery, resolveMusicPath, streamAudio } from './stream.js'
 
@@ -61,6 +64,9 @@ await app.register(pushRoutes)
 await app.register(lyricsRoutes)
 await app.register(mixRoutes)
 await app.register(discoverRoutes)
+await app.register(habitRoutes)
+await app.register(tasteRoutes)
+await app.register(suggestionRoutes)
 await app.register(downloadRoutes)
 
 app.get('/tracks/:id/stream', async (req, reply) => {
@@ -111,6 +117,7 @@ startPodcastRefresh(app.log)
 void resumeDownloads(app.log)
 // Downloads still on their way when the server stopped.
 trackDownloads(app.log)
+startWeeklyRecap(app.log)
 
 // docker stop / Kubernetes send SIGTERM: stop right away instead of being killed after the grace period.
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
