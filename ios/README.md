@@ -19,3 +19,14 @@ it, set `DEVELOPMENT_TEAM` in `project.yml` locally without committing it.
 
 At first launch, type your server's address (`music.example.com`, `192.168.1.10:8080`…):
 the app finds the API whether it is served under `/api` or at the root.
+
+## Install with SideStore
+
+Every push to `master` that touches `ios/` publishes an unsigned IPA as a GitHub release
+(`.github/workflows/ios-release.yml`); SideStore signs it with your Apple ID. In SideStore,
+add this source (Sources → +) to install and get updates:
+
+    https://github.com/Astri4-4/spotifiak-v2/releases/latest/download/source.json
+
+Or install the IPA directly from the latest release. `Spotifiak-NoWatch.ipa` leaves out the
+Apple Watch app, which costs one more of the 10 app IDs a free Apple ID gets per week.
