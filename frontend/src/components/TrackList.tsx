@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { images, type Track } from '../api'
 import { formatAddedAt, formatDuration } from '../format'
@@ -25,6 +26,8 @@ interface TrackListProps {
   onRemove?: (index: number) => void
   /** Playlist editing: move row `from` before row `before` (tracks.length = to the end). */
   onMove?: (from: number, before: number) => void
+  /** Something shown at the end of each row's title (whose taste a mix's track comes from). */
+  badges?: (ReactNode | null)[]
 }
 
 function Equalizer() {
@@ -38,7 +41,7 @@ function Equalizer() {
   )
 }
 
-export function TrackList({ tracks, contextId, contextName, variant = 'full', rowKeys, onRemove, onMove }: TrackListProps) {
+export function TrackList({ tracks, contextId, contextName, variant = 'full', rowKeys, onRemove, onMove, badges }: TrackListProps) {
   const { current, playing, playTracks, toggle } = usePlayer()
   const isMobile = useIsMobile()
   const reorder = useReorder(tracks.length, onMove)
@@ -114,6 +117,7 @@ export function TrackList({ tracks, contextId, contextName, variant = 'full', ro
                   {track.artistName}
                 </Link>
               </span>
+              {badges?.[i] && <span className="track-badge">{badges[i]}</span>}
             </span>
             {showAlbum && (
               <span className="col-album">

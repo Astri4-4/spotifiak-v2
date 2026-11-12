@@ -3987,3 +3987,20 @@ img.person-avatar {
   font-size: 1.5rem;
   padding: 18% 16px 14px;
 }
+
+/* "Entre amis": whose taste each track comes from */
+.track-badge {
+  display: flex;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 12px;
+}
+
+.mix-from {
+  display: flex;
+}
+
+.mix-from .person-avatar + .person-avatar {
+  margin-left: -6px;
+  box-shadow: 0 0 0 2px var(--base);
+}

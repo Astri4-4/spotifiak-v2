@@ -12,6 +12,8 @@ struct TrackRow: View {
     var number: Int?
     /// "Retirer de cette playlist", on the owner's playlists.
     var onRemove: (() -> Void)?
+    /// Shown at the end of the row (whose taste a mix's track comes from).
+    var badge: AnyView?
 
     @Environment(PlayerEngine.self) private var player
     @Environment(Session.self) private var session
@@ -39,6 +41,7 @@ struct TrackRow: View {
                         Text(track.artistName).font(.subheadline).foregroundStyle(Theme.subdued).lineLimit(1)
                     }
                     Spacer(minLength: 0)
+                    if let badge { badge }
                 }
                 .contentShape(Rectangle())
             }

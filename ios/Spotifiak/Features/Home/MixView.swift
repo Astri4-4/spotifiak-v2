@@ -12,15 +12,52 @@ struct MixView: View {
                 MixArt(kind: mix.kind, title: mix.title, covers: mix.covers, labelFont: .title2.weight(.heavy))
             } info: {
                 Text(mix.title).font(.title2.bold())
-                Text(mix.description).font(.subheadline).foregroundStyle(Theme.subdued)
+                Text(mix.friend.map { "Chaque titre vient de toi, de \($0.displayName) ou de vous deux." } ?? mix.description)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.subdued)
                 HStack(spacing: 6) {
                     if let friend = mix.friend { Avatar(person: friend, size: 20) }
                     Text("Mis à jour chaque jour • \(trackCount(mix.tracks.count))")
                 }
                 .font(.caption)
                 .foregroundStyle(Theme.subdued)
+            } actions: {
+                EmptyView()
+            } content: {
+                LazyVStack(spacing: 0) {
+                    ForEach(mix.tracks.indices, id: \.self) { index in
+                        TrackRow(tracks: mix.tracks, index: index, badge: badge(mix, index))
+                            .padding(.leading)
+                            .padding(.trailing, 8)
+                            .padding(.vertical, 6)
+                    }
+                }
+                .padding(.bottom)
             }
         }
+    }
+
+    /// In "Entre amis": whose taste the track comes from, as their pictures.
+    private func badge(_ mix: MixDetail, _ index: Int) -> AnyView? {
+        guard let friend = mix.friend, let source = mix.source(at: index),
+              case .loggedIn(let me) = session.state
+        else { return nil }
+        let label = switch source {
+        case .both: "De toi et \(friend.displayName)"
+        case .me: "De toi"
+        case .friend: "De \(friend.displayName)"
+        }
+        return AnyView(
+            HStack(spacing: -6) {
+                if source != .friend { Avatar(person: me, size: 22) }
+                if source != .me {
+                    Avatar(person: friend, size: 22)
+                        .overlay(Circle().stroke(Theme.base, lineWidth: 2))
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(label)
+        )
     }
 }
 

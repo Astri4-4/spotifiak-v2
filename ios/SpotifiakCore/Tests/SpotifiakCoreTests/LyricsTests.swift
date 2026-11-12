@@ -55,3 +55,17 @@ private let synced = Lyrics(synced: true, lines: [
     #expect(mixes[0].kind == .daily && mixes[0].friend == nil)
     #expect(mixes[1].kind == .blend && mixes[1].friend?.displayName == "Léa")
 }
+
+@Test func blendTracksCarryWhoseTasteTheyComeFrom() async throws {
+    let transport = FakeTransport()
+    let track = #"{"id":"t1","title":"T","artistName":"A","artistId":"a","album":null,"durationSec":200,"trackNumber":1,"discNumber":1,"addedAt":"2026-01-01T00:00:00.000Z","format":"mp3""#
+    transport.respond(
+        "https://h/api/me/mixes/blend-u2",
+        #"{"id":"blend-u2","kind":"blend","title":"Toi et Léa","description":"d","friend":{"id":"u2","username":"lea","displayName":"Léa","avatarUpdatedAt":null},"trackCount":2,"covers":[],"tracks":["# + track + #","from":"both"},"# + track.replacingOccurrences(of: "t1", with: "t2") + #","from":"friend"}]}"#
+    )
+    let client = APIClient(base: URL(string: "https://h/api")!, transport: transport, onUnauthorized: {})
+    let mix = try await client.mix("blend-u2")
+    #expect(mix.tracks.map(\.id) == ["t1", "t2"])
+    #expect(mix.sources == [.both, .friend])
+    #expect(mix.source(at: 5) == nil)
+}
