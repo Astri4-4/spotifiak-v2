@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, images, podcasts, type DeezerTrack, type PodcastSearchResult } from '../api'
+import { api, images, podcasts, type DownloadState, type PodcastSearchResult } from '../api'
+import { startDownload } from '../downloads'
 import { Card } from '../components/Card'
 import { PlaylistCover } from '../components/CollectionCovers'
 import { Cover } from '../components/Cover'
@@ -68,30 +69,69 @@ function BrowseAll() {
   )
 }
 
-function DeezerResults({ query, limit }: { query: string; limit?: number }) {
-  const { data, error } = useFetch(() => api.deezerSearch(query), [query])
-  const [queued, setQueued] = useState<Set<number>>(new Set())
+/** A search result's download: what the user started here, else their latest one (from the server). */
+function useStarted() {
+  const [started, setStarted] = useState<Map<string, DownloadState>>(new Map())
   const [failed, setFailed] = useState<string | null>(null)
-
-  const download = async (track: DeezerTrack) => {
+  const start = async (key: string, url: string) => {
+    setFailed(null)
+    setStarted((prev) => new Map(prev).set(key, { id: '', status: 'queued', progress: 0 }))
     try {
-      await api.download(track.link)
-      setQueued((prev) => new Set(prev).add(track.id))
+      const downloads = await startDownload(url)
+      if (downloads[0]) setStarted((prev) => new Map(prev).set(key, downloads[0]))
     } catch (err) {
+      setStarted((prev) => {
+        const next = new Map(prev)
+        next.delete(key)
+        return next
+      })
       setFailed((err as Error).message)
     }
   }
+  return { started, failed, start }
+}
+
+/** Downloading, waiting, done…, or a download button. */
+function DownloadButton({ state, label, onClick }: { state: DownloadState | null | undefined; label: string; onClick: () => void }) {
+  const busy = state && (state.status === 'queued' || state.status === 'downloading')
+  if (busy) {
+    return (
+      <Link to="/downloads" className="download-state" title="Voir les téléchargements">
+        {state.status === 'queued' || !state.progress ? 'En attente' : `${state.progress} %`}
+      </Link>
+    )
+  }
+  return (
+    <button className="icon-button download-button" onClick={onClick} aria-label={label} title={label}>
+      <DownloadIcon size={20} />
+    </button>
+  )
+}
+
+function InLibrary({ to, label = 'Dans ta bibliothèque' }: { to: string; label?: string }) {
+  return (
+    <Link to={to} className="in-library" title={label}>
+      <CheckIcon size={16} />
+      <span>{label}</span>
+    </Link>
+  )
+}
+
+function DeezerTracks({ query, limit }: { query: string; limit?: number }) {
+  const { data, error } = useFetch(() => api.deezerSearch(query), [query])
+  const { started, failed, start } = useStarted()
+  const { playTracks, isPlaying } = usePlayContext()
 
   if (error) return <p className="muted">Deezer est injoignable (deemix ne répond pas).</p>
   if (!data) return null
-  if (!data.length) return <p className="muted">Aucun résultat sur Deezer.</p>
+  if (!data.length) return <p className="muted">Aucun titre sur Deezer.</p>
 
   return (
     <>
       {failed && <p className="error">Échec du téléchargement : {failed}</p>}
       <div className="tracklist tracklist-compact">
         {data.slice(0, limit).map((track) => {
-          const isQueued = queued.has(track.id)
+          const local = track.libraryTrack
           return (
             <div key={track.id} className="tracklist-row deezer-row">
               <span className="col-title">
@@ -104,19 +144,135 @@ function DeezerResults({ query, limit }: { query: string; limit?: number }) {
                 </span>
               </span>
               <span className="col-duration">{formatDuration(track.duration)}</span>
-              <button
-                className={`icon-button download-button${isQueued ? ' queued' : ''}`}
-                onClick={() => void download(track)}
-                disabled={isQueued}
-                aria-label={isQueued ? 'Téléchargement lancé' : `Télécharger ${track.title}`}
-                title={isQueued ? 'Téléchargement lancé, le titre apparaîtra dans votre bibliothèque' : 'Télécharger'}
-              >
-                {isQueued ? <CheckIcon size={20} /> : <DownloadIcon size={20} />}
-              </button>
+              {local ? (
+                <PlayButton
+                  playing={isPlaying(`deezer:${local.id}`)}
+                  onClick={() => void playTracks(`deezer:${local.id}`, [local], local.title)}
+                  className="visible in-library-play"
+                />
+              ) : (
+                <DownloadButton
+                  state={started.get(`track:${track.id}`) ?? track.download}
+                  label={`Télécharger ${track.title}`}
+                  onClick={() => void start(`track:${track.id}`, track.link)}
+                />
+              )}
             </div>
           )
         })}
       </div>
+    </>
+  )
+}
+
+function DeezerAlbums({ query }: { query: string }) {
+  const { data, error } = useFetch(() => api.deezerAlbums(query), [query])
+  const { started, failed, start } = useStarted()
+  if (error || !data?.length) return null
+  return (
+    <section>
+      <h2 className="section-title">Albums</h2>
+      {failed && <p className="error">Échec du téléchargement : {failed}</p>}
+      <ul className="deezer-list">
+        {data.map((album) => (
+          <li key={album.id} className="deezer-item">
+            <img className="cover" src={album.cover_medium} alt="" width={56} height={56} />
+            <span className="deezer-item-text">
+              <span className="track-name">{album.title}</span>
+              <span className="track-artist">
+                {album.artist.name} • {album.nb_tracks} titre{album.nb_tracks > 1 ? 's' : ''}
+              </span>
+            </span>
+            {album.libraryAlbumId ? (
+              <InLibrary to={`/album/${album.libraryAlbumId}`} />
+            ) : (
+              <DownloadButton
+                state={started.get(`album:${album.id}`) ?? album.download}
+                label={`Télécharger l'album ${album.title}`}
+                onClick={() => void start(`album:${album.id}`, album.link)}
+              />
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function DeezerArtists({ query }: { query: string }) {
+  const { data, error } = useFetch(() => api.deezerArtists(query), [query])
+  const { started, failed, start } = useStarted()
+  // A discography is many albums: one click asks, a second one starts.
+  const [confirming, setConfirming] = useState<number | null>(null)
+  if (error || !data?.length) return null
+  return (
+    <section>
+      <h2 className="section-title">Artistes</h2>
+      {failed && <p className="error">Échec du téléchargement : {failed}</p>}
+      <ul className="deezer-list">
+        {data.slice(0, 10).map((artist) => {
+          const state = started.get(`artist:${artist.id}`)
+          return (
+            <li key={artist.id} className="deezer-item">
+              <img className="cover round" src={artist.picture_medium} alt="" width={56} height={56} />
+              <span className="deezer-item-text">
+                <span className="track-name">{artist.name}</span>
+                <span className="track-artist">
+                  {artist.nb_album} album{artist.nb_album > 1 ? 's' : ''}
+                </span>
+              </span>
+              {artist.libraryArtistId && <InLibrary to={`/artist/${artist.libraryArtistId}`} label="Dans ta bibliothèque" />}
+              {state ? (
+                <Link to="/downloads" className="download-state">
+                  Discographie lancée
+                </Link>
+              ) : confirming === artist.id ? (
+                <span className="confirm-download">
+                  <button
+                    className="pill-button small"
+                    onClick={() => {
+                      setConfirming(null)
+                      void start(`artist:${artist.id}`, artist.link)
+                    }}
+                  >
+                    Télécharger {artist.nb_album} album{artist.nb_album > 1 ? 's' : ''}
+                  </button>
+                  <button className="pill-button small outline" onClick={() => setConfirming(null)}>
+                    Annuler
+                  </button>
+                </span>
+              ) : (
+                <button
+                  className="icon-button download-button"
+                  onClick={() => setConfirming(artist.id)}
+                  aria-label={`Télécharger la discographie de ${artist.name}`}
+                  title="Télécharger la discographie"
+                >
+                  <DownloadIcon size={20} />
+                </button>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+/** Deezer, through deemix: tracks (with `limit`, only them), else albums and artists too. */
+function DeezerResults({ query, limit }: { query: string; limit?: number }) {
+  if (limit) return <DeezerTracks query={query} limit={limit} />
+  return (
+    <>
+      <p className="deezer-hint">
+        Ce qui est déjà dans ta bibliothèque est marqué. <Link to="/downloads">Voir les téléchargements</Link>
+      </p>
+      <section>
+        <h2 className="section-title">Titres</h2>
+        <DeezerTracks query={query} />
+      </section>
+      <DeezerAlbums query={query} />
+      <DeezerArtists query={query} />
     </>
   )
 }

@@ -5,6 +5,7 @@ import { useCurrentUser } from '../auth/context'
 import { useCollection } from '../collection/context'
 import { Cover } from '../components/Cover'
 import { MobileHeader } from '../components/Mobile'
+import { startDownload } from '../downloads'
 import { useFetch, useIsMobile } from '../hooks'
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, DownloadIcon } from '../icons'
 
@@ -35,9 +36,8 @@ function ReleaseRow({ release }: { release: CalendarRelease }) {
   const [queued, setQueued] = useState(false)
   const download = () => {
     setQueued(true)
-    api
-      .download(release.link)
-      .then(() => notify('Téléchargement lancé : la sortie apparaîtra dans votre bibliothèque'))
+    startDownload(release.link)
+      .then(() => notify('Téléchargement lancé : vous serez prévenu quand il sera prêt'))
       .catch((err: Error) => {
         setQueued(false)
         notify(err.message)

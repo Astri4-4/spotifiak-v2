@@ -31,6 +31,8 @@ import { SpotifyImportPage } from './pages/SpotifyImportPage'
 import { UsersPage } from './pages/UsersPage'
 import { LyricsPage } from './pages/LyricsPage'
 import { MixPage } from './pages/MixPage'
+import { DownloadsPage } from './pages/DownloadsPage'
+import { DownloadWatcher } from './components/DownloadWatcher'
 import { PlayerProvider } from './player/PlayerProvider'
 
 function MainApp() {
@@ -40,6 +42,7 @@ function MainApp() {
   return (
     // Order matters: the Jam shows toasts (collection) and drives the player.
     <CollectionProvider>
+      <DownloadWatcher />
       <SocialProvider>
       <JamProvider>
         <PlayerProvider>
@@ -72,6 +75,7 @@ function MainApp() {
                 <Route path="/user/:id" element={<ProfilePage />} />
                 <Route path="/lyrics" element={<LyricsPage />} />
                 <Route path="/mix/:id" element={<MixPage />} />
+                <Route path="/downloads" element={<DownloadsPage />} />
               </Routes>
             </main>
             {isMobile ? (

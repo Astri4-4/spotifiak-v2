@@ -47,3 +47,21 @@ import Testing
     #expect(body?["topic"] as? String == "dev.spotifiak.ios.TEAM")
     #expect(body?["sandbox"] as? Bool == true)
 }
+
+@Test func pushLinksOpenDownloadsAndAlbums() {
+    #expect(PushLink("downloads") == .downloads)
+    #expect(PushLink("album/a1") == .album("a1"))
+}
+
+@Test func downloadsDecodeAndDescribeThemselves() async throws {
+    let transport = FakeTransport()
+    transport.respond(
+        "https://h/api/me/downloads",
+        #"[{"id":"d1","type":"album","deezerId":"9","title":"Discovery","artist":"Daft Punk","coverUrl":null,"status":"downloading","progress":40,"size":14,"downloaded":5,"failed":0,"error":null,"ready":false,"trackId":null,"albumId":null,"createdAt":"2026-11-12T10:00:00.000Z","finishedAt":null},{"id":"d2","type":"track","deezerId":"3","title":"T","artist":"A","coverUrl":null,"status":"done","progress":100,"size":1,"downloaded":1,"failed":0,"error":null,"ready":true,"trackId":"t1","albumId":"a1","createdAt":"2026-11-12T09:00:00.000Z","finishedAt":"2026-11-12T09:01:00.000Z"}]"#
+    )
+    let client = APIClient(base: URL(string: "https://h/api")!, transport: transport, onUnauthorized: {})
+    let downloads = try await client.downloads()
+    #expect(downloads[0].statusText == "40 % • 5/14 titres")
+    #expect(!downloads[0].isSettled)
+    #expect(downloads[1].statusText == "Terminé" && downloads[1].isSettled && downloads[1].albumId == "a1")
+}

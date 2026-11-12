@@ -7,6 +7,7 @@ import { z, ZodError } from 'zod'
 import { requireAdmin, setupAuth } from './auth.js'
 import { collectionRoutes } from './collection.js'
 import { duplicateRoutes } from './duplicates.js'
+import { downloadRoutes, track as trackDownloads } from './downloads.js'
 import { jamRoutes } from './jam.js'
 import { podcastRoutes, startPodcastRefresh } from './podcasts.js'
 import { pushRoutes } from './push.js'
@@ -21,11 +22,8 @@ import { enrichStatus } from './enrich.js'
 import { libraryRoutes } from './library.js'
 import { lyricsRoutes } from './lyrics.js'
 import { mixRoutes } from './mixes.js'
-import { scanLibrary, scanStatus, scheduleScan, startPeriodicScan } from './scanner.js'
+import { scanLibrary, scanStatus, startPeriodicScan } from './scanner.js'
 import { audioQuery, resolveMusicPath, streamAudio } from './stream.js'
-
-// Wait for deemix to finish downloading before rescanning.
-const RESCAN_AFTER_DOWNLOAD_MS = 30_000
 
 // trustProxy: the web container's nginx forwards requests; use the client's IP for login rate limiting.
 // forceCloseConnections: Jam event streams stay open; don't wait for them on shutdown.
@@ -61,28 +59,7 @@ await app.register(calendarRoutes)
 await app.register(pushRoutes)
 await app.register(lyricsRoutes)
 await app.register(mixRoutes)
-
-app.get('/deezer/search', async (req, reply) => {
-  const { q } = z.object({ q: z.string().min(1) }).parse(req.query)
-  try {
-    return await deemix.searchTracks(q)
-  } catch (err) {
-    req.log.warn({ err }, 'deemix search failed')
-    return reply.code(502).send({ error: 'deemix unreachable' })
-  }
-})
-
-app.post('/downloads', async (req, reply) => {
-  const { url } = z.object({ url: z.string().url() }).parse(req.body)
-  try {
-    await deemix.addToQueue(url)
-  } catch (err) {
-    req.log.warn({ err, url }, 'deemix download failed')
-    return reply.code(502).send({ error: (err as Error).message })
-  }
-  scheduleScan(app.log, RESCAN_AFTER_DOWNLOAD_MS)
-  return reply.code(202).send({ queued: true })
-})
+await app.register(downloadRoutes)
 
 app.get('/tracks/:id/stream', async (req, reply) => {
   const { id } = z.object({ id: z.string() }).parse(req.params)
@@ -130,6 +107,8 @@ await app.listen({ port: config.PORT, host: '0.0.0.0' })
 startPeriodicScan(app.log)
 startPodcastRefresh(app.log)
 void resumeDownloads(app.log)
+// Downloads still on their way when the server stopped.
+trackDownloads(app.log)
 
 // docker stop / Kubernetes send SIGTERM: stop right away instead of being killed after the grace period.
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {

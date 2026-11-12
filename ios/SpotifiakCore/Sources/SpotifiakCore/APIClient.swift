@@ -132,8 +132,39 @@ public final class APIClient: Sendable {
     }
 
     /// Queues a Deezer link in deemix; the library rescans afterwards.
-    public func download(_ link: String) async throws {
-        try await data("POST", "/downloads", body: ["url": link])
+    public func searchDeezerAlbums(_ query: String) async throws -> [DeezerAlbum] {
+        try await get("/deezer/search", query: ["q": query, "type": "album"])
+    }
+
+    public func searchDeezerArtists(_ query: String) async throws -> [DeezerArtist] {
+        try await get("/deezer/search", query: ["q": query, "type": "artist"])
+    }
+
+    private struct Started: Decodable { let downloads: [Download]? }
+
+    /// A Deezer link: track, album or artist (their discography, one download per album).
+    @discardableResult
+    public func download(_ link: String) async throws -> [Download] {
+        let started: Started = try await send("POST", "/downloads", body: ["url": link])
+        return started.downloads ?? []
+    }
+
+    public func downloads() async throws -> [Download] {
+        try await get("/me/downloads")
+    }
+
+    @discardableResult
+    public func retryDownload(_ id: String) async throws -> Download {
+        try await send("POST", "/me/downloads/\(id)/retry", body: nil as [String: String]?)
+    }
+
+    /// Cancels it when it hasn't finished, and removes it from the list.
+    public func removeDownload(_ id: String) async throws {
+        try await data("DELETE", "/me/downloads/\(id)", body: nil as [String: String]?)
+    }
+
+    public func clearFinishedDownloads() async throws {
+        try await data("DELETE", "/me/downloads", body: nil as [String: String]?)
     }
 
     public func scanStatus() async throws -> ScanStatus {

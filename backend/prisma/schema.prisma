@@ -43,6 +43,7 @@ model User {
   notifications          Notification[]        @relation("recipient")
   notificationsSent      Notification[]        @relation("sender")
   pushDevices            PushDevice[]
+  downloads              Download[]
 }
 
 model Session {
@@ -155,6 +156,45 @@ model Playlist {
 }
 
 // An entry, not a track: the same track can appear twice in a playlist.
+/// A download someone asked deemix for, followed until it is in the library (see downloads.ts).
+model Download {
+  id         String         @id @default(cuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// deemix's id for it: "<type>_<deezer id>_<bitrate>"
+  uuid       String
+  type       String // track or album (an artist's discography is one per album)
+  deezerId   String
+  title      String
+  artist     String
+  coverUrl   String?
+  status     DownloadStatus @default(queued)
+  progress   Int            @default(0) // percent
+  size       Int            @default(0) // tracks
+  downloaded Int            @default(0)
+  failed     Int            @default(0)
+  error      String?
+  /// Paths deemix wrote, to find the tracks once the library is scanned
+  files      String[]
+  /// Finished and found in the library (or given up looking): its owner was told.
+  ready      Boolean        @default(false)
+  trackId    String?
+  albumId    String?
+  createdAt  DateTime       @default(now())
+  finishedAt DateTime?
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+enum DownloadStatus {
+  queued
+  downloading
+  done
+  partial // some tracks failed
+  failed
+}
+
 /// What LRCLIB answered for a track (see lyrics.ts), misses included; lyrics in the files aren't cached.
 model TrackLyrics {
   trackId      String   @id

@@ -140,6 +140,15 @@ export interface SearchResults {
   playlists: PublicPlaylist[]
 }
 
+export type DownloadStatus = 'queued' | 'downloading' | 'done' | 'partial' | 'failed'
+
+/** The user's latest download of a search result. */
+export interface DownloadState {
+  id: string
+  status: DownloadStatus
+  progress: number
+}
+
 export interface DeezerTrack {
   id: number
   title: string
@@ -147,6 +156,53 @@ export interface DeezerTrack {
   link: string
   artist: { id: number; name: string }
   album: { id: number; title: string; cover_medium: string }
+  /** The same track in the library: play it rather than download it again. */
+  libraryTrack?: Track | null
+  download?: DownloadState | null
+}
+
+export interface DeezerAlbum {
+  id: number
+  title: string
+  link: string
+  cover_medium: string
+  nb_tracks: number
+  record_type?: string
+  artist: { id: number; name: string }
+  libraryAlbumId: string | null
+  download: DownloadState | null
+}
+
+export interface DeezerArtist {
+  id: number
+  name: string
+  link: string
+  picture_medium: string
+  nb_album: number
+  libraryArtistId: string | null
+}
+
+/** A download sent to deemix, followed until it is in the library. */
+export interface Download {
+  id: string
+  type: string
+  deezerId: string
+  title: string
+  artist: string
+  coverUrl: string | null
+  status: DownloadStatus
+  progress: number
+  /** Tracks */
+  size: number
+  downloaded: number
+  failed: number
+  error: string | null
+  /** Finished and found in the library (or given up looking). */
+  ready: boolean
+  trackId: string | null
+  albumId: string | null
+  createdAt: string
+  finishedAt: string | null
 }
 
 export interface DuplicateCopy {
@@ -610,7 +666,14 @@ export const api = {
   search: (q: string) => request<SearchResults>(`/search?${query({ q })}`),
   calendar: () => request<Calendar>('/me/calendar'),
   deezerSearch: (q: string) => request<DeezerTrack[]>(`/deezer/search?${query({ q })}`),
-  download: (url: string) => send<{ queued: boolean }>('POST', '/downloads', { url }),
+  deezerAlbums: (q: string) => request<DeezerAlbum[]>(`/deezer/search?${query({ q, type: 'album' })}`),
+  deezerArtists: (q: string) => request<DeezerArtist[]>(`/deezer/search?${query({ q, type: 'artist' })}`),
+  /** A Deezer link: track, album or artist (their discography). See startDownload in downloads.ts. */
+  download: (url: string) => send<{ queued: boolean; downloads: Download[] }>('POST', '/downloads', { url }),
+  downloads: () => request<Download[]>('/me/downloads'),
+  retryDownload: (id: string) => send<Download>('POST', `/me/downloads/${id}/retry`),
+  removeDownload: (id: string) => send<void>('DELETE', `/me/downloads/${id}`),
+  clearFinishedDownloads: () => send<void>('DELETE', '/me/downloads'),
   scanStatus: () => request<ScanStatus>('/library/scan'),
   startScan: (mode: ScanMode) => send<{ started: boolean }>('POST', `/library/scan?full=${mode === 'full'}`),
   duplicates: () => request<DuplicateGroup[]>('/library/duplicates'),

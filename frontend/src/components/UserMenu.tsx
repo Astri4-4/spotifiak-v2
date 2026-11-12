@@ -49,6 +49,9 @@ export function UserMenu() {
           <Link to="/account" role="menuitem" className="menu-item" onClick={close}>
             Compte
           </Link>
+          <Link to="/downloads" role="menuitem" className="menu-item" onClick={close}>
+            Téléchargements
+          </Link>
           <Link to="/calendar" role="menuitem" className="menu-item" onClick={close}>
             Calendrier
           </Link>

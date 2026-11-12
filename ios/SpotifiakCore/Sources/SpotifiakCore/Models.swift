@@ -439,6 +439,10 @@ public struct DeezerTrack: Codable, Sendable, Hashable, Identifiable {
     public let link: String
     public let artist: Artist
     public let album: Album
+    /// The same track in the library: play it rather than download it again.
+    public let libraryTrack: Track?
+    /// The user's latest download of it.
+    public let download: DownloadState?
 }
 
 // MARK: - Library scan

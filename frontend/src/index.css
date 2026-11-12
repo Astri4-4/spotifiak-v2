@@ -4004,3 +4004,134 @@ img.person-avatar {
   margin-left: -6px;
   box-shadow: 0 0 0 2px var(--base);
 }
+
+/* --- Downloads (/downloads, Deezer search) --- */
+
+.downloads-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.downloads-list,
+.deezer-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.download-row,
+.deezer-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.download-row:hover,
+.deezer-item:hover {
+  background: var(--highlight);
+}
+
+.download-text,
+.deezer-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.download-title {
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.download-title a:hover {
+  text-decoration: underline;
+}
+
+.download-subtitle,
+.download-status {
+  font-size: 0.8125rem;
+  color: var(--text-subdued);
+}
+
+.download-row.downloading .download-status,
+.download-row.done .download-status {
+  color: var(--green);
+}
+
+.download-row.failed .download-status {
+  color: var(--error);
+}
+
+.download-progress {
+  display: block;
+  height: 4px;
+  margin-top: 4px;
+  max-width: 320px;
+  border-radius: 2px;
+  background: var(--highlight-strong);
+  overflow: hidden;
+}
+
+.download-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--green);
+  transition: width 0.4s ease;
+}
+
+.download-buttons,
+.confirm-download {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.download-state {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--green);
+  white-space: nowrap;
+}
+
+.in-library {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--green);
+  white-space: nowrap;
+}
+
+.in-library:hover span {
+  text-decoration: underline;
+}
+
+.deezer-row .in-library-play {
+  position: static;
+  width: 32px;
+  height: 32px;
+  opacity: 1;
+  transform: none;
+}
+
+.deezer-hint {
+  margin-bottom: 16px;
+  color: var(--text-subdued);
+}
+
+.deezer-hint a {
+  color: var(--text);
+  text-decoration: underline;
+}

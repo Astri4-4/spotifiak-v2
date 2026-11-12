@@ -12,9 +12,13 @@ struct SearchView: View {
     @State private var podcasts: [PodcastSearchResult] = []
     /// Downloadable through deemix; nil when deemix doesn't answer.
     @State private var deezer: [DeezerTrack]?
+    @State private var deezerAlbums: [DeezerAlbum] = []
+    @State private var deezerArtists: [DeezerArtist] = []
     @State private var showsAllDeezer = false
-    /// Deezer tracks sent to deemix during this search.
-    @State private var queued: Set<Int> = []
+    /// Downloads started during this search, by "track:<id>", "album:<id>", "artist:<id>".
+    @State private var started: [String: DownloadState] = [:]
+    /// Asked before downloading a whole discography.
+    @State private var confirmingArtist: DeezerArtist?
     @State private var error: String?
     @State private var attempt = 0
     @FocusState private var focused: Bool
@@ -26,7 +30,15 @@ struct SearchView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Rechercher").font(.title.bold())
+                HStack {
+                    Text("Rechercher").font(.title.bold())
+                    Spacer()
+                    NavigationLink(value: Route.downloads) {
+                        Image(systemName: "arrow.down.circle").font(.title2).frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Téléchargements")
+                }
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass").font(.title3.weight(.semibold))
                     TextField("", text: $query, prompt: Text("Que souhaitez-vous écouter ?").foregroundStyle(Color(white: 0.33)))
@@ -135,11 +147,20 @@ struct SearchView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .confirmationDialog(
+            confirmingArtist.map { "Télécharger les \($0.nb_album) albums de \($0.name) ?" } ?? "",
+            isPresented: Binding(get: { confirmingArtist != nil }, set: { if !$0 { confirmingArtist = nil } }),
+            titleVisibility: .visible,
+            presenting: confirmingArtist
+        ) { artist in
+            Button("Télécharger la discographie") { download(key: "artist:\(artist.id)", link: artist.link, what: artist.name) }
+        }
         .task(id: "\(trimmed)#\(attempt)") { await search() }
         .task { browse = (try? await session.requireAPI().artists()) ?? [] }
     }
 
-    /// "Sur Deezer": tracks to download into the library (8, then all on demand).
+    /// "Sur Deezer": tracks to download into the library (8, then all on demand), then albums and
+    /// artists (their discography). What the library already has plays or opens instead.
     @ViewBuilder private var deezerSection: some View {
         if let deezer, !deezer.isEmpty {
             section("Sur Deezer") {
@@ -154,16 +175,17 @@ struct SearchView: View {
                                 .lineLimit(1)
                         }
                         Spacer(minLength: 0)
-                        let isQueued = queued.contains(track.id)
-                        Button { download(track) } label: {
-                            Image(systemName: isQueued ? "checkmark.circle.fill" : "arrow.down.circle")
-                                .font(.title2)
-                                .foregroundStyle(isQueued ? Theme.green : Theme.subdued)
-                                .frame(width: 44, height: 44)
+                        if let local = track.libraryTrack {
+                            Button { player.play([local], startAt: 0) } label: {
+                                Image(systemName: "play.circle.fill").font(.title2).foregroundStyle(Theme.green).frame(width: 44, height: 44)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("\(track.title) est dans ta bibliothèque : lire")
+                        } else {
+                            downloadControl(started["track:\(track.id)"] ?? track.download, label: "Télécharger \(track.title)") {
+                                download(key: "track:\(track.id)", link: track.link, what: track.title)
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .disabled(isQueued)
-                        .accessibilityLabel(isQueued ? "Téléchargement lancé" : "Télécharger \(track.title)")
                     }
                 }
                 if deezer.count > 8 && !showsAllDeezer {
@@ -175,16 +197,79 @@ struct SearchView: View {
         } else if deezer == nil {
             Text("Deezer est injoignable (deemix ne répond pas).").font(.footnote).foregroundStyle(Theme.subdued)
         }
+        if !deezerAlbums.isEmpty {
+            section("Albums sur Deezer") {
+                ForEach(deezerAlbums.prefix(6)) { album in
+                    HStack(spacing: 12) {
+                        row(album.cover_medium, album.title, "\(album.artist.name) • \(trackCount(album.nb_tracks))", circle: false)
+                        if let id = album.libraryAlbumId {
+                            NavigationLink(value: Route.album(id)) { inLibraryLabel }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("\(album.title) est dans ta bibliothèque : ouvrir")
+                        } else {
+                            downloadControl(started["album:\(album.id)"] ?? album.download, label: "Télécharger l'album \(album.title)") {
+                                download(key: "album:\(album.id)", link: album.link, what: album.title)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if !deezerArtists.isEmpty {
+            section("Artistes sur Deezer") {
+                ForEach(deezerArtists.prefix(5)) { artist in
+                    HStack(spacing: 12) {
+                        row(artist.picture_medium, artist.name, "\(artist.nb_album) album\(artist.nb_album > 1 ? "s" : "")", circle: true)
+                        if let id = artist.libraryArtistId {
+                            NavigationLink(value: Route.artist(id)) { inLibraryLabel }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("\(artist.name) est dans ta bibliothèque : ouvrir")
+                        }
+                        downloadControl(started["artist:\(artist.id)"], label: "Télécharger la discographie de \(artist.name)") {
+                            confirmingArtist = artist
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    private func download(_ track: DeezerTrack) {
-        queued.insert(track.id)
+    private var inLibraryLabel: some View {
+        Image(systemName: "checkmark.circle.fill").font(.title2).foregroundStyle(Theme.green).frame(width: 44, height: 44)
+    }
+
+    /// A download button, or where the download stands (opens the downloads page).
+    @ViewBuilder
+    private func downloadControl(_ state: DownloadState?, label: String, action: @escaping () -> Void) -> some View {
+        if let state, state.isActive {
+            NavigationLink(value: Route.downloads) {
+                Text(state.status == .queued || state.progress == 0 ? "En attente" : "\(state.progress) %")
+                    .font(.caption.bold().monospacedDigit())
+                    .foregroundStyle(Theme.green)
+                    .frame(minWidth: 44, minHeight: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Téléchargement en cours : voir les téléchargements")
+        } else {
+            Button(action: action) {
+                Image(systemName: "arrow.down.circle").font(.title2).foregroundStyle(Theme.subdued).frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(label)
+        }
+    }
+
+    private func download(key: String, link: String, what: String) {
+        started[key] = DownloadState(id: "", status: .queued, progress: 0)
         Task {
             do {
-                try await session.requireAPI().download(track.link)
-                player.showToast("Téléchargement lancé : le titre apparaîtra dans votre bibliothèque")
+                let downloads = try await session.requireAPI().download(link)
+                if let first = downloads.first {
+                    started[key] = DownloadState(id: first.id, status: first.status, progress: first.progress)
+                }
+                player.showToast("Téléchargement lancé : tu seras prévenu quand \(what) sera prêt")
             } catch {
-                queued.remove(track.id)
+                started[key] = nil
                 player.showToast((error as? APIError)?.message ?? "Téléchargement impossible")
             }
         }
@@ -203,6 +288,8 @@ struct SearchView: View {
             results = nil
             podcasts = []
             deezer = []
+            deezerAlbums = []
+            deezerArtists = []
             showsAllDeezer = false
             error = nil
             return
@@ -212,9 +299,13 @@ struct SearchView: View {
             let api = try session.requireAPI()
             async let podcastResults = try? api.searchPodcasts(text)
             async let deezerResults = try? api.searchDeezer(text)
+            async let albumResults = try? api.searchDeezerAlbums(text)
+            async let artistResults = try? api.searchDeezerArtists(text)
             results = try await api.search(text)
             podcasts = Array((await podcastResults ?? []).prefix(5))
             deezer = await deezerResults
+            deezerAlbums = await albumResults ?? []
+            deezerArtists = await artistResults ?? []
             showsAllDeezer = false
             error = nil
         } catch is CancellationError {

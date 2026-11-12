@@ -91,6 +91,12 @@ struct PendingRoute: Equatable {
         case .podcast(let id):
             tab = .library
             route = .podcast(id)
+        case .downloads:
+            tab = .search
+            route = .downloads
+        case .album(let id):
+            tab = .library
+            route = .album(id)
         }
     }
 }
