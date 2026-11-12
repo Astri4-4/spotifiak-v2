@@ -26,11 +26,6 @@ jobs:
       VERSION: 1.0.${{ github.run_number }}
       BUILD: ${{ github.run_number }}
       TAG: ios-v1.0.${{ github.run_number }}
-      # SideStore appends the signing team's ID to the bundle id (dev.spotifiak.ios.<TEAM>) but
-      # leaves the watch app's WKCompanionAppBundleIdentifier alone, so iOS refuses the install.
-      # With a team set, the watch app is pre-pointed at the renamed app and the source serves
-      # Spotifiak.ipa; empty, the source serves Spotifiak-NoWatch.ipa, which works for any team.
-      SIDESTORE_TEAM_ID: Y6PU2ABXTB
     steps:
       - uses: actions/checkout@v4
 
@@ -52,40 +47,28 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             -quiet
 
-      - name: Package IPAs
+      - name: Package IPA
         run: |
           APP=build/Build/Products/Release-iphoneos/Spotifiak.app
           test -d "$APP"
-          mkdir -p dist
-
-          # With the Apple Watch app embedded.
-          rm -rf pkg && mkdir -p pkg/Payload && cp -R "$APP" pkg/Payload/
-          if [ -n "$SIDESTORE_TEAM_ID" ]; then
-            BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")
-            WATCH_PLIST=pkg/Payload/Spotifiak.app/Watch/SpotifiakWatch.app/Info.plist
-            /usr/libexec/PlistBuddy -c "Set :WKCompanionAppBundleIdentifier $BUNDLE_ID.$SIDESTORE_TEAM_ID" "$WATCH_PLIST"
-            /usr/libexec/PlistBuddy -c 'Print :WKCompanionAppBundleIdentifier' "$WATCH_PLIST"
-          fi
-          (cd pkg && zip -qry ../dist/Spotifiak.ipa Payload)
-
-          # Without it: a free Apple ID allows 10 app IDs a week and the watch app uses one more.
+          mkdir -p pkg/Payload dist
+          cp -R "$APP" pkg/Payload/
+          # SideStore re-signs and renames the app and its extensions but not an embedded Watch
+          # app, which iOS then rejects (WatchKitAppBundleIDNotPrefixed), so leave it out.
           rm -rf pkg/Payload/Spotifiak.app/Watch
-          (cd pkg && zip -qry ../dist/Spotifiak-NoWatch.ipa Payload)
-
+          (cd pkg && zip -qry ../dist/Spotifiak.ipa Payload)
           ls -l dist
 
       - name: Write SideStore source
         env:
           REPO: ${{ github.repository }}
         run: |
-          IPA=Spotifiak.ipa
-          [ -n "$SIDESTORE_TEAM_ID" ] || IPA=Spotifiak-NoWatch.ipa
           BASE="https://github.com/$REPO/releases/download/$TAG"
-          SIZE=$(stat -f%z "dist/$IPA")
+          SIZE=$(stat -f%z dist/Spotifiak.ipa)
           DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           jq -n \
             --arg version "$VERSION" --arg build "$BUILD" --arg date "$DATE" \
-            --arg url "$BASE/$IPA" --argjson size "$SIZE" \
+            --arg url "$BASE/Spotifiak.ipa" --argjson size "$SIZE" \
             --arg icon "https://github.com/${REPO%%/*}.png" \
             --arg site "https://github.com/$REPO" \
             '{
@@ -97,7 +80,7 @@ jobs:
                 bundleIdentifier: "dev.spotifiak.ios",
                 developerName: "Spotifiak",
                 subtitle: "Client for your Spotifiak server",
-                localizedDescription: "SwiftUI client for any self-hosted Spotifiak server, with an Apple Watch remote.",
+                localizedDescription: "SwiftUI client for any self-hosted Spotifiak server.",
                 iconURL: $icon,
                 tintColor: "1DB954",
                 versions: [{
@@ -122,7 +105,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$TAG" dist/Spotifiak.ipa dist/Spotifiak-NoWatch.ipa dist/source.json \
+          gh release create "$TAG" dist/Spotifiak.ipa dist/source.json \
             --target "$GITHUB_SHA" \
             --title "Spotifiak iOS $VERSION" \
             --notes "Unsigned build of $GITHUB_SHA for SideStore. Add the source https://github.com/${{ github.repository }}/releases/latest/download/source.json or install Spotifiak.ipa directly." \
