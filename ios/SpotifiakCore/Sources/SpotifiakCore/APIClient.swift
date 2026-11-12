@@ -104,6 +104,20 @@ public final class APIClient: Sendable {
         try await get("/me/mixes/\(id)")
     }
 
+    /// The albums the user played last.
+    public func recentAlbums() async throws -> [Album] {
+        try await get("/me/recent")
+    }
+
+    public func genres() async throws -> [Genre] {
+        try await get("/genres")
+    }
+
+    /// The user's year in numbers; the current year when nil.
+    public func wrapped(year: Int? = nil) async throws -> Wrapped {
+        try await get("/me/wrapped", query: year.map { ["year": String($0)] } ?? [:])
+    }
+
     public func album(_ id: String) async throws -> AlbumDetail {
         try await get("/albums/\(id)")
     }

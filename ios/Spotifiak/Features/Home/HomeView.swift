@@ -45,6 +45,11 @@ struct HomeView: View {
                                 }
                             }
                         }
+                        if !library.recent.isEmpty {
+                            Shelf(title: "Écoutés récemment", more: .mix(MixSummary.history)) {
+                                ForEach(library.recent) { AlbumCard(album: $0) }
+                            }
+                        }
                         if !library.playlists.isEmpty {
                             Shelf(title: "Vos playlists") {
                                 ForEach(library.playlists) { playlist in
@@ -102,7 +107,7 @@ struct HomeView: View {
     }
 
     private func load() async throws -> (albums: [Album], artists: [Artist], playlists: [PlaylistSummary], episodes: [Episode],
-                                         publicPlaylists: [PublicPlaylist], mixes: [MixSummary]) {
+                                         publicPlaylists: [PublicPlaylist], mixes: [MixSummary], recent: [Album]) {
         let api = try session.requireAPI()
         async let albums = api.albums()
         async let artists = api.artists()
@@ -112,7 +117,8 @@ struct HomeView: View {
         async let publicPlaylists = try? api.publicPlaylists()
         // The mixes are a bonus too: the home page shows without them.
         async let mixes = try? api.mixes()
-        return try await (albums, artists, playlists, await episodes ?? [], await publicPlaylists ?? [], await mixes ?? [])
+        async let recent = try? api.recentAlbums()
+        return try await (albums, artists, playlists, await episodes ?? [], await publicPlaylists ?? [], await mixes ?? [], await recent ?? [])
     }
 }
 

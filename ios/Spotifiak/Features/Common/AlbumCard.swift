@@ -44,11 +44,22 @@ struct ArtistCard: View {
 /// A titled horizontal row of cards.
 struct Shelf<Content: View>: View {
     let title: String
+    /// A "Tout afficher" link.
+    var more: Route?
     @ViewBuilder let content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title).font(.title2.bold()).padding(.horizontal)
+            HStack(alignment: .firstTextBaseline) {
+                Text(title).font(.title2.bold())
+                Spacer()
+                if let more {
+                    NavigationLink("Tout afficher", value: more)
+                        .font(.footnote.bold())
+                        .foregroundStyle(Theme.subdued)
+                }
+            }
+            .padding(.horizontal)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 16) { content }.padding(.horizontal)
             }

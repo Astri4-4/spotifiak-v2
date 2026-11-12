@@ -13,7 +13,7 @@ const COVER_NAMES = ['cover.jpg', 'cover.png', 'folder.jpg']
 
 // Bump when indexing logic changes so existing tracks are re-read.
 // 2: read ISRC.
-const INDEX_VERSION = 2
+const INDEX_VERSION = 3 // 3: genre
 
 // Libraries usually live on network shares (SMB/NFS), where every file operation
 // is a round trip. Measured on SMB over VPN: throughput stops improving past ~16
@@ -305,6 +305,7 @@ export async function scanLibrary(log: FastifyBaseLogger, mode: ScanMode = 'quic
           durationSec: format.duration ? Math.round(format.duration) : null,
           trackNumber: common.track.no,
           discNumber: common.disk.no,
+          genre: common.genre?.[0]?.trim() || null,
           coverPath: cover,
         }
 

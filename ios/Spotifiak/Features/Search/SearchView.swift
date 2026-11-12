@@ -24,6 +24,7 @@ struct SearchView: View {
     @FocusState private var focused: Bool
     /// The library's artists, as the "Parcourir tout" tiles shown before typing.
     @State private var browse: [Artist] = []
+    @State private var genres: [Genre] = []
 
     private var trimmed: String { query.trimmingCharacters(in: .whitespaces) }
 
@@ -57,10 +58,19 @@ struct SearchView: View {
                 .onTapGesture { focused = true }
 
                 if trimmed.isEmpty && !browse.isEmpty {
+                    if !genres.isEmpty {
+                        section("Genres") {
+                            LazyVGrid(columns: [GridItem(spacing: 12), GridItem(spacing: 12)], spacing: 12) {
+                                ForEach(Array(genres.enumerated()), id: \.element.id) { index, genre in
+                                    BrowseTile(route: .mix(genre.mixId), title: genre.name, color: BrowseTile.colors[index % BrowseTile.colors.count])
+                                }
+                            }
+                        }
+                    }
                     section("Parcourir tout") {
                         LazyVGrid(columns: [GridItem(spacing: 12), GridItem(spacing: 12)], spacing: 12) {
                             ForEach(Array(browse.enumerated()), id: \.element.id) { index, artist in
-                                BrowseTile(artist: artist, color: BrowseTile.colors[index % BrowseTile.colors.count])
+                                BrowseTile(route: .artist(artist.id), title: artist.name, color: BrowseTile.colors[index % BrowseTile.colors.count], artist: artist)
                             }
                         }
                     }
@@ -156,7 +166,10 @@ struct SearchView: View {
             Button("Télécharger la discographie") { download(key: "artist:\(artist.id)", link: artist.link, what: artist.name) }
         }
         .task(id: "\(trimmed)#\(attempt)") { await search() }
-        .task { browse = (try? await session.requireAPI().artists()) ?? [] }
+        .task {
+            browse = (try? await session.requireAPI().artists()) ?? []
+            genres = (try? await session.requireAPI().genres()) ?? []
+        }
     }
 
     /// "Sur Deezer": tracks to download into the library (8, then all on demand), then albums and
@@ -333,8 +346,11 @@ struct SearchView: View {
 
 /// A colored tile with the artist's name and their picture tilted in the corner.
 private struct BrowseTile: View {
-    let artist: Artist
+    let route: Route
+    let title: String
     let color: Color
+    /// Its picture tilted in the corner; genres have none.
+    var artist: Artist?
     @Environment(Session.self) private var session
 
     /// Spotify's category colors.
@@ -346,17 +362,19 @@ private struct BrowseTile: View {
     ]
 
     var body: some View {
-        NavigationLink(value: Route.artist(artist.id)) {
+        NavigationLink(value: route) {
             ZStack(alignment: .topLeading) {
                 color
-                RemoteImage(url: session.api?.pictureURL(artist: artist), placeholder: "person.fill")
-                    .frame(width: 64, height: 64)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .shadow(radius: 4)
-                    .rotationEffect(.degrees(25))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                    .offset(x: 14, y: 4)
-                Text(artist.name)
+                if let artist {
+                    RemoteImage(url: session.api?.pictureURL(artist: artist), placeholder: "person.fill")
+                        .frame(width: 64, height: 64)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .shadow(radius: 4)
+                        .rotationEffect(.degrees(25))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                        .offset(x: 14, y: 4)
+                }
+                Text(title)
                     .font(.headline)
                     .lineLimit(2)
                     .padding(12)

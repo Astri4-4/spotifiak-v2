@@ -7,7 +7,10 @@ import { mosaic, toTrack, trackSelect } from './library.js'
 // - Daily Mix 1–6: groups of artists the user plays in the same listening sessions, each mix
 //   mixing their favourite tracks of those artists with ones they play less.
 // - "Entre amis": one per friend sharing their activity, both people's tastes together.
-// They change once a day (seeded by the date) and stay the same during the day.
+// - Discover Weekly: tracks the user never played, by artists people play alongside theirs.
+// - Release Radar: tracks added lately by artists the user listens to or follows.
+// - Radios (artist or track), genres and the listening history, opened on demand.
+// Daily ones change once a day (seeded by the date), weekly ones on Mondays.
 
 const HISTORY_DAYS = 180
 // A play counts half as much after this many days.
@@ -29,6 +32,23 @@ const FAVOURITES_SHARE = 0.6
 const EMPTY_RETRY_MS = 3600_000
 
 const DAY_MS = 24 * 3600_000
+
+const RADIO_SIZE = 50
+const RADIO_ARTISTS = 12
+// Share of a radio from artists related to the seed; the rest is the seed artist.
+const RELATED_SHARE = 2 / 3
+// Below this many related artists, a radio adds artists of the same genre.
+const MIN_RELATED = 5
+const DISCOVER_SIZE = 30
+const DISCOVER_SEEDS = 15
+// Unplayed tracks of an artist the user already likes count this much against related ones.
+const KNOWN_ARTIST_SHARE = 0.3
+const DISCOVER_PER_ARTIST = 3
+const RADAR_DAYS = 14
+const RADAR_SIZE = 50
+const MIN_RADAR_TRACKS = 3
+const HISTORY_SIZE = 100
+const GENRE_SIZE = 50
 
 export interface PlayEvent {
   trackId: string
@@ -224,6 +244,73 @@ export function buildBlend(mine: Map<string, number>, theirs: Map<string, number
   return result
 }
 
+/** The artists most played alongside `seed` (by everyone), strongest link first. */
+export function relatedArtists(seed: string, links: Map<string, number>, limit = RADIO_ARTISTS) {
+  const related: [string, number][] = []
+  for (const [key, weight] of links) {
+    const [a, b] = key.split('|')
+    if (a === seed) related.push([b, weight])
+    else if (b === seed) related.push([a, weight])
+  }
+  return related.sort((x, y) => y[1] - x[1]).slice(0, limit)
+}
+
+function byArtist(tracks: LibraryTrack[]) {
+  const groups = new Map<string, LibraryTrack[]>()
+  for (const t of tracks) groups.set(t.artistId, [...(groups.get(t.artistId) ?? []), t])
+  return groups
+}
+
+/** A radio: the seed artist and related ones, each related artist in proportion to its link; a track radio starts with its track. */
+export function buildRadio(seed: string, related: [string, number][], library: LibraryTrack[], random: () => number, firstTrackId?: string) {
+  const first = library.find((t) => t.id === firstTrackId)
+  const groups = byArtist(shuffle(library.filter((t) => t !== first), random))
+  const total = related.reduce((sum, [, w]) => sum + w, 0)
+  const relatedCap = Math.round(RADIO_SIZE * RELATED_SHARE)
+  const fromRelated = related
+    .flatMap(([artist, w]) => (groups.get(artist) ?? []).slice(0, Math.ceil((relatedCap * w) / total)))
+    .slice(0, relatedCap)
+  const fromSeed = (groups.get(seed) ?? []).slice(0, RADIO_SIZE - fromRelated.length)
+  const rest = spreadArtists(shuffle([...fromSeed, ...fromRelated], random)).slice(0, RADIO_SIZE - (first ? 1 : 0))
+  return first ? [first, ...rest] : rest
+}
+
+/**
+ * Discover Weekly: tracks the user never played, from the artists people play alongside the user's
+ * favourites (and, less, from the favourites themselves), a few per artist.
+ */
+export function buildDiscovery(
+  affinity: Map<string, number>,
+  links: Map<string, number>,
+  library: LibraryTrack[],
+  heard: Set<string>,
+  random: () => number,
+) {
+  const weights = new Map<string, number>()
+  const add = (artist: string, w: number) => weights.set(artist, (weights.get(artist) ?? 0) + w)
+  const seeds = [...affinity].sort((a, b) => b[1] - a[1]).slice(0, DISCOVER_SEEDS)
+  for (const [artist, score] of seeds) {
+    add(artist, score * KNOWN_ARTIST_SHARE)
+    for (const [other, link] of relatedArtists(artist, links)) add(other, score * link)
+  }
+  const groups = byArtist(shuffle(library.filter((t) => !heard.has(t.id)), random))
+  const candidates = [...weights]
+    .sort((a, b) => b[1] - a[1])
+    .flatMap(([artist]) => (groups.get(artist) ?? []).slice(0, DISCOVER_PER_ARTIST))
+    .slice(0, DISCOVER_SIZE * 2)
+  return spreadArtists(shuffle(candidates, random).slice(0, DISCOVER_SIZE))
+}
+
+/** A genre's id in URLs: "Hip-Hop/Rap" → "hip-hop-rap". */
+export function genreSlug(name: string) {
+  return name
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
 /** "A, B et C" */
 export function listNames(names: string[]) {
   return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} et ${names.at(-1)}`
@@ -258,7 +345,7 @@ type MixTrackRow = Awaited<ReturnType<typeof loadTracks>>[number]
 
 interface Mix {
   id: string
-  kind: 'daily' | 'blend'
+  kind: 'daily' | 'blend' | 'weekly' | 'radar' | 'radio' | 'genre' | 'history'
   title: string
   description: string
   friend: { id: string; username: string; displayName: string; avatarUpdatedAt: Date | null } | null
@@ -327,19 +414,205 @@ async function blends(userId: string, day: string, now: number): Promise<Mix[]> 
   return mixes
 }
 
-// Each user's mixes for the day, computed on first request.
-const cache = new Map<string, { day: string; mixes: Promise<Mix[]> }>()
+// --- Weekly mixes and mixes opened on demand ------------------------------------------
+
+// Artists played together by people sharing their activity, refreshed daily.
+let sharedLinksCache: { day: string; links: Promise<Map<string, number>> } | null = null
+
+function sharedLinks(day: string, now: number) {
+  if (sharedLinksCache?.day === day) return sharedLinksCache.links
+  const links = prisma.play
+    .findMany({
+      where: { playedAt: { gte: new Date(now - HISTORY_DAYS * DAY_MS) }, user: { shareActivity: true } },
+      select: { userId: true, trackId: true, playedAt: true, track: { select: { artistId: true } } },
+    })
+    .then((plays) => {
+      const byUser = new Map<string, PlayEvent[]>()
+      for (const p of plays) byUser.set(p.userId, [...(byUser.get(p.userId) ?? []), { trackId: p.trackId, playedAt: p.playedAt, artistId: p.track.artistId }])
+      return coListening([...byUser.values()].flatMap(sessions))
+    })
+  sharedLinksCache = { day, links }
+  links.catch(() => (sharedLinksCache = null))
+  return links
+}
+
+/** Everyone's shared links, plus the user's own when they keep their activity private. */
+async function linksFor(userId: string, events: PlayEvent[], day: string, now: number) {
+  const [shared, user] = await Promise.all([sharedLinks(day, now), prisma.user.findUnique({ where: { id: userId }, select: { shareActivity: true } })])
+  if (user?.shareActivity) return shared
+  const links = new Map(shared)
+  for (const [key, w] of coListening(sessions(events))) links.set(key, (links.get(key) ?? 0) + w)
+  return links
+}
+
+async function artistNames(ids: string[]) {
+  const artists = await prisma.artist.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+  const names = new Map(artists.map((a) => [a.id, a.name]))
+  return ids.flatMap((id) => names.get(id) ?? [])
+}
+
+async function weeklyMixes(userId: string, week: string, now: number): Promise<Mix[]> {
+  const { events, scores, artistOf } = await tasteOf(userId, now)
+  const affinity = artistScores(scores, artistOf)
+  const [links, heardRows, followed] = await Promise.all([
+    linksFor(userId, events, today(now), now),
+    prisma.play.findMany({ where: { userId }, distinct: ['trackId'], select: { trackId: true } }),
+    prisma.followedArtist.findMany({ where: { userId }, select: { artistId: true } }),
+  ])
+  const mixes: Mix[] = []
+
+  // shortcut: loads every track's ids, fine for a home library; filter by artist past ~100k tracks.
+  const library = await prisma.track.findMany({ select: { id: true, artistId: true, albumId: true } })
+  const heard = new Set([...heardRows.map((p) => p.trackId), ...scores.keys()])
+  const discovery = buildDiscovery(affinity, links, library, heard, seededRandom(`${userId}:${week}:discover`))
+  if (discovery.length >= MIN_MIX_TRACKS) {
+    mixes.push({
+      id: 'discover-weekly',
+      kind: 'weekly',
+      title: 'Discover Weekly',
+      description: 'Des titres que tu n\'as jamais écoutés, choisis pour toi',
+      friend: null,
+      rows: await loadTracks(discovery.map((t) => t.id)),
+    })
+  }
+
+  const artists = [...new Set([...affinity.keys(), ...followed.map((f) => f.artistId)])]
+  const radar = await prisma.track.findMany({
+    where: { artistId: { in: artists }, createdAt: { gte: new Date(now - RADAR_DAYS * DAY_MS) } },
+    select: mixTrackSelect,
+    orderBy: [{ createdAt: 'desc' }, { albumId: 'asc' }, { discNumber: 'asc' }, { trackNumber: 'asc' }],
+    take: RADAR_SIZE,
+  })
+  if (radar.length >= MIN_RADAR_TRACKS) {
+    mixes.push({
+      id: 'release-radar',
+      kind: 'radar',
+      title: 'Release Radar',
+      description: 'Les nouveautés de tes artistes',
+      friend: null,
+      rows: radar,
+    })
+  }
+  return mixes
+}
+
+/** The most common genre of an artist's tracks. */
+async function genreOf(artistId: string) {
+  const [top] = await prisma.track.groupBy({
+    by: ['genre'],
+    where: { artistId, genre: { not: null } },
+    _count: { genre: true },
+    orderBy: { _count: { genre: 'desc' } },
+    take: 1,
+  })
+  return top?.genre ?? null
+}
+
+async function radioMix(userId: string, kind: 'artist' | 'track', id: string, day: string, now: number): Promise<Mix | null> {
+  const seedTrack = kind === 'track' ? await prisma.track.findUnique({ where: { id }, select: { id: true, title: true, artistId: true } }) : null
+  const artist = await prisma.artist.findUnique({ where: { id: seedTrack?.artistId ?? id }, select: { id: true, name: true } })
+  if (!artist || (kind === 'track' && !seedTrack)) return null
+  const { events } = await tasteOf(userId, now)
+  const related = relatedArtists(artist.id, await linksFor(userId, events, day, now))
+  if (related.length < MIN_RELATED) {
+    // Too little listening data: same-genre artists fill in, weaker than any played-together one.
+    const genre = await genreOf(artist.id)
+    const known = new Set([artist.id, ...related.map(([a]) => a)])
+    const sameGenre = genre
+      ? await prisma.track.findMany({ where: { genre, artistId: { notIn: [...known] } }, distinct: ['artistId'], select: { artistId: true } })
+      : []
+    const weight = Math.min(1, ...related.map(([, w]) => w)) / 2
+    const random = seededRandom(`${day}:genre-fill:${artist.id}`)
+    related.push(...shuffle(sameGenre, random).slice(0, RADIO_ARTISTS - related.length).map((t): [string, number] => [t.artistId, weight]))
+  }
+  const library = await prisma.track.findMany({
+    where: { artistId: { in: [artist.id, ...related.map(([a]) => a)] } },
+    select: { id: true, artistId: true, albumId: true },
+  })
+  const ids = buildRadio(artist.id, related, library, seededRandom(`${userId}:${day}:radio:${kind}:${id}`), seedTrack?.id).map((t) => t.id)
+  const names = await artistNames(related.slice(0, 3).map(([a]) => a))
+  return {
+    id: `radio-${kind}-${id}`,
+    kind: 'radio',
+    title: `Radio ${seedTrack?.title ?? artist.name}`,
+    description: names.length ? `Avec ${listNames([artist.name, ...names])}` : `Avec ${artist.name}`,
+    friend: null,
+    rows: await loadTracks(ids),
+  }
+}
+
+/** Every genre in the library, most tracks first. */
+export async function listGenres() {
+  const groups = await prisma.track.groupBy({ by: ['genre'], where: { genre: { not: null } }, _count: { genre: true } })
+  return groups
+    .map((g) => ({ id: genreSlug(g.genre!), name: g.genre!, trackCount: g._count.genre }))
+    .filter((g) => g.id)
+    .sort((a, b) => b.trackCount - a.trackCount)
+}
+
+/** A genre: its most played tracks, then others to discover, new ones each day. */
+async function genreMix(slug: string, day: string): Promise<Mix | null> {
+  const genre = (await listGenres()).find((g) => g.id === slug)
+  if (!genre) return null
+  const tracks = await prisma.track.findMany({
+    where: { genre: { equals: genre.name } },
+    select: { id: true, artistId: true, albumId: true, _count: { select: { plays: true } } },
+  })
+  const random = seededRandom(`${day}:genre:${slug}`)
+  const popular = tracks
+    .filter((t) => t._count.plays > 0)
+    .sort((a, b) => b._count.plays - a._count.plays)
+    .slice(0, GENRE_SIZE / 2)
+  const chosen = new Set(popular.map((t) => t.id))
+  const others = shuffle(
+    tracks.filter((t) => !chosen.has(t.id)),
+    random,
+  ).slice(0, GENRE_SIZE - popular.length)
+  return {
+    id: `genre-${slug}`,
+    kind: 'genre',
+    title: genre.name,
+    description: `Les titres ${genre.name} les plus écoutés, et d'autres à découvrir`,
+    friend: null,
+    rows: await loadTracks(spreadArtists(shuffle([...popular, ...others], random)).map((t) => t.id)),
+  }
+}
+
+/** The tracks the user played last, most recent first, each once. */
+async function historyMix(userId: string): Promise<Mix> {
+  const plays = await prisma.play.findMany({ where: { userId }, orderBy: { playedAt: 'desc' }, take: HISTORY_SIZE * 5, select: { trackId: true } })
+  return {
+    id: 'history',
+    kind: 'history',
+    title: 'Écoutés récemment',
+    description: 'Tes derniers titres écoutés',
+    friend: null,
+    rows: await loadTracks([...new Set(plays.map((p) => p.trackId))].slice(0, HISTORY_SIZE)),
+  }
+}
+
+// --- Caches -------------------------------------------------------------------------
+
+// Each user's mixes for the day (or week), computed on first request.
+type MixCache = Map<string, { key: string; mixes: Promise<Mix[]> }>
+const dailyCache: MixCache = new Map()
+const weeklyCache: MixCache = new Map()
 
 /** The server's local date: mixes change at midnight. */
 const today = (now: number) => new Date(now).toLocaleDateString('sv-SE')
 
-function mixesOf(userId: string) {
-  const now = Date.now()
-  const day = today(now)
-  const cached = cache.get(userId)
-  if (cached && cached.day === day) return cached.mixes
-  const mixes = Promise.all([dailyMixes(userId, day, now), blends(userId, day, now)]).then(([d, b]) => [...d, ...b])
-  cache.set(userId, { day, mixes })
+/** The Monday of this week: weekly mixes change then. */
+export function weekOf(now: number) {
+  const d = new Date(now)
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return today(d.getTime())
+}
+
+function cached(cache: MixCache, userId: string, key: string, build: () => Promise<Mix[]>) {
+  const hit = cache.get(userId)
+  if (hit && hit.key === key) return hit.mixes
+  const mixes = build()
+  cache.set(userId, { key, mixes })
   mixes.then(
     (list) => {
       // Nothing yet (a new account): look again in an hour rather than tomorrow.
@@ -348,6 +621,27 @@ function mixesOf(userId: string) {
     () => cache.delete(userId),
   )
   return mixes
+}
+
+async function mixesOf(userId: string) {
+  const now = Date.now()
+  const day = today(now)
+  const week = weekOf(now)
+  const [weekly, daily] = await Promise.all([
+    cached(weeklyCache, userId, week, () => weeklyMixes(userId, week, now)),
+    cached(dailyCache, userId, day, () => Promise.all([dailyMixes(userId, day, now), blends(userId, day, now)]).then(([d, b]) => [...d, ...b])),
+  ])
+  return [...weekly, ...daily]
+}
+
+/** Any mix by id: the listed ones, or a radio, genre or the history, made when opened. */
+async function openMix(userId: string, id: string) {
+  const now = Date.now()
+  if (id === 'history') return historyMix(userId)
+  const radio = /^radio-(artist|track)-(.+)$/.exec(id)
+  if (radio) return radioMix(userId, radio[1] as 'artist' | 'track', radio[2], today(now), now)
+  if (id.startsWith('genre-')) return genreMix(id.slice('genre-'.length), today(now))
+  return (await mixesOf(userId)).find((m) => m.id === id) ?? null
 }
 
 function summary(mix: Mix) {
@@ -367,7 +661,7 @@ export async function mixRoutes(app: FastifyInstance) {
 
   app.get('/me/mixes/:id', async (req, reply) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
-    const mix = (await mixesOf(req.user!.id)).find((m) => m.id === id)
+    const mix = await openMix(req.user!.id, id)
     if (!mix) return reply.code(404).send({ error: 'Mix introuvable' })
     return {
       ...summary(mix),

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { api, images } from '../api'
 import { Card } from '../components/Card'
 import { Cover } from '../components/Cover'
@@ -49,6 +49,9 @@ function ArtistView({ id }: { id: string }) {
       <div className="action-bar">
         <PlayButton size="lg" playing={isPlaying(artist.id)} onClick={() => void playTracks(artist.id, artist.tracks)} />
         <FollowButton artist={artist} />
+        <Link to={`/mix/radio-artist-${artist.id}`} className="follow-button">
+          Radio
+        </Link>
       </div>
 
       <div className="page-inner">

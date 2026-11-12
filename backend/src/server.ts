@@ -22,6 +22,7 @@ import { enrichStatus } from './enrich.js'
 import { libraryRoutes } from './library.js'
 import { lyricsRoutes } from './lyrics.js'
 import { mixRoutes } from './mixes.js'
+import { discoverRoutes } from './discover.js'
 import { scanLibrary, scanStatus, startPeriodicScan } from './scanner.js'
 import { audioQuery, resolveMusicPath, streamAudio } from './stream.js'
 
@@ -59,6 +60,7 @@ await app.register(calendarRoutes)
 await app.register(pushRoutes)
 await app.register(lyricsRoutes)
 await app.register(mixRoutes)
+await app.register(discoverRoutes)
 await app.register(downloadRoutes)
 
 app.get('/tracks/:id/stream', async (req, reply) => {

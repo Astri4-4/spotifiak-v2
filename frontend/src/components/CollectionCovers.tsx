@@ -31,7 +31,7 @@ export function LikedCover({ size, className = '' }: Sized) {
   const style = size ? { width: size, height: size } : undefined
   return (
     <div className={`cover liked-cover ${className}`} style={style}>
-      <HeartFilledIcon size={size && size < 64 ? Math.round(size / 3) : 64} />
+      <HeartFilledIcon />
     </div>
   )
 }

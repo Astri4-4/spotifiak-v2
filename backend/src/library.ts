@@ -157,8 +157,8 @@ export async function libraryRoutes(app: FastifyInstance) {
       prisma.track.findMany({
         where: { artistId: id },
         select: trackSelect,
-        // Until play counts exist, "popular" means most recently added.
-        orderBy: { createdAt: 'desc' },
+        // Popular: most played by everyone, newest first among equals.
+        orderBy: [{ plays: { _count: 'desc' } }, { createdAt: 'desc' }],
         take: 10,
       }),
     ])

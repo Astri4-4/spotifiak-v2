@@ -69,3 +69,30 @@ private let synced = Lyrics(synced: true, lines: [
     #expect(mix.sources == [.both, .friend])
     #expect(mix.source(at: 5) == nil)
 }
+
+@Test func wrappedDecodesPlayCountsAlongsideTracksAndArtists() async throws {
+    let transport = FakeTransport()
+    let track = #"{"id":"t1","title":"T","artistName":"A","artistId":"a","album":null,"durationSec":200,"trackNumber":1,"discNumber":1,"addedAt":"2026-01-01T00:00:00.000Z","format":"mp3","plays":7}"#
+    transport.respond(
+        "https://h/api/me/wrapped?year=2026",
+        #"{"year":2026,"years":[2026,2025],"plays":12,"minutes":40,"topTracks":["# + track + #"],"topArtists":[{"id":"a","name":"A","pictureUrl":null,"coverTrackId":"t1","plays":9}],"topGenres":[{"name":"Rock","plays":9}]}"#
+    )
+    let client = APIClient(base: URL(string: "https://h/api")!, transport: transport, onUnauthorized: {})
+    let wrapped = try await client.wrapped(year: 2026)
+    #expect(wrapped.topTracks.map(\.id) == ["t1"] && wrapped.trackPlays == [7])
+    #expect(wrapped.topArtists.map(\.name) == ["A"] && wrapped.artistPlays == [9])
+    #expect(wrapped.years == [2026, 2025] && wrapped.topGenres.first?.name == "Rock")
+}
+
+@Test func discoveryMixesHaveTheirOwnKindsAndIds() async throws {
+    let transport = FakeTransport()
+    transport.respond(
+        "https://h/api/me/mixes",
+        #"[{"id":"discover-weekly","kind":"weekly","title":"Discover Weekly","description":"d","friend":null,"trackCount":30,"covers":[]}]"#
+    )
+    let client = APIClient(base: URL(string: "https://h/api")!, transport: transport, onUnauthorized: {})
+    let mixes = try await client.mixes()
+    #expect(mixes.first?.kind == .weekly && mixes.first?.kind.updates == "Mis à jour chaque lundi")
+    #expect(MixSummary.artistRadio("a1") == "radio-artist-a1")
+    #expect(MixSummary.Kind.radio.updates == nil)
+}

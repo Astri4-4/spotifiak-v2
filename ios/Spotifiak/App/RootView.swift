@@ -117,6 +117,7 @@ private struct TabStack<Content: View>: View {
                 .navigationDestination(for: Route.self) { RouteView(route: $0) }
         }
         .environment(\.navigate) { path.append($0) }
+        .environment(\.canNavigate, true)
         .onChange(of: pending, initial: true) { _, pending in
             guard let pending, pending.tab == tab else { return }
             self.pending = nil

@@ -84,7 +84,7 @@ struct LibraryView: View {
             Button("Annuler", role: .cancel) {}
             Button("Créer") { Task { await library.createPlaylist(name: newName) } }
         }
-        .sheet(isPresented: $showsJam) { JamSheet() }
+        .sheet(isPresented: $showsJam) { JamSheet().environment(\.canNavigate, false) }
     }
 
     private var header: some View {
@@ -92,6 +92,7 @@ struct LibraryView: View {
             Menu {
                 Section(user.displayName) {
                     Button("Compte", systemImage: "person.crop.circle") { navigate(.account) }
+                    Button("Ton année", systemImage: "chart.bar") { navigate(.wrapped) }
                     Button("Calendrier", systemImage: "calendar") { navigate(.calendar) }
                     Button("Importer depuis Spotify", systemImage: "square.and.arrow.down") { navigate(.spotifyImport) }
                     Button("Analyse de la bibliothèque", systemImage: "arrow.triangle.2.circlepath") { navigate(.scan) }

@@ -6,7 +6,7 @@ export function MixCover({ mix, className = '', quality = 'md' }: { mix: MixSumm
   return (
     <div className={`mix-cover ${mix.kind} ${className}`}>
       <PlaylistCover covers={mix.covers} quality={quality} />
-      <span className="mix-cover-label">{mix.kind === 'blend' ? 'Entre amis' : mix.title}</span>
+      <span className="mix-cover-label">{mix.kind === 'blend' ? 'Entre amis' : mix.kind === 'radio' ? 'Radio' : mix.title}</span>
     </div>
   )
 }

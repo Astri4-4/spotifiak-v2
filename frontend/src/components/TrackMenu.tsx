@@ -142,6 +142,11 @@ export function TrackMenu({ track, onRemoveFromPlaylist }: TrackMenuProps) {
                 {likedIds.has(track.id) ? 'Retirer des Titres likés' : 'Ajouter aux Titres likés'}
               </button>
               <hr className="menu-separator" />
+              {!track.episode && (
+                <button role="menuitem" className="menu-item" onClick={run(() => navigate(`/mix/radio-track-${track.id}`))}>
+                  Lancer la radio
+                </button>
+              )}
               <button role="menuitem" className="menu-item" onClick={run(() => navigate(`/artist/${track.artistId}`))}>
                 Accéder à l'artiste
               </button>

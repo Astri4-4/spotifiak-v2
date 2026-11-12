@@ -1,7 +1,7 @@
 import SpotifiakCore
 import SwiftUI
 
-/// A Daily Mix or an "Entre amis" mix: made by the server from what people listen to, new every day.
+/// A mix made by the server from what people listen to: Daily Mix, "Entre amis", radio, genre, history…
 struct MixView: View {
     let id: String
     @Environment(Session.self) private var session
@@ -11,13 +11,14 @@ struct MixView: View {
             DetailPage(colorURL: mix.covers.first.flatMap { session.api?.coverURL(mosaic: $0) }, tracks: mix.tracks) {
                 MixArt(kind: mix.kind, title: mix.title, covers: mix.covers, labelFont: .title2.weight(.heavy))
             } info: {
+                Text(mix.kind.label.uppercased()).font(.caption.bold()).foregroundStyle(Theme.subdued)
                 Text(mix.title).font(.title2.bold())
                 Text(mix.friend.map { "Chaque titre vient de toi, de \($0.displayName) ou de vous deux." } ?? mix.description)
                     .font(.subheadline)
                     .foregroundStyle(Theme.subdued)
                 HStack(spacing: 6) {
                     if let friend = mix.friend { Avatar(person: friend, size: 20) }
-                    Text("Mis à jour chaque jour • \(trackCount(mix.tracks.count))")
+                    Text([mix.kind.updates, trackCount(mix.tracks.count)].compactMap { $0 }.joined(separator: " • "))
                 }
                 .font(.caption)
                 .foregroundStyle(Theme.subdued)
@@ -82,7 +83,7 @@ struct MixArt: View {
     var body: some View {
         Mosaic(covers: covers)
             .overlay(alignment: .bottomLeading) {
-                Text(kind == .blend ? "Entre amis" : title)
+                Text(kind == .blend || kind == .radio ? kind.label : title)
                     .font(labelFont)
                     .foregroundStyle(.white)
                     .shadow(color: .black.opacity(0.3), radius: 1, y: 1)

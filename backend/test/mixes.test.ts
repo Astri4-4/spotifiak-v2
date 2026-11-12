@@ -5,8 +5,22 @@ import { test } from 'node:test'
 process.env.DATABASE_URL ??= 'postgresql://test@localhost/test'
 process.env.DEEMIX_URL ??= 'http://localhost:6595'
 process.env.MUSIC_DIR ??= '/music'
-const { buildBlend, buildDailyMix, clusterArtists, coListening, listNames, seededRandom, sessions, spreadArtists, trackScores } =
-  await import('../src/mixes.js')
+const {
+  buildBlend,
+  buildDailyMix,
+  buildDiscovery,
+  buildRadio,
+  clusterArtists,
+  coListening,
+  genreSlug,
+  listNames,
+  relatedArtists,
+  seededRandom,
+  sessions,
+  spreadArtists,
+  trackScores,
+  weekOf,
+} = await import('../src/mixes.js')
 
 const NOW = Date.UTC(2026, 10, 12, 12)
 const at = (minutesAgo: number) => new Date(NOW - minutesAgo * 60_000)
@@ -110,4 +124,54 @@ test('listNames joins names the French way', () => {
   assert.equal(listNames(['A']), 'A')
   assert.equal(listNames(['A', 'B']), 'A et B')
   assert.equal(listNames(['A', 'B', 'C']), 'A, B et C')
+})
+
+const links = new Map([
+  ['A|B', 3],
+  ['A|C', 1],
+  ['B|C', 5],
+])
+const lib = (artist: string, n: number) => Array.from({ length: n }, (_, i) => ({ id: `${artist}${i}`, artistId: artist, albumId: null }))
+
+test('relatedArtists ranks the artists played alongside one, strongest first', () => {
+  assert.deepEqual(relatedArtists('A', links), [
+    ['B', 3],
+    ['C', 1],
+  ])
+  assert.deepEqual(relatedArtists('Z', links), [])
+})
+
+test('a radio mixes the seed artist with related ones, and a track radio starts with its track', () => {
+  const library = [...lib('A', 40), ...lib('B', 40), ...lib('C', 40)]
+  const radio = buildRadio('A', relatedArtists('A', links), library, seededRandom('x'), 'A7')
+  assert.equal(radio.length, 50)
+  assert.equal(radio[0].id, 'A7')
+  assert.equal(new Set(radio.map((t) => t.id)).size, 50)
+  const count = (artist: string) => radio.filter((t) => t.artistId === artist).length
+  assert.ok(count('B') > count('C'), 'the more linked artist gets more tracks')
+  assert.ok(count('A') >= 15)
+  // Without related artists, a radio is the seed artist alone.
+  assert.ok(buildRadio('A', [], library, seededRandom('x')).every((t) => t.artistId === 'A'))
+})
+
+test('Discover Weekly only has unheard tracks, mostly from related artists', () => {
+  const library = [...lib('A', 10), ...lib('B', 10), ...lib('C', 10), ...lib('Z', 10)]
+  const heard = new Set(['A0', 'A1', 'B0'])
+  const picks = buildDiscovery(new Map([['A', 5]]), links, library, heard, seededRandom('w'))
+  assert.ok(picks.length > 0)
+  assert.ok(picks.every((t) => !heard.has(t.id)))
+  assert.ok(picks.every((t) => t.artistId !== 'Z'), 'unrelated artists stay out')
+  assert.ok(picks.filter((t) => t.artistId === 'B').length <= 3)
+})
+
+test('genreSlug makes URL ids of genre names', () => {
+  assert.equal(genreSlug('Hip-Hop/Rap'), 'hip-hop-rap')
+  assert.equal(genreSlug('Électronique'), 'electronique')
+  assert.equal(genreSlug('!!!'), '')
+})
+
+test('weekOf is the Monday of the week', () => {
+  assert.equal(weekOf(new Date(2026, 10, 12, 15).getTime()), '2026-11-09') // a Thursday
+  assert.equal(weekOf(new Date(2026, 10, 15, 23).getTime()), '2026-11-09') // the Sunday after
+  assert.equal(weekOf(new Date(2026, 10, 16, 0).getTime()), '2026-11-16')
 })

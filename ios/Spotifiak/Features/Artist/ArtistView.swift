@@ -34,6 +34,16 @@ struct ArtistView: View {
                             .overlay(Capsule().stroke(followed ? .white : Theme.subdued))
                             .buttonStyle(.plain)
                             .accessibilityLabel(followed ? "Ne plus suivre \(artist.name)" : "Suivre \(artist.name)")
+                        NavigationLink(value: Route.mix(MixSummary.artistRadio(artist.id))) {
+                            Text("Radio")
+                                .font(.footnote.bold())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 16)
+                                .frame(height: 32)
+                                .overlay(Capsule().stroke(Theme.subdued))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Radio de \(artist.name)")
                     }
                     .padding(.horizontal)
                     if !artist.tracks.isEmpty {

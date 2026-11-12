@@ -66,11 +66,14 @@ enum Route: Hashable {
     case calendar
     case mix(String)
     case downloads
+    case wrapped
 }
 
 extension EnvironmentValues {
     /// Pushes a page on the current tab's stack (for pages opened after an action).
     @Entry var navigate: (Route) -> Void = { _ in }
+    /// False outside a tab's stack (the player, sheets), where `navigate` does nothing.
+    @Entry var canNavigate = false
 }
 
 /// The page of each route.
@@ -95,6 +98,7 @@ struct RouteView: View {
             case .calendar: CalendarView()
             case .mix(let id): MixView(id: id)
             case .downloads: DownloadsView()
+            case .wrapped: WrappedView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

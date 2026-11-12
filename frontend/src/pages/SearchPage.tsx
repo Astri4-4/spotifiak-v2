@@ -49,8 +49,21 @@ function useDebounced<T>(value: T, ms: number) {
 
 function BrowseAll() {
   const { data: artists } = useFetch(() => api.artists().then((r) => r.items), [])
+  const { data: genres } = useFetch(() => api.genres(), [])
   return (
     <div className="page-inner">
+      {genres && genres.length > 0 && (
+        <>
+          <h2 className="section-title">Genres</h2>
+          <div className="browse-grid">
+            {genres.map((genre) => (
+              <Link key={genre.id} to={`/mix/genre-${genre.id}`} className="browse-tile" style={{ backgroundColor: tileColor(genre.name) }}>
+                <span>{genre.name}</span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
       <h2 className="section-title">Parcourir tout</h2>
       <div className="browse-grid">
         {artists?.map((artist) => (

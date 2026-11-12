@@ -24,6 +24,7 @@ export function HomePage() {
   const { data: artists } = useFetch(() => api.artists().then((r) => r.items), [])
   const { data: publicPlaylists } = useFetch(() => collection.publicPlaylists(), [])
   const { data: mixes } = useFetch(() => api.mixes(), [])
+  const { data: recent } = useFetch(() => api.recentAlbums(), [])
   const { isPlaying, playAlbum, playArtist, playPlaylist, playLiked, playMix } = usePlayContext()
   const { likedIds, playlists, podcasts: subscriptions } = useCollection()
   // Reloaded when subscriptions change, so a new subscription shows up here.
@@ -102,6 +103,22 @@ export function HomePage() {
                 cover={<MixCover mix={mix} />}
                 playing={isPlaying(`mix:${mix.id}`)}
                 onPlay={() => void playMix(mix.id, mix.title)}
+              />
+            ))}
+          </Shelf>
+        )}
+
+        {recent && recent.length > 0 && (
+          <Shelf title="Écoutés récemment" more="/mix/history">
+            {recent.map((album) => (
+              <Card
+                key={album.id}
+                to={`/album/${album.id}`}
+                title={album.title}
+                subtitle={album.artist.name}
+                image={images.album(album)}
+                playing={isPlaying(album.id)}
+                onPlay={() => void playAlbum(album.id)}
               />
             ))}
           </Shelf>

@@ -632,10 +632,13 @@ export const users = {
 
 const query = (params: Record<string, string>) => new URLSearchParams(params).toString()
 
-/** A mix made from what people listen to: Daily Mix N, or "Entre amis" with a friend. */
+/**
+ * A mix made from what people listen to: Daily Mix N, "Entre amis", Discover Weekly, Release Radar;
+ * or, opened by id, a radio (radio-artist-<id>, radio-track-<id>), a genre (genre-<id>) or the history.
+ */
 export interface MixSummary {
   id: string
-  kind: 'daily' | 'blend'
+  kind: 'daily' | 'blend' | 'weekly' | 'radar' | 'radio' | 'genre' | 'history'
   title: string
   description: string
   /** The friend of an "Entre amis" mix. */
@@ -647,6 +650,25 @@ export interface MixSummary {
 export interface MixDetail extends MixSummary {
   /** In "Entre amis": whose taste each track comes from. */
   tracks: (Track & { from?: 'both' | 'me' | 'friend' | null })[]
+}
+
+export interface Genre {
+  /** Used in its mix id: genre-<id>. */
+  id: string
+  name: string
+  trackCount: number
+}
+
+/** The user's year in Spotifiak. */
+export interface Wrapped {
+  year: number
+  /** Years with plays, newest first. */
+  years: number[]
+  plays: number
+  minutes: number
+  topTracks: (Track & { plays: number })[]
+  topArtists: (Artist & { plays: number })[]
+  topGenres: { name: string; plays: number }[]
 }
 
 /** A track's lyrics: synced ones have a time (seconds) per line. */
@@ -683,6 +705,9 @@ export const api = {
   lyrics: (trackId: string) => request<Lyrics>(`/tracks/${trackId}/lyrics`),
   mixes: () => request<MixSummary[]>('/me/mixes'),
   mix: (id: string) => request<MixDetail>(`/me/mixes/${id}`),
+  recentAlbums: () => request<Album[]>('/me/recent'),
+  genres: () => request<Genre[]>('/genres'),
+  wrapped: (year?: number) => request<Wrapped>(`/me/wrapped${year ? `?year=${year}` : ''}`),
 }
 
 const fileCover = (trackId: string | null) => (trackId ? `${API_URL}/tracks/${trackId}/cover` : null)

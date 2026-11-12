@@ -125,6 +125,7 @@ model Track {
   durationSec   Int?
   trackNumber   Int?
   discNumber    Int?
+  genre         String? // first genre tag
   coverPath     String? // folder cover relative to MUSIC_DIR; null means use embedded art
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -136,6 +137,7 @@ model Track {
 
   @@index([albumId])
   @@index([artistId])
+  @@index([genre])
 }
 
 model Playlist {
@@ -304,6 +306,7 @@ model Play {
   track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
   @@index([userId, playedAt])
+  @@index([trackId])
 }
 
 // --- Podcasts ----------------------------------------------------------------

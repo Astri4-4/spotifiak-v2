@@ -66,6 +66,8 @@ struct TrackMenu<Label: View>: View {
 
     @Environment(PlayerEngine.self) private var player
     @Environment(LibraryStore.self) private var library
+    @Environment(\.navigate) private var navigate
+    @Environment(\.canNavigate) private var canNavigate
     @State private var naming = false
     @State private var newName = ""
     @State private var sharing = false
@@ -92,6 +94,11 @@ struct TrackMenu<Label: View>: View {
             Button("Ajouter à la file d'attente", systemImage: "text.badge.plus") { player.add(tracks) }
             if tracks.count == 1, tracks[0].episode == nil {
                 Button("Partager avec un ami", systemImage: "paperplane") { sharing = true }
+                if canNavigate {
+                    Button("Lancer la radio", systemImage: "dot.radiowaves.left.and.right") {
+                        navigate(.mix(MixSummary.trackRadio(tracks[0].id)))
+                    }
+                }
             }
             if let onRemove {
                 Button("Retirer de cette playlist", systemImage: "minus.circle", role: .destructive, action: onRemove)

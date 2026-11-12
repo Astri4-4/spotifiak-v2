@@ -640,6 +640,23 @@ ul {
   margin-top: 16px;
 }
 
+.shelf-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.shelf-more {
+  color: var(--text-subdued);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.shelf-more:hover {
+  text-decoration: underline;
+}
+
 .shelf-title {
   margin: 24px 0 8px;
   font-size: 1.5rem;
@@ -2193,6 +2210,12 @@ a.now-playing-title:hover,
   aspect-ratio: 1;
   background: linear-gradient(135deg, #450af5, #c4efd9);
   color: var(--text);
+}
+
+/* The heart scales with the cover, whatever size the cover is. */
+.liked-cover svg {
+  width: 33%;
+  height: 33%;
 }
 
 .quick-item .cover.mosaic,
@@ -4134,4 +4157,43 @@ img.person-avatar {
 .deezer-hint a {
   color: var(--text);
   text-decoration: underline;
+}
+
+/* Wrapped: the year in numbers */
+.wrapped-years {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.wrapped-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.wrapped-stat {
+  padding: 20px;
+  border-radius: 8px;
+  background: var(--elevated);
+}
+
+.wrapped-stat strong {
+  display: block;
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.wrapped-stat span {
+  color: var(--text-subdued);
+}
+
+.wrapped-plays {
+  color: var(--text-subdued);
+  font-size: 0.875rem;
+  white-space: nowrap;
 }
