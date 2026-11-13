@@ -3,10 +3,13 @@ import SwiftUI
 
 /// The weekly taste duel with each friend: a favourite of theirs you never heard, one of yours for
 /// them; whoever's pick the other likes scores a point.
+/// FriendsView loads `duels` (a List leaves an empty section out, with any `.task` on it).
 struct DuelSection: View {
+    let duels: [Duel]
+    /// Loads the duels again after a vote.
+    let reload: @MainActor () async -> Void
     @Environment(Session.self) private var session
     @Environment(PlayerEngine.self) private var player
-    @State private var duels: [Duel] = []
 
     var body: some View {
         Group {
@@ -48,11 +51,6 @@ struct DuelSection: View {
                 }
             }
         }
-        .task { await load() }
-    }
-
-    private func load() async {
-        if let duels = try? await session.api?.duels() { self.duels = duels }
     }
 
     private func pick(_ label: String, _ track: Track) -> some View {
@@ -76,7 +74,7 @@ struct DuelSection: View {
         Button(label) {
             Task {
                 try? await session.api?.voteDuel(friendId: duel.friend.id, liked: liked)
-                await load()
+                await reload()
             }
         }
         .buttonStyle(.bordered)
@@ -91,9 +89,10 @@ struct DuelSection: View {
 }
 
 /// Me in the middle, friends around; the thicker the line, the closer two tastes are.
+/// FriendsView loads `map`, like the duels.
 struct TasteMapSection: View {
+    let map: TasteMap?
     @Environment(Session.self) private var session
-    @State private var map: TasteMap?
 
     var body: some View {
         Group {
@@ -115,7 +114,6 @@ struct TasteMapSection: View {
                 }
             }
         }
-        .task { map = try? await session.api?.tasteMap() }
     }
 
     private func graph(_ map: TasteMap, me: String) -> some View {

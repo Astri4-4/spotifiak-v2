@@ -8,6 +8,7 @@ struct DownloadsView: View {
     @Environment(PlayerEngine.self) private var player
     @Environment(\.navigate) private var navigate
     @State private var downloads: [Download]?
+    @State private var suggestions: Suggestions?
     @State private var error: String?
 
     var body: some View {
@@ -22,7 +23,7 @@ struct DownloadsView: View {
                     }
                     ForEach(downloads) { row($0) }
                         .listRowBackground(Color.clear)
-                    SuggestionsSection { await load() }
+                    SuggestionsSection(suggestions: suggestions) { await load() }
                 }
                 .listStyle(.plain)
                 .refreshable { await load() }
@@ -42,6 +43,8 @@ struct DownloadsView: View {
                 Button("Effacer les terminés") { act { try await $0.clearFinishedDownloads() } }
             }
         }
+        // Made once a day on the server, from Deezer: loaded once per visit.
+        .task { suggestions = try? await session.api?.suggestions() }
         // Loads, then polls while anything is on its way.
         .task {
             while !Task.isCancelled {
@@ -122,11 +125,12 @@ struct DownloadsView: View {
 }
 
 /// What to download next: albums to finish, and friends' artists' top tracks the library lacks.
+/// DownloadsView loads `suggestions`: a List leaves an empty section out, with any `.task` on it.
 private struct SuggestionsSection: View {
+    let suggestions: Suggestions?
     /// Reloads the downloads above once some start.
     let onStart: @MainActor () async -> Void
     @Environment(Session.self) private var session
-    @State private var suggestions: Suggestions?
     /// Started from here: hidden from the suggestions (the list above shows them now).
     @State private var started: Set<String> = []
 
@@ -172,7 +176,6 @@ private struct SuggestionsSection: View {
                 }
             }
         }
-        .task { suggestions = try? await session.api?.suggestions() }
     }
 
     private func suggestion(image: URL?, title: String, subtitle: String, action: String, links: [String]) -> some View {

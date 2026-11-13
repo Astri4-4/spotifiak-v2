@@ -9,6 +9,8 @@ struct FriendsView: View {
     @Environment(PlayerEngine.self) private var player
     @State private var friends: Friends?
     @State private var activity: [FriendActivity] = []
+    @State private var duels: [Duel] = []
+    @State private var tasteMap: TasteMap?
     @State private var query = ""
     @State private var results: [PersonResult]?
 
@@ -45,8 +47,8 @@ struct FriendsView: View {
                 ForEach(activity) { item in ActivityRow(item: item) }
             }
 
-            DuelSection()
-            TasteMapSection()
+            DuelSection(duels: duels) { await loadTaste() }
+            TasteMapSection(map: tasteMap)
 
             Section("Ajouter des amis") {
                 HStack {
@@ -94,6 +96,16 @@ struct FriendsView: View {
             }
         }
         .task(id: trimmed) { await search() }
+        // Once per visit: the duel changes weekly, the map slowly.
+        .task { await loadTaste() }
+    }
+
+    private func loadTaste() async {
+        guard let api = session.api else { return }
+        async let duels = try? api.duels()
+        async let map = try? api.tasteMap()
+        if let duels = await duels { self.duels = duels }
+        if let map = await map { tasteMap = map }
     }
 
     private func reload() async {
