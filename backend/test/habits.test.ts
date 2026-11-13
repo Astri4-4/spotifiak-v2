@@ -82,3 +82,23 @@ test('taste similarity and shared artists', () => {
 test('albums to finish need several played tracks', () => {
   assert.deepEqual(albumsWithMost(['a', 'b', 'a', null, 'a', 'b', 'b', 'c']), ['a', 'b'])
 })
+
+test('new artists: related ones not in the library, a few per seed, each once', async () => {
+  const { newArtists } = await import('../src/suggestions.js')
+  const picks = newArtists(
+    [
+      { seed: 'Daft Punk', artists: [{ id: 1, name: 'Justice' }, { id: 2, name: 'Air' }, { id: 3, name: 'Cassius' }] },
+      { seed: 'Air', artists: [{ id: 1, name: 'Justice' }, { id: 4, name: 'Phoenix' }] },
+    ],
+    new Set(['air']),
+    2,
+  )
+  assert.deepEqual(
+    picks.map((p) => [p.artist.name, p.because]),
+    [
+      ['Justice', 'Daft Punk'],
+      ['Cassius', 'Daft Punk'],
+      ['Phoenix', 'Air'],
+    ],
+  )
+})

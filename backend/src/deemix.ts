@@ -10,6 +10,8 @@ export interface DeezerTrack {
   link: string
   artist: { id: number; name: string }
   album: { id: number; title: string; cover_medium: string }
+  /** A 30 s MP3 extract on Deezer's CDN; empty for some tracks. */
+  preview?: string
 }
 
 let sessionCookie: string | undefined

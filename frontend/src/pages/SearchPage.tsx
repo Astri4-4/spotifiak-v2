@@ -52,6 +52,10 @@ function BrowseAll() {
   const { data: genres } = useFetch(() => api.genres(), [])
   return (
     <div className="page-inner">
+      <Link to="/discover" className="discover-banner">
+        <strong>Découvrir</strong>
+        <span>De nouveaux artistes proches de ce que tu écoutes, à écouter avant de télécharger</span>
+      </Link>
       {genres && genres.length > 0 && (
         <>
           <h2 className="section-title">Genres</h2>

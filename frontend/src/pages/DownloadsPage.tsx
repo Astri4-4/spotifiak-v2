@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Download } from '../api'
 import { Cover } from '../components/Cover'
-import { DownloadSuggestions } from '../components/DownloadSuggestions'
 import { MobileHeader } from '../components/Mobile'
 import { DOWNLOADS_EVENT, downloadStatusText, isSettled } from '../downloads'
 import { useIsMobile } from '../hooks'
@@ -88,7 +87,6 @@ export function DownloadsPage() {
             ))}
           </ul>
         )}
-        <DownloadSuggestions />
       </div>
     </div>
   )

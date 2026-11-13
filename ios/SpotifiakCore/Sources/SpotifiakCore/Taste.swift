@@ -39,7 +39,7 @@ public struct TasteMap: Codable, Sendable, Hashable {
     public let links: [Link]
 }
 
-/// What to download next: albums the library only has part of, friends' artists' top tracks.
+/// Music outside the library: new artists for the user, albums to finish, friends' artists' top tracks.
 public struct Suggestions: Decodable, Sendable, Hashable {
     public struct AlbumToFinish: Codable, Sendable, Hashable, Identifiable {
         public let album: Album
@@ -63,8 +63,23 @@ public struct Suggestions: Decodable, Sendable, Hashable {
         }
     }
 
+    /// A Deezer track by a new artist, and which of the user's artists it's close to.
+    public struct ForYouTrack: Decodable, Sendable, Hashable, Identifiable {
+        public let track: DeezerTrack
+        public let because: String
+        public var id: Int { track.id }
+
+        private struct Because: Decodable { let because: String }
+
+        public init(from decoder: Decoder) throws {
+            track = try DeezerTrack(from: decoder)
+            because = try Because(from: decoder).because
+        }
+    }
+
     public let albums: [AlbumToFinish]
     public let tracks: [FriendsTrack]
+    public let forYou: [ForYouTrack]
 }
 
 /// Where a track plays, rounded to a ~500 m cell: the only position the server ever gets.

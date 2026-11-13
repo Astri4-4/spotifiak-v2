@@ -31,6 +31,7 @@ import { SpotifyImportPage } from './pages/SpotifyImportPage'
 import { UsersPage } from './pages/UsersPage'
 import { LyricsPage } from './pages/LyricsPage'
 import { MixPage } from './pages/MixPage'
+import { DiscoverPage } from './pages/DiscoverPage'
 import { WrappedPage } from './pages/WrappedPage'
 import { DownloadsPage } from './pages/DownloadsPage'
 import { DownloadWatcher } from './components/DownloadWatcher'
@@ -78,6 +79,7 @@ function MainApp() {
                 <Route path="/mix/:id" element={<MixPage />} />
                 <Route path="/downloads" element={<DownloadsPage />} />
                 <Route path="/wrapped" element={<WrappedPage />} />
+                <Route path="/discover" element={<DiscoverPage />} />
               </Routes>
             </main>
             {isMobile ? (

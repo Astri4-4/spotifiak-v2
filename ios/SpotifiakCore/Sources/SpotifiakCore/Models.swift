@@ -443,6 +443,10 @@ public struct DeezerTrack: Codable, Sendable, Hashable, Identifiable {
     public let libraryTrack: Track?
     /// The user's latest download of it.
     public let download: DownloadState?
+    /// Deezer's 30 s extract (a string: Deezer sends "" when there is none).
+    public let preview: String?
+
+    public var previewURL: URL? { preview.flatMap { $0.isEmpty ? nil : URL(string: $0) } }
 }
 
 // MARK: - Library scan

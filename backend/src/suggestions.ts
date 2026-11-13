@@ -2,12 +2,14 @@ import type { FastifyBaseLogger, FastifyInstance } from 'fastify'
 import { prisma } from './db.js'
 import type { DeezerTrack } from './deemix.js'
 import { annotateTracks } from './downloads.js'
-import { deezer } from './enrich.js'
+import { deezer, normalize } from './enrich.js'
 import { albumSelect, toAlbum } from './library.js'
 import { artistScores, tasteOf } from './mixes.js'
 import { sharingFriends } from './taste.js'
 
-// What to download next, shown on the Downloads page:
+// Music outside the library, shown on the Découvrir page:
+// - for you: artists Deezer relates to the ones the user plays most in Spotifiak, none of them in the
+//   library yet, with their top tracks (and Deezer's 30 s previews to listen before downloading);
 // - albums to finish: albums the user plays (3+ of their tracks) that the library only has part of;
 // - from friends: Deezer's top tracks of the artists the user's friends love, missing from the library.
 // Suggestions only: the user picks what to download (nothing fills the disk on its own).
@@ -16,6 +18,9 @@ const FINISH_MIN_TRACKS = 3
 const FINISH_CANDIDATES = 12
 const FRIEND_ARTISTS = 8
 const TOP_TRACKS_PER_ARTIST = 5
+const FOR_YOU_SEEDS = 6
+const NEW_ARTISTS_PER_SEED = 4
+const NEW_ARTIST_TRACKS = 3
 const DAY_MS = 24 * 3600_000
 
 const albumSizes = new Map<number, { total: number | null; at: number }>()
@@ -53,6 +58,45 @@ async function albumsToFinish(userId: string) {
     }
   }
   return result
+}
+
+/** Related artists that aren't in the library yet, a few per seed, each once. */
+export function newArtists(
+  related: { seed: string; artists: { id: number; name: string }[] }[],
+  known: Set<string>,
+  perSeed = NEW_ARTISTS_PER_SEED,
+) {
+  const seen = new Set<number>()
+  return related.flatMap(({ seed, artists }) =>
+    artists
+      .filter((a) => !known.has(normalize(a.name)) && !seen.has(a.id))
+      .slice(0, perSeed)
+      .map((a) => {
+        seen.add(a.id)
+        return { artist: a, because: seed }
+      }),
+  )
+}
+
+async function forYou(userId: string) {
+  const { scores, artistOf } = await tasteOf(userId, Date.now())
+  const ranked = [...artistScores(scores, artistOf)].sort((a, b) => b[1] - a[1]).map(([id]) => id)
+  const [seeds, library] = await Promise.all([
+    prisma.artist.findMany({ where: { id: { in: ranked.slice(0, FOR_YOU_SEEDS * 2) }, deezerId: { not: null } }, select: { id: true, name: true, deezerId: true } }),
+    prisma.artist.findMany({ select: { name: true } }),
+  ])
+  const chosen = ranked.flatMap((id) => seeds.find((a) => a.id === id) ?? []).slice(0, FOR_YOU_SEEDS)
+  const related: { seed: string; artists: { id: number; name: string }[] }[] = []
+  for (const seed of chosen) {
+    const list = await deezer<{ data: { id: number; name: string }[] }>(`/artist/${seed.deezerId}/related`, { limit: '10' })
+    related.push({ seed: seed.name, artists: list?.data ?? [] })
+  }
+  const results: { track: DeezerTrack; because: string }[] = []
+  for (const { artist, because } of newArtists(related, new Set(library.map((a) => normalize(a.name))))) {
+    const top = await deezer<{ data: DeezerTrack[] }>(`/artist/${artist.id}/top`, { limit: String(NEW_ARTIST_TRACKS) })
+    results.push(...(top?.data ?? []).map((track) => ({ track, because })))
+  }
+  return results
 }
 
 async function fromFriends(userId: string) {
@@ -93,13 +137,22 @@ async function fromFriends(userId: string) {
 }
 
 // Deezer is slow and rate limited: each user's suggestions are made once a day.
-const cache = new Map<string, { day: string; value: Promise<{ albums: Awaited<ReturnType<typeof albumsToFinish>>; tracks: Awaited<ReturnType<typeof fromFriends>> }> }>()
+interface Made {
+  albums: Awaited<ReturnType<typeof albumsToFinish>>
+  tracks: Awaited<ReturnType<typeof fromFriends>>
+  forYou: Awaited<ReturnType<typeof forYou>>
+}
+const cache = new Map<string, { day: string; value: Promise<Made> }>()
 
 function suggestionsOf(userId: string, log: FastifyBaseLogger) {
   const day = new Date().toLocaleDateString('sv-SE')
   const cached = cache.get(userId)
   if (cached?.day === day) return cached.value
-  const value = Promise.all([albumsToFinish(userId), fromFriends(userId)]).then(([albums, tracks]) => ({ albums, tracks }))
+  const value = Promise.all([albumsToFinish(userId), fromFriends(userId), forYou(userId)]).then(([albums, tracks, forYou]) => ({
+    albums,
+    tracks,
+    forYou,
+  }))
   cache.set(userId, { day, value })
   value.catch((err) => {
     log.warn({ err }, 'download suggestions failed')
@@ -110,9 +163,19 @@ function suggestionsOf(userId: string, log: FastifyBaseLogger) {
 
 export async function suggestionRoutes(app: FastifyInstance) {
   app.get('/me/suggestions', async (req) => {
-    const { albums, tracks } = await suggestionsOf(req.user!.id, req.log)
-    // The download states change during the day: the tracks are checked again on each request.
-    const fresh = await annotateTracks(req.user!.id, tracks)
-    return { albums, tracks: fresh.flatMap((t, i) => (t.libraryTrack ? [] : [{ ...t, fans: tracks[i].fans }])) }
+    const made = await suggestionsOf(req.user!.id, req.log)
+    // The library and download states change during the day: the tracks are checked again each time.
+    const [friends, mine] = await Promise.all([
+      annotateTracks(req.user!.id, made.tracks),
+      annotateTracks(
+        req.user!.id,
+        made.forYou.map((s) => s.track),
+      ),
+    ])
+    return {
+      albums: made.albums,
+      tracks: friends.flatMap((t, i) => (t.libraryTrack ? [] : [{ ...t, fans: made.tracks[i].fans }])),
+      forYou: mine.flatMap((t, i) => (t.libraryTrack ? [] : [{ ...t, because: made.forYou[i].because }])),
+    }
   })
 }

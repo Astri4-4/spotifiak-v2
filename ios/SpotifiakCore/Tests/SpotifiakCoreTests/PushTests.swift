@@ -91,10 +91,13 @@ import Testing
     let transport = FakeTransport()
     transport.respond(
         "https://h/api/me/suggestions",
-        #"{"albums":[],"tracks":[{"id":3,"title":"T","duration":200,"link":"https://www.deezer.com/track/3","artist":{"id":1,"name":"A"},"album":{"id":2,"title":"B","cover_medium":null},"libraryTrack":null,"download":null,"fans":["Léa"]}]}"#
+        #"{"albums":[],"tracks":[{"id":3,"title":"T","duration":200,"link":"https://www.deezer.com/track/3","artist":{"id":1,"name":"A"},"album":{"id":2,"title":"B","cover_medium":null},"libraryTrack":null,"download":null,"preview":"","fans":["Léa"]}],"forYou":[{"id":4,"title":"U","duration":180,"link":"https://www.deezer.com/track/4","artist":{"id":5,"name":"Justice"},"album":{"id":6,"title":"C","cover_medium":null},"preview":"https://cdns-preview-1.dzcdn.net/x.mp3","because":"Daft Punk"}]}"#
     )
     let client = APIClient(base: URL(string: "https://h/api")!, transport: transport, onUnauthorized: {})
     let suggestions = try await client.suggestions()
     #expect(suggestions.tracks.first?.track.title == "T")
     #expect(suggestions.tracks.first?.fans == ["Léa"])
+    #expect(suggestions.tracks.first?.track.previewURL == nil)
+    #expect(suggestions.forYou.first?.because == "Daft Punk")
+    #expect(suggestions.forYou.first?.track.previewURL?.host() == "cdns-preview-1.dzcdn.net")
 }

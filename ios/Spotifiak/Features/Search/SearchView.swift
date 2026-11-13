@@ -58,6 +58,21 @@ struct SearchView: View {
                 .onTapGesture { focused = true }
 
                 if trimmed.isEmpty && !browse.isEmpty {
+                    NavigationLink(value: Route.discover) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Découvrir").font(.title2.bold())
+                            Text("De nouveaux artistes proches de ce que tu écoutes, à écouter avant de télécharger")
+                                .font(.subheadline)
+                                .foregroundStyle(.white.opacity(0.8))
+                                .multilineTextAlignment(.leading)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(LinearGradient(colors: [Color(red: 0.52, green: 0, blue: 0.91), Color(red: 0.12, green: 0.2, blue: 0.39)],
+                                                   startPoint: .topLeading, endPoint: .bottomTrailing),
+                                    in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain)
                     if !genres.isEmpty {
                         section("Genres") {
                             LazyVGrid(columns: [GridItem(spacing: 12), GridItem(spacing: 12)], spacing: 12) {

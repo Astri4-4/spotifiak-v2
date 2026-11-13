@@ -68,6 +68,7 @@ enum Route: Hashable {
     case downloads
     case wrapped
     case offline
+    case discover
 }
 
 extension EnvironmentValues {
@@ -101,6 +102,7 @@ struct RouteView: View {
             case .downloads: DownloadsView()
             case .wrapped: WrappedView()
             case .offline: OfflineView()
+            case .discover: DiscoverView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

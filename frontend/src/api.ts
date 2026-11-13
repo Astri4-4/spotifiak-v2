@@ -156,6 +156,8 @@ export interface DeezerTrack {
   link: string
   artist: { id: number; name: string }
   album: { id: number; title: string; cover_medium: string }
+  /** Deezer's 30 s extract; empty for some tracks. */
+  preview?: string
   /** The same track in the library: play it rather than download it again. */
   libraryTrack?: Track | null
   download?: DownloadState | null
@@ -673,10 +675,12 @@ export interface TasteMap {
   links: { a: string; b: string; similarity: number; artists: string[] }[]
 }
 
-/** What to download next: albums the library only has part of, friends' artists' top tracks. */
+/** Music outside the library: new artists for the user, albums to finish, friends' artists' top tracks. */
 export interface Suggestions {
   albums: { album: Album; have: number; total: number; link: string }[]
   tracks: (DeezerTrack & { fans: string[] })[]
+  /** New artists close to the ones the user plays; `because`: which one. */
+  forYou: (DeezerTrack & { because: string })[]
 }
 
 export interface Genre {
