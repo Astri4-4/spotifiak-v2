@@ -71,6 +71,7 @@ enum Route: Hashable {
     case discover
     /// The blind test: a game's code, or nil to create or join one.
     case quiz(String?)
+    case capsules
 }
 
 extension EnvironmentValues {
@@ -106,6 +107,7 @@ struct RouteView: View {
             case .offline: OfflineView()
             case .discover: DiscoverView()
             case .quiz(let code): QuizView(code: code)
+            case .capsules: CapsulesView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

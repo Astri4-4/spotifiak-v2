@@ -38,3 +38,12 @@ import Testing
     #expect(n.track?.startAt == nil)
     #expect(n.track?.starting(at: n.position).startAt == 102.4)
 }
+
+@Test func capsuleCountdownsReadNaturally() {
+    #expect(capsuleCountdown(0) == "maintenant")
+    #expect(capsuleCountdown(3 * 3600 + 12 * 60 + 45) == "03:12:45")
+    #expect(capsuleCountdown(12 * 86400 + 5) == "dans 12 jours")
+    #expect(capsuleCountdown(1 * 86400) == "dans 1 jour")
+    #expect(capsuleCountdown(100 * 86400) == "dans 3 mois")
+    #expect(capsuleCountdown(430 * 86400) == "dans 1 an et 2 mois")
+}

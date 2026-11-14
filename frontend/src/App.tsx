@@ -33,6 +33,7 @@ import { LyricsPage } from './pages/LyricsPage'
 import { MixPage } from './pages/MixPage'
 import { DiscoverPage } from './pages/DiscoverPage'
 import { QuizPage } from './pages/QuizPage'
+import { CapsulesPage } from './pages/CapsulesPage'
 import { WrappedPage } from './pages/WrappedPage'
 import { DownloadsPage } from './pages/DownloadsPage'
 import { DownloadWatcher } from './components/DownloadWatcher'
@@ -83,6 +84,7 @@ function MainApp() {
                 <Route path="/discover" element={<DiscoverPage />} />
                 <Route path="/quiz" element={<QuizPage />} />
                 <Route path="/quiz/:id" element={<QuizPage />} />
+                <Route path="/capsules" element={<CapsulesPage />} />
               </Routes>
             </main>
             {isMobile ? (

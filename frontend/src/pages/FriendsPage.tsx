@@ -167,6 +167,14 @@ export function FriendsPage() {
       <div className="page-gradient" />
       <div className="page-inner settings-page friends-page">
         {isMobile ? <MobileHeader title="Amis" /> : <h1 className="greeting">Amis</h1>}
+        <div className="friends-shortcuts">
+          <Link to="/capsules" className="pill-button small outline">
+            Capsules temporelles
+          </Link>
+          <Link to="/quiz" className="pill-button small outline">
+            Blind test
+          </Link>
+        </div>
         <Link to="/inbox" className="pill-button outline small inbox-link">
           <BellIcon /> Notifications{unread > 0 && <span className="badge">{unread}</span>}
         </Link>

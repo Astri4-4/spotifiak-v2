@@ -798,3 +798,35 @@ export const quiz = {
   clipUrl: (id: string, index: number) => `${API_URL}/quiz/${id}/clip/${index}`,
   eventsUrl: (id: string) => `${API_URL}/quiz/${id}/events`,
 }
+
+// --- Time capsules ---
+
+export interface SealedCapsule {
+  id: string
+  from: JamPerson
+  openAt: string
+  createdAt: string
+}
+
+export interface OpenedCapsule extends SealedCapsule {
+  track: Track
+  message: string | null
+}
+
+export interface SentCapsule {
+  id: string
+  to: JamPerson
+  track: Track
+  message: string | null
+  openAt: string
+  createdAt: string
+  open: boolean
+}
+
+export const capsules = {
+  list: () => request<{ sealed: SealedCapsule[]; opened: OpenedCapsule[]; sent: SentCapsule[] }>('/me/capsules'),
+  /** `toId`: the user's own id for a capsule to oneself. */
+  seal: (trackId: string, toId: string, openAt: Date, message?: string) =>
+    send<{ id: string }>('POST', '/capsules', { trackId, toId, openAt: openAt.toISOString(), message }),
+  remove: (id: string) => send<void>('DELETE', `/capsules/${id}`),
+}

@@ -71,6 +71,7 @@ struct TrackMenu<Label: View>: View {
     @State private var naming = false
     @State private var newName = ""
     @State private var sharing = false
+    @State private var sealing = false
 
     var body: some View {
         Menu {
@@ -94,6 +95,7 @@ struct TrackMenu<Label: View>: View {
             Button("Ajouter à la file d'attente", systemImage: "text.badge.plus") { player.add(tracks) }
             if tracks.count == 1, tracks[0].episode == nil {
                 Button("Partager avec un ami", systemImage: "paperplane") { sharing = true }
+                Button("Mettre en capsule", systemImage: "hourglass") { sealing = true }
                 if canNavigate {
                     Button("Lancer la radio", systemImage: "dot.radiowaves.left.and.right") {
                         navigate(.mix(MixSummary.trackRadio(tracks[0].id)))
@@ -107,6 +109,7 @@ struct TrackMenu<Label: View>: View {
             label
         }
         .sheet(isPresented: $sharing) { ShareSheet(track: tracks[0]) }
+        .sheet(isPresented: $sealing) { CapsuleSheet(track: tracks[0]) }
         .alert("Nouvelle playlist", isPresented: $naming) {
             TextField("Nom", text: $newName)
             Button("Annuler", role: .cancel) {}

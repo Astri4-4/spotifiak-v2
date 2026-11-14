@@ -26,6 +26,12 @@ struct FriendsView: View {
                         if social.counts.unread > 0 { CountBadge(count: social.counts.unread) }
                     }
                 }
+                NavigationLink(value: Route.capsules) {
+                    Label("Capsules temporelles", systemImage: "hourglass")
+                }
+                NavigationLink(value: Route.quiz(nil)) {
+                    Label("Blind test", systemImage: "music.quarternote.3")
+                }
             }
 
             if let incoming = friends?.incoming, !incoming.isEmpty {

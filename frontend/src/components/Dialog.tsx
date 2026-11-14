@@ -17,7 +17,17 @@ export function Dialog({ title, onClose, children }: DialogProps) {
   }, [onClose])
 
   return createPortal(
-    <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="dialog-backdrop"
+      onMouseDown={(e) => {
+        // React events cross portals: keep them from reaching what opened the dialog (a track row plays on click).
+        e.stopPropagation()
+        if (e.target === e.currentTarget) onClose()
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
       <div className="dialog" role="dialog" aria-modal="true" aria-label={title}>
         <header className="dialog-header">
           <h2>{title}</h2>

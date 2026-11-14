@@ -6,6 +6,7 @@ import { usePlayer } from '../player/context'
 import { social } from '../api'
 import { useSocial } from '../social/context'
 import { ChevronRightIcon, MoreIcon, PlusIcon } from '../icons'
+import { CapsuleDialog } from './CapsuleDialog'
 import { PopoverMenu } from './PopoverMenu'
 
 interface TrackMenuProps {
@@ -21,6 +22,7 @@ export function TrackMenu({ track, onRemoveFromPlaylist }: TrackMenuProps) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [submenu, setSubmenu] = useState<'playlist' | 'share' | null>(null)
   const [message, setMessage] = useState('')
+  const [sealing, setSealing] = useState(false)
   const { friends } = useSocial()
 
   const close = () => {
@@ -133,6 +135,11 @@ export function TrackMenu({ track, onRemoveFromPlaylist }: TrackMenuProps) {
                   Partager avec un ami <ChevronRightIcon />
                 </button>
               )}
+              {!track.episode && (
+                <button role="menuitem" className="menu-item" onClick={run(() => setSealing(true))}>
+                  Mettre en capsule
+                </button>
+              )}
               {onRemoveFromPlaylist && (
                 <button role="menuitem" className="menu-item" onClick={run(onRemoveFromPlaylist)}>
                   Retirer de cette playlist
@@ -163,6 +170,7 @@ export function TrackMenu({ track, onRemoveFromPlaylist }: TrackMenuProps) {
           )}
         </PopoverMenu>
       )}
+      {sealing && <CapsuleDialog track={track} onClose={() => setSealing(false)} />}
     </>
   )
 }

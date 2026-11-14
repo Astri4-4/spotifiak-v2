@@ -10,6 +10,7 @@ import { duplicateRoutes } from './duplicates.js'
 import { downloadRoutes, track as trackDownloads } from './downloads.js'
 import { jamRoutes } from './jam.js'
 import { quizRoutes } from './quiz.js'
+import { capsuleRoutes, startCapsuleDelivery } from './capsules.js'
 import { podcastRoutes, startPodcastRefresh } from './podcasts.js'
 import { pushRoutes } from './push.js'
 import { resumeDownloads, youtubeRoutes } from './youtube.js'
@@ -58,6 +59,7 @@ await app.register(spotifyRoutes)
 await app.register(duplicateRoutes)
 await app.register(jamRoutes)
 await app.register(quizRoutes)
+await app.register(capsuleRoutes)
 await app.register(podcastRoutes)
 await app.register(youtubeRoutes)
 await app.register(socialRoutes)
@@ -120,6 +122,7 @@ void resumeDownloads(app.log)
 // Downloads still on their way when the server stopped.
 trackDownloads(app.log)
 startWeeklyRecap(app.log)
+startCapsuleDelivery(app.log)
 
 // docker stop / Kubernetes send SIGTERM: stop right away instead of being killed after the grace period.
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {

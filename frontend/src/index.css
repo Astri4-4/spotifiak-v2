@@ -4628,3 +4628,130 @@ img.person-avatar {
   padding: 6px 0;
   cursor: pointer;
 }
+
+/* --- Capsules temporelles --- */
+
+.friends-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.capsules section {
+  margin-bottom: 32px;
+}
+
+.capsule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.capsule-sealed {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  padding: 18px;
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 85% 15%, rgba(245, 155, 35, 0.35), transparent 55%),
+    linear-gradient(160deg, #3a2a5c, #161026);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.capsule-lock {
+  font-size: 1.75rem;
+}
+
+.capsule-countdown {
+  font-size: 1.375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.capsule-progress {
+  width: 100%;
+  height: 4px;
+  margin: 6px 0;
+  border-radius: 2px;
+  background: var(--highlight);
+  overflow: hidden;
+}
+
+.capsule-progress div {
+  height: 100%;
+  background: #f59b23;
+}
+
+.capsule-from {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+}
+
+.capsule-list {
+  display: grid;
+  gap: 10px;
+}
+
+.capsule-opened,
+.capsule-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: var(--radius);
+  background: var(--elevated);
+}
+
+.capsule-opened .title-text,
+.capsule-row .title-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.capsule-message {
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.capsule-track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.capsule-hint {
+  margin: 12px 0;
+  font-size: 0.875rem;
+}
+
+.capsule-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.capsule-field > span {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.capsule-field select,
+.capsule-field input[type='date'] {
+  padding: 8px 10px;
+  border: 1px solid var(--highlight-strong);
+  border-radius: 4px;
+  background: var(--elevated);
+  color: var(--text);
+}
+
+.capsule-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}

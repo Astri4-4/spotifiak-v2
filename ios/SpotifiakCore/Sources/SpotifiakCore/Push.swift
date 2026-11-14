@@ -10,6 +10,7 @@ public enum PushLink: Equatable, Sendable {
     case album(String)
     case wrapped
     case quiz(String)
+    case capsules
 
     public init?(_ link: String) {
         let parts = link.split(separator: "/", maxSplits: 1).map(String.init)
@@ -18,6 +19,7 @@ public enum PushLink: Equatable, Sendable {
         case ("friends", 1): self = .friends
         case ("downloads", 1): self = .downloads
         case ("wrapped", 1): self = .wrapped
+        case ("capsules", 1): self = .capsules
         case ("album", 2): self = .album(parts[1])
         case ("person", 2): self = .person(parts[1])
         case ("podcast", 2): self = .podcast(parts[1])

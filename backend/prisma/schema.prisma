@@ -46,6 +46,8 @@ model User {
   downloads              Download[]
   skips                  Skip[]
   duelVotes              DuelVote[]
+  capsulesSent           Capsule[]             @relation("capsuleFrom")
+  capsulesReceived       Capsule[]             @relation("capsuleTo")
   /// The last weekly recap pushed (Sunday evening).
   weeklyRecapAt          DateTime?
 }
@@ -138,6 +140,7 @@ model Track {
   plays         Play[]
   skips         Skip[]
   duelVotes     DuelVote[]
+  capsules      Capsule[]
   notifications Notification[]
   lyrics        TrackLyrics?
 
@@ -484,4 +487,26 @@ model DuelVote {
 
   @@id([userId, friendId, week])
   @@index([friendId])
+}
+
+// --- Time capsules -------------------------------------------------------------
+
+/// A track sealed with a word for a friend (or oneself), revealed only on `openAt`.
+model Capsule {
+  id          String    @id @default(cuid())
+  fromId      String
+  toId        String
+  trackId     String
+  message     String?
+  openAt      DateTime
+  createdAt   DateTime  @default(now())
+  /// When the opening was announced (push); null while sealed.
+  deliveredAt DateTime?
+  from        User      @relation("capsuleFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to          User      @relation("capsuleTo", fields: [toId], references: [id], onDelete: Cascade)
+  track       Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([toId, openAt])
+  @@index([fromId])
+  @@index([deliveredAt, openAt])
 }

@@ -110,6 +110,9 @@ struct PendingRoute: Equatable {
         case .quiz(let code):
             tab = .friends
             route = .quiz(code)
+        case .capsules:
+            tab = .friends
+            route = .capsules
         }
     }
 }
