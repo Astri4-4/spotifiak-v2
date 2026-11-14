@@ -9,6 +9,7 @@ import { collectionRoutes } from './collection.js'
 import { duplicateRoutes } from './duplicates.js'
 import { downloadRoutes, track as trackDownloads } from './downloads.js'
 import { jamRoutes } from './jam.js'
+import { quizRoutes } from './quiz.js'
 import { podcastRoutes, startPodcastRefresh } from './podcasts.js'
 import { pushRoutes } from './push.js'
 import { resumeDownloads, youtubeRoutes } from './youtube.js'
@@ -56,6 +57,7 @@ await app.register(collectionRoutes)
 await app.register(spotifyRoutes)
 await app.register(duplicateRoutes)
 await app.register(jamRoutes)
+await app.register(quizRoutes)
 await app.register(podcastRoutes)
 await app.register(youtubeRoutes)
 await app.register(socialRoutes)

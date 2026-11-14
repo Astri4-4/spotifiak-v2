@@ -54,7 +54,7 @@ function friendshipBetween(a: string, b: string) {
   })
 }
 
-async function friendIds(userId: string) {
+export async function friendIds(userId: string) {
   const rows = await prisma.friendship.findMany({
     where: { status: 'accepted', OR: [{ requesterId: userId }, { addresseeId: userId }] },
     select: { requesterId: true, addresseeId: true },

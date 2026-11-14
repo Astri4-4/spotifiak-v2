@@ -56,6 +56,10 @@ function BrowseAll() {
         <strong>Découvrir</strong>
         <span>De nouveaux artistes proches de ce que tu écoutes, à écouter avant de télécharger</span>
       </Link>
+      <Link to="/quiz" className="discover-banner quiz-banner">
+        <strong>Blind test</strong>
+        <span>Défie tes amis sur les titres que vous écoutez</span>
+      </Link>
       {genres && genres.length > 0 && (
         <>
           <h2 className="section-title">Genres</h2>

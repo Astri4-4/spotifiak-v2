@@ -73,6 +73,21 @@ struct SearchView: View {
                                     in: RoundedRectangle(cornerRadius: 8))
                     }
                     .buttonStyle(.plain)
+                    NavigationLink(value: Route.quiz(nil)) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Blind test").font(.title2.bold())
+                            Text("Défie tes amis sur les titres que vous écoutez")
+                                .font(.subheadline)
+                                .foregroundStyle(.white.opacity(0.85))
+                                .multilineTextAlignment(.leading)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(LinearGradient(colors: [Color(red: 0.91, green: 0.07, blue: 0.36), Color(red: 0.96, green: 0.61, blue: 0.14)],
+                                                   startPoint: .topLeading, endPoint: .bottomTrailing),
+                                    in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain)
                     if !genres.isEmpty {
                         section("Genres") {
                             LazyVGrid(columns: [GridItem(spacing: 12), GridItem(spacing: 12)], spacing: 12) {

@@ -10,6 +10,7 @@ import Testing
     #expect(PushLink("friends") == .friends)
     #expect(PushLink("person/u1") == .person("u1"))
     #expect(PushLink("podcast/p1") == .podcast("p1"))
+    #expect(PushLink("quiz/K7Q2XP") == .quiz("K7Q2XP"))
     #expect(PushLink("podcast") == nil)
     #expect(PushLink("inbox/x") == nil)
     #expect(PushLink("unknown/1") == nil)

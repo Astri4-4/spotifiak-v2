@@ -757,3 +757,39 @@ export const images = {
   podcast: (p: PodcastSummary) => (p.hasImage ? `${API_URL}/podcasts/${p.id}/image` : null),
   episode: (e: Episode) => (e.hasImage ? `${API_URL}/episodes/${e.id}/image` : null),
 }
+
+// --- Blind test ---
+
+export type QuizPhase = 'lobby' | 'countdown' | 'question' | 'reveal' | 'over'
+
+export interface QuizState {
+  id: string
+  host: JamPerson
+  players: (JamPerson & { score: number })[]
+  phase: QuizPhase
+  roundCount: number
+  index: number
+  /** Left in this phase when the message was sent. */
+  remainingMs: number
+  round: {
+    choices: { title: string; artist: string }[]
+    clipStart: number
+    answered: string[]
+    mine: number | null
+    /** Set once revealed. */
+    answer: number | null
+    track: Track | null
+    results: { userId: string; choice: number; ms: number; points: number }[]
+  } | null
+}
+
+export const quiz = {
+  create: () => send<QuizState>('POST', '/quiz'),
+  join: (id: string) => send<QuizState>('POST', `/quiz/${encodeURIComponent(id)}/join`),
+  start: (id: string) => send<void>('POST', `/quiz/${id}/start`),
+  answer: (id: string, index: number, choice: number) => send<void>('POST', `/quiz/${id}/answer`, { index, choice }),
+  invite: (id: string, userIds: string[]) => send<{ sent: number }>('POST', `/quiz/${id}/invite`, { userIds }),
+  leave: (id: string) => send<void>('POST', `/quiz/${id}/leave`),
+  clipUrl: (id: string, index: number) => `${API_URL}/quiz/${id}/clip/${index}`,
+  eventsUrl: (id: string) => `${API_URL}/quiz/${id}/events`,
+}
