@@ -47,3 +47,16 @@ import Testing
     #expect(capsuleCountdown(100 * 86400) == "dans 3 mois")
     #expect(capsuleCountdown(430 * 86400) == "dans 1 an et 2 mois")
 }
+
+@Test func eraSpansReadLikeChapters() throws {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "Europe/Paris")!
+    func era(_ start: String, _ end: String) throws -> Era {
+        let json = """
+        {"id":"x","title":"L’ère Daft Punk","start":"\(start)","end":"\(end)","plays":40,"current":false,"artists":[],"tracks":[]}
+        """
+        return try JSONDecoder.spotifiak.decode(Era.self, from: Data(json.utf8))
+    }
+    #expect(try era("2026-03-04T10:00:00.000Z", "2026-05-20T10:00:00.000Z").span(calendar: calendar) == "mars → mai 2026")
+    #expect(try era("2026-06-02T10:00:00.000Z", "2026-06-28T10:00:00.000Z").span(calendar: calendar) == "juin 2026")
+}

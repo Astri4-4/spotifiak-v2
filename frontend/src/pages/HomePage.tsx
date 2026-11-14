@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { api, collection, images, podcasts } from '../api'
+import { api, collection, eras, images, podcasts } from '../api'
+import { eraSpan } from './ErasPage'
 import { Card } from '../components/Card'
 import { Cover } from '../components/Cover'
 import { PlayButton } from '../components/PlayButton'
@@ -25,6 +26,8 @@ export function HomePage() {
   const { data: publicPlaylists } = useFetch(() => collection.publicPlaylists(), [])
   const { data: mixes } = useFetch(() => api.mixes(), [])
   const { data: recent } = useFetch(() => api.recentAlbums(), [])
+  // The chapter being written, under the greeting (see ErasPage).
+  const { data: era } = useFetch(() => eras.list().then((list) => list.find((e) => e.current) ?? null), [])
   const { isPlaying, playAlbum, playArtist, playPlaylist, playLiked, playMix } = usePlayContext()
   const { likedIds, playlists, podcasts: subscriptions } = useCollection()
   // Reloaded when subscriptions change, so a new subscription shows up here.
@@ -39,6 +42,13 @@ export function HomePage() {
       <div className="page-gradient" />
       <div className="page-inner">
         {isMobile ? <MobileHeader title={greeting()} /> : <h1 className="greeting">{greeting()}</h1>}
+        {era && (
+          <Link to="/eras" className="era-banner">
+            <span className="era-kicker">Ton ère actuelle</span>
+            <strong>{era.title}</strong>
+            <span className="muted">{eraSpan(era.start, era.end)}</span>
+          </Link>
+        )}
 
         {empty && (
           <div className="empty-state">

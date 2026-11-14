@@ -6,6 +6,8 @@ import SwiftUI
 struct HomeView: View {
     @Environment(Session.self) private var session
     @Environment(PlaceTracker.self) private var places
+    /// The chapter being written, shown under the greeting.
+    @State private var era: Era?
 
     var body: some View {
         Loadable(load: load) { library in
@@ -17,6 +19,24 @@ struct HomeView: View {
                         Text(greeting(at: .now, calendar: .current))
                             .font(.title.bold())
                             .padding(.horizontal)
+                        if let era {
+                            NavigationLink(value: Route.eras) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "books.vertical.fill").font(.title2).foregroundStyle(Theme.green)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Ton ère actuelle").font(.caption.bold()).foregroundStyle(Theme.subdued)
+                                        Text(era.title).font(.headline).lineLimit(1)
+                                        Text(era.span()).font(.caption).foregroundStyle(Theme.subdued)
+                                    }
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "chevron.right").foregroundStyle(Theme.subdued)
+                                }
+                                .padding(14)
+                                .background(Theme.elevated, in: RoundedRectangle(cornerRadius: 8))
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal)
+                        }
                         LazyVGrid(columns: [GridItem(spacing: 8), GridItem(spacing: 8)], spacing: 8) {
                             ShortcutTile(route: .liked, title: "Titres likés") { LikedCover() }
                             ForEach(library.playlists.prefix(3)) { playlist in
@@ -105,6 +125,7 @@ struct HomeView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .task { era = try? await session.api?.eras().first(where: \.current) }
     }
 
     private func load() async throws -> (albums: [Album], artists: [Artist], playlists: [PlaylistSummary], episodes: [Episode],

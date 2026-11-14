@@ -34,6 +34,7 @@ import { MixPage } from './pages/MixPage'
 import { DiscoverPage } from './pages/DiscoverPage'
 import { QuizPage } from './pages/QuizPage'
 import { CapsulesPage } from './pages/CapsulesPage'
+import { ErasPage } from './pages/ErasPage'
 import { WrappedPage } from './pages/WrappedPage'
 import { DownloadsPage } from './pages/DownloadsPage'
 import { DownloadWatcher } from './components/DownloadWatcher'
@@ -85,6 +86,7 @@ function MainApp() {
                 <Route path="/quiz" element={<QuizPage />} />
                 <Route path="/quiz/:id" element={<QuizPage />} />
                 <Route path="/capsules" element={<CapsulesPage />} />
+                <Route path="/eras" element={<ErasPage />} />
               </Routes>
             </main>
             {isMobile ? (

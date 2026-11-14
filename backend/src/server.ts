@@ -11,6 +11,7 @@ import { downloadRoutes, track as trackDownloads } from './downloads.js'
 import { jamRoutes } from './jam.js'
 import { quizRoutes } from './quiz.js'
 import { capsuleRoutes, startCapsuleDelivery } from './capsules.js'
+import { eraRoutes } from './eras.js'
 import { podcastRoutes, startPodcastRefresh } from './podcasts.js'
 import { pushRoutes } from './push.js'
 import { resumeDownloads, youtubeRoutes } from './youtube.js'
@@ -60,6 +61,7 @@ await app.register(duplicateRoutes)
 await app.register(jamRoutes)
 await app.register(quizRoutes)
 await app.register(capsuleRoutes)
+await app.register(eraRoutes)
 await app.register(podcastRoutes)
 await app.register(youtubeRoutes)
 await app.register(socialRoutes)

@@ -4755,3 +4755,177 @@ img.person-avatar {
   gap: 6px;
   align-items: center;
 }
+
+/* --- Ères musicales --- */
+
+.eras-intro {
+  margin: -8px 0 24px;
+}
+
+.eras {
+  position: relative;
+  display: grid;
+  gap: 20px;
+  max-width: 760px;
+  padding-left: 28px;
+}
+
+/* The timeline. */
+.eras::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 7px;
+  width: 2px;
+  background: linear-gradient(var(--green), var(--highlight-strong) 30%, var(--highlight));
+}
+
+.era {
+  position: relative;
+}
+
+.era-dot {
+  position: absolute;
+  top: 22px;
+  left: -26px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-subdued);
+  box-shadow: 0 0 0 4px var(--base);
+}
+
+.era.current .era-dot {
+  background: var(--green);
+  animation: era-pulse 2s ease-in-out infinite;
+}
+
+@keyframes era-pulse {
+  50% {
+    box-shadow:
+      0 0 0 4px var(--base),
+      0 0 0 9px rgba(30, 215, 96, 0.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .era.current .era-dot {
+    animation: none;
+  }
+}
+
+.era-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border-radius: var(--radius);
+  background: var(--elevated);
+  isolation: isolate;
+}
+
+.era-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(36px) brightness(0.4) saturate(1.3);
+  transform: scale(1.3);
+  z-index: -1;
+}
+
+.era-card h2 {
+  margin: 4px 0 2px;
+  font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.era-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.era-now {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--green);
+  color: #000;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.era-artists {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.era-artist {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 64px;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.era-artist span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.era-tracks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.era-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.era-track .title-text {
+  min-width: 0;
+}
+
+.era-play {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+}
+
+.era-banner {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 24px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  background: var(--elevated);
+  border-left: 4px solid var(--green);
+}
+
+.era-banner:hover {
+  background: var(--elevated-hover);
+}
+
+.era-banner strong {
+  font-size: 1.25rem;
+}

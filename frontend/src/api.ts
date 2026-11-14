@@ -830,3 +830,22 @@ export const capsules = {
     send<{ id: string }>('POST', '/capsules', { trackId, toId, openAt: openAt.toISOString(), message }),
   remove: (id: string) => send<void>('DELETE', `/capsules/${id}`),
 }
+
+// --- Ères musicales ---
+
+/** A chapter of the user's listening history, named after the artists that define it. */
+export interface Era {
+  id: string
+  title: string
+  start: string
+  end: string
+  plays: number
+  /** Still going: the latest chapter, with recent plays. */
+  current: boolean
+  artists: (Artist & { plays: number })[]
+  tracks: Track[]
+}
+
+export const eras = {
+  list: () => request<Era[]>('/me/eras'),
+}
