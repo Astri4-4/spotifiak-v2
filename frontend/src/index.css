@@ -4525,3 +4525,106 @@ img.person-avatar {
 .quiz-scores li.me .quiz-name {
   color: var(--green);
 }
+
+/* --- Citer un passage --- */
+
+.lyrics-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lyrics-quote {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--highlight);
+  color: var(--text);
+  font-size: 1.1rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.lyrics-row:hover .lyrics-quote,
+.lyrics-quote:focus-visible {
+  opacity: 1;
+}
+
+/* No hover on touch screens: the button stays visible, faintly. */
+@media (hover: none) {
+  .lyrics-quote {
+    opacity: 0.5;
+  }
+}
+
+.quote-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 16px;
+  margin: 8px 0 0;
+  padding: 20px;
+  border-radius: var(--radius);
+  background: #2a1a3a;
+  isolation: isolate;
+}
+
+.quote-card-bg {
+  position: absolute;
+  inset: -20%;
+  width: 140%;
+  height: 140%;
+  object-fit: cover;
+  filter: blur(40px) brightness(0.45) saturate(1.4);
+  z-index: -1;
+}
+
+.quote-card blockquote {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 800;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.quote-card blockquote::before {
+  content: '❝ ';
+  opacity: 0.6;
+}
+
+.quote-card figcaption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quote-card figcaption .title-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.quote-input {
+  width: 100%;
+  margin: 16px 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--highlight-strong);
+  border-radius: 4px;
+  background: var(--elevated);
+  color: var(--text);
+}
+
+.quote-friends {
+  max-height: 240px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+.quote-friends label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  cursor: pointer;
+}

@@ -2,10 +2,11 @@ import SpotifiakCore
 import SwiftUI
 
 /// A track's lyrics in the full-screen player. Synced lyrics follow the music: the current line
-/// is lit and kept centred, and tapping a line plays from there.
+/// is lit and kept centred, and tapping a line plays from there. A long press quotes a line to friends.
 struct LyricsView: View {
     let lyrics: Lyrics
     @Environment(PlayerEngine.self) private var player
+    @State private var quoting: Passage?
 
     /// Lines light up slightly early: the position only updates twice a second.
     private static let lead = 0.3
@@ -30,6 +31,13 @@ struct LyricsView: View {
                                 .onTapGesture {
                                     if let time = line.time { player.seek(to: time) }
                                 }
+                                .contextMenu {
+                                    if !line.text.isEmpty {
+                                        Button("Citer à un ami", systemImage: "quote.opening") {
+                                            quoting = Passage(quote: line.text, position: line.time)
+                                        }
+                                    }
+                                }
                                 .id(index)
                         }
                         if lyrics.source == "lrclib" {
@@ -46,6 +54,9 @@ struct LyricsView: View {
                     guard let index else { return }
                     withAnimation(.easeInOut(duration: 0.4)) { proxy.scrollTo(index, anchor: .center) }
                 }
+            }
+            .sheet(item: $quoting) { passage in
+                if let track = player.current { ShareSheet(track: track, passage: passage) }
             }
             // Lines fade out at the edges.
             .mask {

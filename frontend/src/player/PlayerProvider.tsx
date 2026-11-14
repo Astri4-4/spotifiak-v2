@@ -89,9 +89,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const url = current.episode?.audioUrl ?? api.streamUrl(current.id)
     // Starting a Jam with the track already playing here: keep it, don't restart it.
     if (!(jam && el.src.endsWith(url))) el.src = url
-    // Episodes resume where they were left.
-    if (current.episode?.startAt) el.currentTime = current.episode.startAt
-    lastSavedAt.current = current.episode?.startAt ?? 0
+    // Episodes resume where they were left; a quoted passage starts at its line.
+    const startAt = current.episode?.startAt ?? current.startAt
+    if (startAt) el.currentTime = startAt
+    lastSavedAt.current = startAt ?? 0
     if (jam) syncToJam()
     else void el.play().catch(() => setPlaying(false))
   }, [source]) // eslint-disable-line react-hooks/exhaustive-deps

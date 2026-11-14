@@ -24,3 +24,17 @@ import Testing
     #expect(state.round?.answer == 1)
     #expect(state.round?.results.first?.points == 875)
 }
+
+@Test func aQuotedShareStartsAtItsLine() throws {
+    let json = """
+    {"id":"n1","type":"share","from":{"id":"u2","username":"lea","displayName":"Léa","avatarUpdatedAt":null},
+     "track":{"id":"t1","title":"Nuit","artistName":"Léa","artistId":"a1","album":null,"durationSec":200,
+              "trackNumber":1,"discNumber":1,"addedAt":"2026-11-14T10:00:00.000Z","format":"mp3"},
+     "jamId":null,"jamActive":false,"message":null,"quote":"On danse encore","position":102.4,
+     "createdAt":"2026-11-14T10:00:00.000Z","read":false}
+    """
+    let n = try JSONDecoder.spotifiak.decode(AppNotification.self, from: Data(json.utf8))
+    #expect(n.quote == "On danse encore")
+    #expect(n.track?.startAt == nil)
+    #expect(n.track?.starting(at: n.position).startAt == 102.4)
+}

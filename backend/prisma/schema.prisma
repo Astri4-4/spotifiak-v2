@@ -289,6 +289,9 @@ model Notification {
   trackId   String?
   jamId     String?
   message   String?
+  /// A quoted passage: the lyric line, and where it starts in the track (seconds).
+  quote     String?
+  position  Float?
   createdAt DateTime         @default(now())
   readAt    DateTime?
   user      User             @relation("recipient", fields: [userId], references: [id], onDelete: Cascade)

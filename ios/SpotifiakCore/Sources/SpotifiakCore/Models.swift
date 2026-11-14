@@ -53,6 +53,15 @@ public struct Track: Codable, Sendable, Hashable, Identifiable {
     public let format: String?
     /// Set when this is a podcast episode played as a track (see APIClient.track(episode:)).
     public let episode: TrackEpisode?
+    /// Client side only: where to start (seconds) instead of the beginning, e.g. a quoted passage.
+    public var startAt: Double? = nil
+
+    /// The same track, starting at `seconds`.
+    public func starting(at seconds: Double?) -> Track {
+        var copy = self
+        copy.startAt = seconds
+        return copy
+    }
 
     public init(
         id: String, title: String, artistName: String, artistId: String, album: TrackAlbum? = nil,
@@ -677,6 +686,9 @@ public struct AppNotification: Codable, Sendable, Hashable, Identifiable {
     public let jamId: String?
     public let jamActive: Bool
     public let message: String?
+    /// A quoted lyric line ("Citer un passage"), and where it starts in the track (seconds).
+    public let quote: String?
+    public let position: Double?
     public let createdAt: Date
     public let read: Bool
 }

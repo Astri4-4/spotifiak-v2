@@ -32,3 +32,18 @@ test('imageType trusts the bytes, not the name', async () => {
   assert.equal(imageType(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>')), null)
   assert.equal(imageType(Buffer.alloc(0)), null)
 })
+
+test('a quoted passage leads the push with the quote and the moment', async () => {
+  const { shareMessage, formatPosition } = await import('../src/social.js')
+  const track = { title: 'Nuit', artistName: 'Léa' }
+  assert.equal(formatPosition(102.4), '1:42')
+  assert.equal(formatPosition(5), '0:05')
+  assert.deepEqual(shareMessage('Sacha', track, { quote: 'On danse encore', position: 102.4, message: 'ça te rappelle ?' }), {
+    title: 'Sacha vous cite un passage',
+    body: '« On danse encore »\nNuit — Léa (à 1:42)\nça te rappelle ?',
+  })
+  assert.deepEqual(shareMessage('Sacha', track, { message: 'écoute' }), {
+    title: 'Sacha vous a partagé un titre',
+    body: 'Nuit — Léa\n« écoute »',
+  })
+})

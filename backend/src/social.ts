@@ -62,6 +62,27 @@ export async function friendIds(userId: string) {
   return rows.map((r) => (r.requesterId === userId ? r.addresseeId : r.requesterId))
 }
 
+/** The push of a share: a quoted passage leads with the quote. */
+export function shareMessage(
+  from: string,
+  track: { title: string; artistName: string },
+  share: { message?: string; quote?: string; position?: number },
+) {
+  const what = `${track.title} — ${track.artistName}`
+  const note = share.message ? `\n${share.message}` : ''
+  if (share.quote) {
+    const at = share.position === undefined ? '' : ` (à ${formatPosition(share.position)})`
+    return { title: `${from} vous cite un passage`, body: `« ${share.quote} »\n${what}${at}${note}` }
+  }
+  return { title: `${from} vous a partagé un titre`, body: `${what}${share.message ? `\n« ${share.message} »` : ''}` }
+}
+
+/** 102.4 → "1:42" */
+export function formatPosition(sec: number) {
+  const s = Math.floor(sec)
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
 /** Only friends receive shares and Jam invitations. */
 async function requireFriends(me: string, userIds: string[], reply: FastifyReply) {
   const friends = new Set(await friendIds(me))
@@ -296,7 +317,14 @@ export async function socialRoutes(app: FastifyInstance) {
 
   app.post('/shares', async (req, reply) => {
     const body = z
-      .object({ trackId: z.string(), userIds: z.array(z.string()).min(1).max(50), message: z.string().trim().max(300).optional() })
+      .object({
+        trackId: z.string(),
+        userIds: z.array(z.string()).min(1).max(50),
+        message: z.string().trim().max(300).optional(),
+        // "Citer un passage": a lyric line, and the moment the friend's player starts at.
+        quote: z.string().trim().max(500).optional(),
+        position: z.number().min(0).max(24 * 3600).optional(),
+      })
       .parse(req.body)
     const me = req.user!.id
     if (!(await requireFriends(me, body.userIds, reply))) return
@@ -309,13 +337,14 @@ export async function socialRoutes(app: FastifyInstance) {
         type: 'share' as const,
         trackId: body.trackId,
         message: body.message || null,
+        quote: body.quote || null,
+        position: body.position ?? null,
       })),
     })
     notify(
       body.userIds,
       {
-        title: `${req.user!.displayName} vous a partagé un titre`,
-        body: `${track.title} — ${track.artistName}${body.message ? `\n« ${body.message} »` : ''}`,
+        ...shareMessage(req.user!.displayName, track, body),
         link: 'inbox',
       },
       req.log,
@@ -348,6 +377,8 @@ export async function socialRoutes(app: FastifyInstance) {
         type: true,
         jamId: true,
         message: true,
+        quote: true,
+        position: true,
         createdAt: true,
         readAt: true,
         from: { select: personSelect },

@@ -6,6 +6,7 @@ import { Cover } from '../components/Cover'
 import { MobileHeader } from '../components/Mobile'
 import { PersonAvatar } from '../components/PersonAvatar'
 import { PlayButton } from '../components/PlayButton'
+import { QuoteCard } from '../components/QuoteDialog'
 import { formatAgo } from '../format'
 import { useFetch, useIsMobile } from '../hooks'
 import { PlusIcon } from '../icons'
@@ -55,11 +56,19 @@ export function InboxPage() {
                   <Link to={`/user/${n.from.id}`} className="white">
                     {n.from.displayName}
                   </Link>{' '}
-                  {n.type === 'share' ? 'vous a partagé un titre' : 'vous invite à sa Jam'}
+                  {n.type === 'jam' ? 'vous invite à sa Jam' : n.quote ? 'vous cite un passage' : 'vous a partagé un titre'}
                   <span className="muted"> • {formatAgo(n.createdAt)}</span>
                 </span>
                 {n.message && <span className="inbox-message">« {n.message} »</span>}
-                {n.track && (
+                {n.track && n.quote && (
+                  <QuoteCard
+                    track={n.track}
+                    quote={n.quote}
+                    position={n.position}
+                    onPlay={() => playTracks([{ ...n.track!, startAt: n.position ?? undefined }], 0)}
+                  />
+                )}
+                {n.track && !n.quote && (
                   <span className="inbox-track">
                     <Cover src={images.track(n.track)} size={40} />
                     <span className="title-text">

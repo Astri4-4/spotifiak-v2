@@ -52,6 +52,8 @@ export interface Track {
   format?: string
   /** Set when this is a podcast episode played through the player (see podcasts.ts). */
   episode?: { podcastId: string; audioUrl: string; startAt: number }
+  /** Client side only: start here (seconds) instead of at the beginning, e.g. a quoted passage. */
+  startAt?: number
 }
 
 export interface Album {
@@ -547,6 +549,9 @@ export interface Notification {
   jamId: string | null
   jamActive: boolean
   message: string | null
+  /** A quoted lyric line, and where it starts in the track (seconds). */
+  quote: string | null
+  position: number | null
   createdAt: string
   read: boolean
 }
@@ -568,8 +573,8 @@ export const social = {
   duels: () => request<Duel[]>('/me/duels'),
   voteDuel: (friendId: string, liked: boolean) => send<void>('PUT', `/me/duels/${friendId}`, { liked }),
   tasteMap: () => request<TasteMap>('/me/taste-map'),
-  share: (trackId: string, userIds: string[], message?: string) =>
-    send<{ sent: number }>('POST', '/shares', { trackId, userIds, message }),
+  share: (trackId: string, userIds: string[], message?: string, passage?: { quote: string; position?: number }) =>
+    send<{ sent: number }>('POST', '/shares', { trackId, userIds, message, ...passage }),
   inviteToJam: (jamId: string, userIds: string[]) => send<{ sent: number }>('POST', `/jam/${jamId}/invite`, { userIds }),
   notifications: () => request<Notification[]>('/me/notifications'),
   counts: () => request<{ unread: number; friendRequests: number }>('/me/notifications/count'),

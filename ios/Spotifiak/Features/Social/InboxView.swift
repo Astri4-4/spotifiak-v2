@@ -41,7 +41,7 @@ struct InboxView: View {
                     .buttonStyle(.borderless)
                     .accessibilityLabel("Profil de \(n.from.displayName)")
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(Text(n.from.displayName).bold()) \(n.type == "share" ? "vous a partagé un titre" : "vous invite à sa Jam")")
+                    Text("\(Text(n.from.displayName).bold()) \(n.type == "jam" ? "vous invite à sa Jam" : n.quote != nil ? "vous cite un passage" : "vous a partagé un titre")")
                         .font(.subheadline)
                     Text(n.createdAt.formatted(.relative(presentation: .named))).font(.caption).foregroundStyle(Theme.subdued)
                 }
@@ -61,7 +61,11 @@ struct InboxView: View {
                 }
             }
             if let message = n.message { Text("« \(message) »").font(.subheadline).italic() }
-            if let track = n.track {
+            if let track = n.track, let quote = n.quote {
+                QuoteCard(track: track, quote: quote, position: n.position) {
+                    player.play([track.starting(at: n.position)], startAt: 0)
+                }
+            } else if let track = n.track {
                 Button { play(track) } label: {
                     HStack(spacing: 12) {
                         RemoteImage(url: session.api?.coverURL(track: track)).frame(width: 44, height: 44)
@@ -227,9 +231,17 @@ struct ProfileView: View {
     }
 }
 
-/// Picks friends and an optional message, then sends them a track.
+/// A lyric line quoted to friends ("Citer un passage"), and where it starts in the track.
+struct Passage: Identifiable, Hashable {
+    let id = UUID()
+    let quote: String
+    let position: Double?
+}
+
+/// Picks friends and an optional message, then sends them a track, or a passage of it.
 struct ShareSheet: View {
     let track: Track
+    var passage: Passage?
     @Environment(Session.self) private var session
     @Environment(SocialStore.self) private var social
     @Environment(PlayerEngine.self) private var player
@@ -242,14 +254,19 @@ struct ShareSheet: View {
         NavigationStack {
             List {
                 Section {
-                    HStack(spacing: 12) {
-                        RemoteImage(url: session.api?.coverURL(track: track)).frame(width: 48, height: 48)
-                        VStack(alignment: .leading) {
-                            Text(track.title).lineLimit(1)
-                            Text(track.artistName).font(.caption).foregroundStyle(Theme.subdued).lineLimit(1)
+                    if let passage {
+                        QuoteCard(track: track, quote: passage.quote, position: passage.position)
+                            .listRowInsets(EdgeInsets())
+                    } else {
+                        HStack(spacing: 12) {
+                            RemoteImage(url: session.api?.coverURL(track: track)).frame(width: 48, height: 48)
+                            VStack(alignment: .leading) {
+                                Text(track.title).lineLimit(1)
+                                Text(track.artistName).font(.caption).foregroundStyle(Theme.subdued).lineLimit(1)
+                            }
                         }
                     }
-                    TextField("Message (facultatif)", text: $message, axis: .vertical).lineLimit(1...4)
+                    TextField(passage == nil ? "Message (facultatif)" : "Un mot avec (facultatif)", text: $message, axis: .vertical).lineLimit(1...4)
                 }
                 Section("Envoyer à") {
                     if social.friends.isEmpty {
@@ -271,7 +288,7 @@ struct ShareSheet: View {
                     }
                 }
             }
-            .navigationTitle("Partager avec des amis")
+            .navigationTitle(passage == nil ? "Partager avec des amis" : "Citer un passage")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Annuler") { dismiss() } }
@@ -289,7 +306,8 @@ struct ShareSheet: View {
             defer { sending = false }
             do {
                 let text = message.trimmingCharacters(in: .whitespacesAndNewlines)
-                try await session.requireAPI().share(track.id, with: Array(selected), message: text.isEmpty ? nil : text)
+                try await session.requireAPI().share(track.id, with: Array(selected), message: text.isEmpty ? nil : text,
+                                                     quote: passage?.quote, position: passage?.position)
                 let names = social.friends.filter { selected.contains($0.id) }.map(\.displayName)
                 player.showToast("Envoyé à \(names.formatted(.list(type: .and)))")
                 dismiss()
@@ -297,5 +315,63 @@ struct ShareSheet: View {
                 player.showToast((error as? APIError)?.message ?? "Serveur injoignable")
             }
         }
+    }
+}
+
+/// A quoted lyric line over the track's blurred cover: what the sender sees before sending,
+/// and the friend in their notifications (with "Écouter le passage").
+struct QuoteCard: View {
+    let track: Track
+    let quote: String
+    let position: Double?
+    var onPlay: (() -> Void)?
+    @Environment(Session.self) private var session
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("❝ \(quote)")
+                .font(.title3.weight(.heavy))
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 10) {
+                RemoteImage(url: session.api?.coverURL(track: track))
+                    .frame(width: 36, height: 36)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(track.title).font(.subheadline.weight(.semibold)).lineLimit(1)
+                    Text(position.map { "\(track.artistName) • à \(formatDuration($0))" } ?? track.artistName)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.75))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if let onPlay {
+                    Button(action: onPlay) {
+                        Label("Écouter", systemImage: "play.fill")
+                            .font(.caption.bold())
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 12)
+                            .frame(height: 30)
+                            .background(Theme.green, in: Capsule())
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Écouter le passage")
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            ZStack {
+                Color(red: 0.16, green: 0.1, blue: 0.23)
+                RemoteImage(url: session.api?.coverURL(track: track))
+                    .scaledToFill()
+                    .blur(radius: 30)
+                    .brightness(-0.35)
+                    .saturation(1.4)
+            }
+            .clipped()
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }

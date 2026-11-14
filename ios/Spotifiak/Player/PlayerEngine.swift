@@ -333,8 +333,8 @@ final class PlayerEngine {
         output.setRate(track.episode == nil ? 1 : episodeRate)
         position = 0
         duration = track.durationSec
-        // Episodes resume where they were left.
-        if let startAt = track.episode?.startAt, startAt > 0 {
+        // Episodes resume where they were left; a quoted passage starts at its line.
+        if let startAt = track.episode?.startAt ?? track.startAt, startAt > 0 {
             output.seek(to: startAt)
             position = startAt
         }

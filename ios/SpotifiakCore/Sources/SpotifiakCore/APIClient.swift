@@ -359,11 +359,12 @@ public final class APIClient: Sendable {
     }
 
     private struct Share: Encodable {
-        let trackId: String, userIds: [String], message: String?
+        let trackId: String, userIds: [String], message: String?, quote: String?, position: Double?
     }
 
-    public func share(_ trackId: String, with userIds: [String], message: String?) async throws {
-        try await data("POST", "/shares", body: Share(trackId: trackId, userIds: userIds, message: message))
+    /// Shares a track; with `quote`, a passage of it that the friend's player starts at (`position`).
+    public func share(_ trackId: String, with userIds: [String], message: String?, quote: String? = nil, position: Double? = nil) async throws {
+        try await data("POST", "/shares", body: Share(trackId: trackId, userIds: userIds, message: message, quote: quote, position: position))
     }
 
     public func inviteToJam(_ jamId: String, userIds: [String]) async throws {
