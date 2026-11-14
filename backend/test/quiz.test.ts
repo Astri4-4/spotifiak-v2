@@ -42,3 +42,16 @@ test('buildRounds plays fewer rounds with a tiny library', () => {
   assert.equal(rounds.length, 2)
   assert.equal(rounds[0].choices.length, 2)
 })
+
+test('buildRounds draws new wrong choices each round', () => {
+  const pool = Array.from({ length: 30 }, (_, i) => t(`p${i}`))
+  const rounds = buildRounds(pool, [], 10)
+  const wrongSets = rounds.map((r) =>
+    r.choices
+      .filter((_, i) => i !== r.answer)
+      .map((c) => c.title)
+      .sort()
+      .join('|'),
+  )
+  assert.ok(new Set(wrongSets).size >= 8, `same wrong choices across rounds: ${wrongSets.join(' / ')}`)
+})

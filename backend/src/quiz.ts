@@ -110,11 +110,11 @@ export function buildRounds(pool: Candidate[], extra: Candidate[], count: number
     seen.add(key(t))
     picks.push(t)
   }
-  const decoys = [...shuffle(pool, random), ...shuffle(extra, random)]
   return picks.map((track) => {
     const titles = new Set([key(track)])
     const wrong: Candidate[] = []
-    for (const d of decoys) {
+    // Drawn again for each round, else every round would offer the same wrong titles.
+    for (const d of [...shuffle(pool, random), ...shuffle(extra, random)]) {
       if (wrong.length >= CHOICES - 1) break
       if (titles.has(key(d))) continue
       titles.add(key(d))
